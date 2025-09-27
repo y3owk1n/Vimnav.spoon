@@ -1856,7 +1856,6 @@ end
 ---@param modifiers? table
 ---@return nil
 local function handleVimInput(char, modifiers)
-	print("handleVimInput: " .. char .. " modifiers: " .. hs.inspect(modifiers))
 	log.df(
 		"handleVimInput: " .. char .. " modifiers: " .. hs.inspect(modifiers)
 	)
@@ -1945,21 +1944,34 @@ end
 ---@param event table
 ---@return boolean
 local function eventHandler(event)
-	-- Skip if in insert mode
-	if State.mode == MODES.INSERT then
+	local keyCode = event:getKeyCode()
+
+	-- Skip if in INSERT mode and not escape
+	if State.mode == MODES.INSERT and keyCode ~= hs.keycodes.map["escape"] then
 		log.df("Skipping event handler in insert mode")
 		return false
 	end
 
-	local keyCode = event:getKeyCode()
+	-- Keys to bypass in NORMAL mode to make it fast to use without going through complex logic below
+	local bypassKeysInNormalMode = {
+		hs.keycodes.map["delete"],
+		hs.keycodes.map["left"],
+		hs.keycodes.map["right"],
+		hs.keycodes.map["down"],
+		hs.keycodes.map["up"],
+	}
 
 	-- Skip if in NORMAL mode and backspace
 	-- input focus never triggers a mode change
 	-- so it should still be in NORMAL mode during editable control focus
 	-- and backspace should be ignored to ensure the repeat delay
-	if State.mode == MODES.NORMAL and keyCode == hs.keycodes.map["delete"] then
-		log.df("Skipping event handler on backspace in normal mode")
-		return false
+	if State.mode == MODES.NORMAL then
+		for _, key in ipairs(bypassKeysInNormalMode) do
+			if key == keyCode then
+				log.df("Skipping event handler in normal mode")
+				return false
+			end
+		end
 	end
 
 	-- Skip if on places that it shouldn't run
