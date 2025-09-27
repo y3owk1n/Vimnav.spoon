@@ -866,7 +866,7 @@ function Elements.isEditableControlInFocus()
 		State.focusLastCheck = now
 		log.df(
 			"Skipping focus check, last check was "
-				.. (now - State.focusLastCheck)
+				.. (now - State.focusLastCheck) * 1000
 				.. "ms ago"
 		)
 		return State.focusCachedResult
@@ -883,17 +883,21 @@ function Elements.isEditableControlInFocus()
 	-- If same element as last time, return cached result
 	if focusedElement == State.focusLastElement then
 		log.df("Skipping focus check, element is the same")
+		log.df("Element: %s", hs.inspect(focusedElement))
 		return State.focusCachedResult
 	end
 
 	if focusedElement then
 		local role = Utils.getAttribute(focusedElement, "AXRole")
+		log.df("Focused element role: %s", role)
 		State.focusCachedResult = role and RoleMaps.isEditable(role) or false
 
 		if State.focusCachedResult then
 			log.df("Focused element is editable")
 			-- Update cache
 			State.focusLastElement = focusedElement
+		else
+			State.focusLastElement = nil
 		end
 	else
 		State.focusCachedResult = false

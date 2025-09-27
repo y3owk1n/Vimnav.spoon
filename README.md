@@ -31,6 +31,12 @@
 - **Memory pooling** — Efficient mark rendering with object reuse
 - **Smart caching** — Cached accessibility queries with automatic cleanup
 
+## Known Issues
+
+- Text field's focus management is kinda hacky right now, until there's a better way to handle it
+- Keys that passed to the event loop does not properly support repeats (e.g. `jjjjjjjj`)
+- It might not work properly when there's lack of accessibility support (e.g. Electron apps)
+
 ## Installation
 
 ### Prerequisites
