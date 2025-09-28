@@ -54,6 +54,9 @@ local log
 ---@field excludedApps? string[] Apps to exclude from Vimnav (e.g. Terminal)
 ---@field browsers? string[] Browsers to to detect for browser specific actions (e.g. Safari)
 ---@field launchers? string[] Launchers to to detect for launcher specific actions (e.g. Spotlight)
+---@field enterEditableCallback? fun() Callback to run when in editable control
+---@field exitEditableCallback? fun() Callback to run when out of editable control
+---@field forceUnfocusCallback? fun() Callback to run when force unfocusing
 
 ---@class Hs.Vimnav.State
 ---@field mode number Vimnav mode
@@ -1071,6 +1074,10 @@ function Actions.forceUnfocus()
 		State.focusLastCheck = 0
 		State.focusCachedResult = false
 		State.focusLastElement = nil
+
+		if M.config.forceUnfocusCallback then
+			M.config.forceUnfocusCallback()
+		end
 	end
 end
 
@@ -1997,8 +2004,15 @@ local function eventHandler(event)
 		Elements.isEditableControlInFocus()
 		and keyCode ~= hs.keycodes.map["escape"]
 	then
+		if M.config.enterEditableCallback then
+			M.config.enterEditableCallback()
+		end
 		log.df("Skipping event handler on editable control focus")
 		return false
+	end
+
+	if M.config.exitEditableCallback then
+		M.config.exitEditableCallback()
 	end
 
 	-- Handle single and double escape key

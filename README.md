@@ -169,6 +169,41 @@ spoon.Vimnav:start({
 })
 ```
 
+### Callbacks
+
+Vimnav provides callbacks for certain events:
+
+- `enterEditableCallback` — Called when entering text fields
+- `exitEditableCallback` — Called when exiting text fields
+- `forceUnfocusCallback` — Called when double-escape is pressed
+
+We can use these callbacks to integrate with other applications or spoons (e.g. VimMode)
+
+```lua
+-- you'll need to set up VimMode first
+local VimMode = hs.loadSpoon('VimMode')
+local vim = VimMode:new()
+
+spoon.Vimnav:start({
+ enterEditableCallback = function()
+  if vim then
+   vim:enable() -- enable VimMode when entering text fields
+  end
+ end,
+ exitEditableCallback = function()
+  if vim then
+   vim:disable() -- disable VimMode when exiting text fields
+  end
+ end,
+ forceUnfocusCallback = function()
+  if vim then
+   vim:setInsertMode() -- set VimMode to insert mode when unfocused
+   vim:updateStateIndicator() -- update VimMode state indicator
+  end
+ end,
+})
+```
+
 ### Available Commands
 
 | Command                       | Description              |
