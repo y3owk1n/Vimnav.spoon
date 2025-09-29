@@ -1076,6 +1076,7 @@ function Actions.forceUnfocus()
 		State.focusLastElement = nil
 
 		if M.config.forceUnfocusCallback then
+			log.df("forceUnfocusCallback()")
 			M.config.forceUnfocusCallback()
 		end
 	end
@@ -1993,6 +1994,11 @@ local function eventHandler(event)
 		return false
 	end
 
+	-- tracks a temporary state of editable result for comparison of state changes
+	local prevEditableState = State.focusCachedResult
+
+	local isEditableControlInFocus = Elements.isEditableControlInFocus()
+
 	-- Skip if is during editable control focus
 	-- But we dont want to block escape key
 	-- Or else we wont be able to do double escape
@@ -2000,19 +2006,26 @@ local function eventHandler(event)
 	-- NOTE: This is heavily cached, see the implementation for details
 	-- Why not do `hs.axuielemen.observer`? It doesn't work reliably in my test
 	-- Especially at Safari, it never notifies when an element is unfocused back to `AXWebArea`
-	if
-		Elements.isEditableControlInFocus()
-		and keyCode ~= hs.keycodes.map["escape"]
-	then
-		if M.config.enterEditableCallback then
-			M.config.enterEditableCallback()
+	if isEditableControlInFocus and keyCode ~= hs.keycodes.map["escape"] then
+		-- if the focus state changed, run the callback
+		if prevEditableState ~= isEditableControlInFocus then
+			log.df("Focus state changed... running callbacks")
+			if M.config.enterEditableCallback then
+				log.df("enterEditableCallback()")
+				M.config.enterEditableCallback()
+			end
 		end
 		log.df("Skipping event handler on editable control focus")
 		return false
 	end
 
-	if M.config.exitEditableCallback then
-		M.config.exitEditableCallback()
+	-- if the focus state changed, run the callback
+	if prevEditableState ~= isEditableControlInFocus then
+		log.df("Focus state changed... running callbacks")
+		if M.config.exitEditableCallback then
+			log.df("exitEditableCallback()")
+			M.config.exitEditableCallback()
+		end
 	end
 
 	-- Handle single and double escape key
