@@ -197,8 +197,8 @@ spoon.Vimnav:start({
  end,
  forceUnfocusCallback = function()
   if vim then
-   vim:setInsertMode() -- set VimMode to insert mode when unfocused
-   vim:updateStateIndicator() -- update VimMode state indicator
+   vim:exit() -- exit VimMode
+   vim:disable() -- disable VimMode
   end
  end,
 })
