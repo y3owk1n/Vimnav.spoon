@@ -33,7 +33,6 @@
 
 ## Known Issues
 
-- Text field's focus management is kinda hacky right now, until there's a better way to handle it
 - Keys that passed to the event loop does not properly support repeats (e.g. `jjjjjjjj`)
 - It might not work properly when there's lack of accessibility support (e.g. Electron apps)
 
