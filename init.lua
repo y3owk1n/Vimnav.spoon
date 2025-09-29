@@ -1076,14 +1076,14 @@ function Actions.forceUnfocus()
 		State.focusLastCheck = 0
 		State.focusCachedResult = false
 		State.focusLastElement = nil
+	end
 
-		if
-			M.config.forceUnfocusCallback
-			and type(M.config.forceUnfocusCallback) == "function"
-		then
-			log.df("called forceUnfocusCallback()")
-			M.config.forceUnfocusCallback()
-		end
+	if
+		M.config.forceUnfocusCallback
+		and type(M.config.forceUnfocusCallback) == "function"
+	then
+		log.df("called forceUnfocusCallback()")
+		M.config.forceUnfocusCallback()
 	end
 end
 
