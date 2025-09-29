@@ -123,7 +123,7 @@ local DEFAULT_CONFIG = {
 	logLevel = "warning",
 	linkHintChars = "abcdefghijklmnopqrstuvwxyz",
 	doublePressDelay = 0.3,
-	focusCheckInterval = 0.5,
+	focusCheckInterval = 0.1,
 	mapping = DEFAULT_MAPPING,
 	scrollStep = 50,
 	scrollStepHalfPage = 500,
@@ -860,56 +860,6 @@ function Elements.findAxRole(rootElement, role)
 	return nil
 end
 
----Checks if an editable control is in focus
----@return boolean
-function Elements.isEditableControlInFocus()
-	local now = hs.timer.absoluteTime() / 1e9
-
-	-- Only check every Xms unless we detect a focus change
-	if now - State.focusLastCheck < M.config.focusCheckInterval then
-		State.focusLastCheck = now
-		log.df(
-			"Skipping focus check, last check was "
-				.. (now - State.focusLastCheck) * 1000
-				.. "ms ago"
-		)
-		return State.focusCachedResult
-	end
-
-	State.focusLastCheck = now
-
-	Utils.clearCache()
-
-	log.df("Checking if element is in focus")
-
-	local focusedElement = Elements.getAxFocusedElement()
-
-	-- If same element as last time, return cached result
-	if focusedElement == State.focusLastElement then
-		log.df("Skipping focus check, element is the same")
-		log.df("Element: %s", hs.inspect(focusedElement))
-		return State.focusCachedResult
-	end
-
-	if focusedElement then
-		local role = Utils.getAttribute(focusedElement, "AXRole")
-		log.df("Focused element role: %s", role)
-		State.focusCachedResult = role and RoleMaps.isEditable(role) or false
-
-		if State.focusCachedResult then
-			log.df("Focused element is editable")
-			-- Update cache
-			State.focusLastElement = focusedElement
-		else
-			State.focusLastElement = nil
-		end
-	else
-		State.focusCachedResult = false
-	end
-
-	return State.focusCachedResult
-end
-
 --------------------------------------------------------------------------------
 -- Menu Bar
 --------------------------------------------------------------------------------
@@ -1619,7 +1569,7 @@ function Commands.cmdNormalMode()
 	ModeManager.setMode(MODES.NORMAL)
 
 	if
-		State.mode == MODES.INSERT
+		prevMode == MODES.INSERT
 		and M.config.exitEditableCallback
 		and type(M.config.exitEditableCallback) == "function"
 	then
@@ -2019,14 +1969,9 @@ local function eventHandler(event)
 		return false
 	end
 
-	if State.mode == MODES.INSERT then
-		if not Elements.isEditableControlInFocus() then
-			Commands.cmdNormalMode()
-		else
-			if keyCode ~= hs.keycodes.map["escape"] then
-				return false
-			end
-		end
+	if State.mode == MODES.INSERT and keyCode ~= hs.keycodes.map["escape"] then
+		log.df("Skipping event handler in insert mode")
+		return false
 	end
 
 	-- Skip if on places that it shouldn't run
@@ -2037,23 +1982,6 @@ local function eventHandler(event)
 		return false
 	end
 
-	-- Skip if is during editable control focus
-	-- But we dont want to block escape key
-	-- Or else we wont be able to do double escape
-	--
-	-- NOTE: This is heavily cached, see the implementation for details
-	-- Why not do `hs.axuielemen.observer`? It doesn't work reliably in my test
-	-- Especially at Safari, it never notifies when an element is unfocused back to `AXWebArea`
-	if
-		State.mode == MODES.NORMAL
-		and Elements.isEditableControlInFocus()
-		and keyCode ~= hs.keycodes.map["escape"]
-	then
-		Commands.cmdInsertMode()
-		log.df("Skipping event handler on editable control focus")
-		return false
-	end
-
 	-- Handle single and double escape key
 	if keyCode == hs.keycodes.map["escape"] then
 		local delaySinceLastEscape = (
@@ -2061,14 +1989,21 @@ local function eventHandler(event)
 		) / 1e9
 		State.lastEscape = hs.timer.absoluteTime()
 
+		-- Double escape key
 		if
 			Utils.isInBrowser()
 			and delaySinceLastEscape < M.config.doublePressDelay
 		then
 			Actions.forceUnfocus()
+			hs.timer.doAfter(0.1, function()
+				Commands.cmdNormalMode()
+			end)
+			return true
 		end
 
-		if State.mode ~= MODES.NORMAL then
+		-- Single escape key
+		-- Do not allow escape on normal mode and insert mode, the rest should go through
+		if State.mode ~= MODES.NORMAL and State.mode ~= MODES.INSERT then
 			Commands.cmdNormalMode()
 			return true
 		end
@@ -2147,6 +2082,70 @@ local function cleanupOnAppSwitch()
 	log.df("Cleaned up caches and state for app switch")
 end
 
+local focusCheckTimer = nil
+
+---Updates focus state (called by timer)
+---@return nil
+local function updateFocusState()
+	Utils.clearCache()
+
+	local focusedElement = Elements.getAxFocusedElement()
+
+	-- Quick check: if same element, skip
+	if focusedElement == State.focusLastElement then
+		return
+	end
+
+	State.focusLastElement = focusedElement
+
+	if focusedElement then
+		local role = Utils.getAttribute(focusedElement, "AXRole")
+		local isEditable = role and RoleMaps.isEditable(role) or false
+
+		if isEditable ~= State.focusCachedResult then
+			State.focusCachedResult = isEditable
+
+			-- Update mode based on focus change
+			if isEditable and State.mode == MODES.NORMAL then
+				Commands.cmdInsertMode()
+			elseif not isEditable and State.mode == MODES.INSERT then
+				Commands.cmdNormalMode()
+			end
+
+			log.df(
+				"Focus changed: editable="
+					.. tostring(isEditable)
+					.. ", role="
+					.. tostring(role)
+			)
+		end
+	else
+		if State.focusCachedResult then
+			State.focusCachedResult = false
+			if State.mode == MODES.INSERT then
+				Commands.cmdNormalMode()
+			end
+		end
+	end
+end
+
+---Starts focus polling
+---@return nil
+local function startFocusPolling()
+	if focusCheckTimer then
+		focusCheckTimer:stop()
+		focusCheckTimer = nil
+	end
+
+	focusCheckTimer = hs.timer
+		.new(M.config.focusCheckInterval or 0.1, function()
+			pcall(updateFocusState)
+		end)
+		:start()
+
+	log.df("Focus polling started")
+end
+
 local appWatcher = nil
 
 ---Starts the app watcher
@@ -2157,6 +2156,8 @@ local function startAppWatcher()
 		appWatcher = nil
 	end
 
+	startFocusPolling()
+
 	appWatcher = hs.application.watcher.new(function(appName, eventType)
 		log.df(string.format("App event: %s - %s", appName, eventType))
 
@@ -2164,6 +2165,8 @@ local function startAppWatcher()
 			log.df(string.format("App activated: %s", appName))
 
 			cleanupOnAppSwitch()
+
+			startFocusPolling()
 
 			if not State.eventLoop then
 				State.eventLoop = hs.eventtap
@@ -2218,6 +2221,12 @@ local function cleanupWatchers()
 		State.cleanupTimer:stop()
 		State.cleanupTimer = nil
 		log.df("Stopped cleanup timer")
+	end
+
+	if focusCheckTimer then
+		focusCheckTimer:stop()
+		focusCheckTimer = nil
+		log.df("Stopped focus check timer")
 	end
 end
 
