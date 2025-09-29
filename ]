@@ -89,11 +89,10 @@ local MODES = {
 	INSERT = 3,
 	MULTI = 4,
 	LINKS = 5,
-	PASSTHROUGH = 6,
 }
 
 local DEFAULT_MAPPING = {
-	["i"] = "cmdPassthroughMode",
+	["i"] = "cmdInsertMode",
 	-- movements
 	["h"] = "cmdScrollLeft",
 	["j"] = "cmdScrollDown",
@@ -950,7 +949,6 @@ function ModeManager.setMode(mode, char)
 		[MODES.LINKS] = "L",
 		[MODES.MULTI] = "M",
 		[MODES.NORMAL] = "N",
-		[MODES.PASSTHROUGH] = "IP",
 	}
 
 	local previousMode = State.mode
@@ -1175,7 +1173,7 @@ function ElementFinder.findInputElements(axApp, callback)
 				element = results[1],
 				frame = Utils.getAttribute(results[1], "AXFrame"),
 			})
-			Commands.cmdNormalMode()
+			ModeManager.setMode(MODES.NORMAL)
 		else
 			callback(results)
 		end
@@ -1311,7 +1309,7 @@ function Marks.show(withUrls, elementType)
 				Marks.draw()
 			else
 				hs.alert.show("No links found", nil, nil, 1)
-				Commands.cmdNormalMode()
+				ModeManager.setMode(MODES.NORMAL)
 			end
 		end)
 	elseif elementType == "input" then
@@ -1323,7 +1321,7 @@ function Marks.show(withUrls, elementType)
 				Marks.draw()
 			else
 				hs.alert.show("No inputs found", nil, nil, 1)
-				Commands.cmdNormalMode()
+				ModeManager.setMode(MODES.NORMAL)
 			end
 		end)
 	elseif elementType == "image" then
@@ -1335,7 +1333,7 @@ function Marks.show(withUrls, elementType)
 				Marks.draw()
 			else
 				hs.alert.show("No images found", nil, nil, 1)
-				Commands.cmdNormalMode()
+				ModeManager.setMode(MODES.NORMAL)
 			end
 		end)
 	end
@@ -1572,18 +1570,6 @@ end
 ---@return nil
 function Commands.cmdScrollToBottom()
 	Actions.smoothScroll(0, -M.config.scrollStepFullPage, M.config.smoothScroll)
-end
-
----Switches to passthrough mode
----@return nil
-function Commands.cmdPassthroughMode()
-	local prevMode = State.mode
-
-	if prevMode == MODES.PASSTHROUGH then
-		return
-	end
-
-	ModeManager.setMode(MODES.PASSTHROUGH)
 end
 
 ---Switches to insert mode
@@ -1988,7 +1974,7 @@ local function handleVimInput(char, modifiers)
 	-- Execute mapping
 	local mapping = M.config.mapping[keyCombo]
 	if mapping then
-		Commands.cmdNormalMode()
+		ModeManager.setMode(MODES.NORMAL)
 
 		if type(mapping) == "string" then
 			local cmd = Commands[mapping]
@@ -2010,14 +1996,6 @@ end
 ---@return boolean
 local function eventHandler(event)
 	local keyCode = event:getKeyCode()
-
-	if
-		State.mode == MODES.PASSTHROUGH
-		and keyCode ~= hs.keycodes.map["escape"]
-	then
-		log.df("Skipping event handler in passthrough mode")
-		return false
-	end
 
 	if State.mode == MODES.INSERT then
 		if not Elements.isEditableControlInFocus() then
@@ -2045,8 +2023,7 @@ local function eventHandler(event)
 	-- Why not do `hs.axuielemen.observer`? It doesn't work reliably in my test
 	-- Especially at Safari, it never notifies when an element is unfocused back to `AXWebArea`
 	if
-		State.mode == MODES.NORMAL
-		and Elements.isEditableControlInFocus()
+		Elements.isEditableControlInFocus()
 		and keyCode ~= hs.keycodes.map["escape"]
 	then
 		Commands.cmdInsertMode()
@@ -2066,10 +2043,12 @@ local function eventHandler(event)
 			and delaySinceLastEscape < M.config.doublePressDelay
 		then
 			Actions.forceUnfocus()
+			ModeManager.setMode(MODES.NORMAL)
+			return true
 		end
 
 		if State.mode ~= MODES.NORMAL then
-			Commands.cmdNormalMode()
+			ModeManager.setMode(MODES.NORMAL)
 			return true
 		end
 
@@ -2176,7 +2155,7 @@ local function startAppWatcher()
 				ModeManager.setMode(MODES.DISABLED)
 				log.df("Disabled mode for excluded app: " .. appName)
 			else
-				Commands.cmdNormalMode()
+				ModeManager.setMode(MODES.NORMAL)
 			end
 		end
 	end)
@@ -2254,7 +2233,7 @@ function M:start(userConfig)
 	then
 		ModeManager.setMode(MODES.DISABLED)
 	else
-		Commands.cmdNormalMode()
+		ModeManager.setMode(MODES.NORMAL)
 	end
 end
 

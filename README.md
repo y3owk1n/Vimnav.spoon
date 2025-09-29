@@ -82,6 +82,7 @@ Vimnav operates in several modes, indicated by the menu bar icon:
 
 - **N** — Normal mode (default navigation)
 - **I** — Insert mode (automatically activated in text fields)
+- **IP** — Passthrough mode (manual activated)
 - **L** — Links mode (showing interactive elements)
 - **M** — Multi-character input mode
 - **X** — Disabled mode (in excluded applications)
@@ -128,7 +129,7 @@ Vimnav operates in several modes, indicated by the menu bar icon:
 
 | Key       | Action                  |
 | --------- | ----------------------- |
-| `i`       | Enter insert mode       |
+| `i`       | Enter passthrough mode  |
 | `Esc`     | Return to normal mode   |
 | `Esc Esc` | Force unfocus (browser) |
 
@@ -206,22 +207,23 @@ spoon.Vimnav:start({
 
 ### Available Commands
 
-| Command                       | Description              |
-| ----------------------------- | ------------------------ |
-| `cmdScrollLeft/Right/Up/Down` | Directional scrolling    |
-| `cmdScrollHalfPageUp/Down`    | Half-page scrolling      |
-| `cmdScrollToTop/Bottom`       | Jump to extremes         |
-| `cmdGotoLink`                 | Show clickable links     |
-| `cmdGotoLinkNewTab`           | Links for new tabs       |
-| `cmdGotoInput`                | Show input fields        |
-| `cmdRightClick`               | Show right-click targets |
-| `cmdInsertMode`               | Switch to insert mode    |
-| `cmdCopyPageUrlToClipboard`   | Copy current page URL    |
-| `cmdCopyLinkUrlToClipboard`   | Copy link URLs           |
-| `cmdDownloadImage`            | Download images          |
-| `cmdMoveMouseToLink`          | Move cursor to links     |
-| `cmdMoveMouseToCenter`        | Center cursor            |
-| `cmdNextPage/PrevPage`        | Navigate pagination      |
+| Command                       | Description                |
+| ----------------------------- | -------------------------- |
+| `cmdScrollLeft/Right/Up/Down` | Directional scrolling      |
+| `cmdScrollHalfPageUp/Down`    | Half-page scrolling        |
+| `cmdScrollToTop/Bottom`       | Jump to extremes           |
+| `cmdGotoLink`                 | Show clickable links       |
+| `cmdGotoLinkNewTab`           | Links for new tabs         |
+| `cmdGotoInput`                | Show input fields          |
+| `cmdRightClick`               | Show right-click targets   |
+| `cmdPassthroughMode`          | Switch to passthrough mode |
+| `cmdNormalMode`               | Switch to normal mode      |
+| `cmdCopyPageUrlToClipboard`   | Copy current page URL      |
+| `cmdCopyLinkUrlToClipboard`   | Copy link URLs             |
+| `cmdDownloadImage`            | Download images            |
+| `cmdMoveMouseToLink`          | Move cursor to links       |
+| `cmdMoveMouseToCenter`        | Center cursor              |
+| `cmdNextPage/PrevPage`        | Navigate pagination        |
 
 ### Configuration Options
 
