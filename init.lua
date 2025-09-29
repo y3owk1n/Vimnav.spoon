@@ -1075,8 +1075,11 @@ function Actions.forceUnfocus()
 		State.focusCachedResult = false
 		State.focusLastElement = nil
 
-		if M.config.forceUnfocusCallback then
-			log.df("forceUnfocusCallback()")
+		if
+			M.config.forceUnfocusCallback
+			and type(M.config.forceUnfocusCallback) == "function"
+		then
+			log.df("called forceUnfocusCallback()")
 			M.config.forceUnfocusCallback()
 		end
 	end
@@ -2009,9 +2012,12 @@ local function eventHandler(event)
 	if isEditableControlInFocus and keyCode ~= hs.keycodes.map["escape"] then
 		-- if the focus state changed, run the callback
 		if prevEditableState ~= isEditableControlInFocus then
-			log.df("Focus state changed... running callbacks")
-			if M.config.enterEditableCallback then
-				log.df("enterEditableCallback()")
+			log.df("Focus state changed... checking if should run callbacks")
+			if
+				M.config.enterEditableCallback
+				and type(M.config.enterEditableCallback) == "function"
+			then
+				log.df("called enterEditableCallback()")
 				M.config.enterEditableCallback()
 			end
 		end
@@ -2021,9 +2027,12 @@ local function eventHandler(event)
 
 	-- if the focus state changed, run the callback
 	if prevEditableState ~= isEditableControlInFocus then
-		log.df("Focus state changed... running callbacks")
-		if M.config.exitEditableCallback then
-			log.df("exitEditableCallback()")
+		log.df("Focus state changed... checking if should run callbacks")
+		if
+			M.config.exitEditableCallback
+			and type(M.config.exitEditableCallback) == "function"
+		then
+			log.df("called exitEditableCallback()")
 			M.config.exitEditableCallback()
 		end
 	end
