@@ -251,6 +251,9 @@ spoon.Vimnav:start({
 
 #### Application Lists
 
+> [!NOTE]
+> Setting in the config table will override the default value
+
 ```lua
 {
     excludedApps = { "Terminal" },     -- Apps to disable Vimnav
@@ -265,7 +268,18 @@ spoon.Vimnav:start({
 }
 ```
 
+If you want to extend the list, you can use the `setConfig*` functions:
+
+```lua
+spoon.Vimnav:setConfigExcludedApps({ "iTerm2" }) -- Add iTerm2 to excluded apps on top of the default list
+spoon.Vimnav:setConfigLaunchers({ "Raycast" }) -- Add Raycast to launchers on top of the default list
+spoon.Vimnav:setConfigBrowsers({ "Firefox" }) -- Add Firefox to browsers on top of the default list
+```
+
 #### Accessibility Roles
+
+> [!NOTE]
+> Setting in the config table will override the default value
 
 ```lua
 {
@@ -279,6 +293,13 @@ spoon.Vimnav:start({
         -- ... more roles
     }
 }
+```
+
+If you want to extend the list, you can use the `setConfig*` functions:
+
+```lua
+spoon.Vimnav:setConfigAxEditableRoles({ "AXTextField", "AXComboBox" }) -- Add AXTextField and AXComboBox to axEditableRoles on top of the default list
+spoon.Vimnav:setConfigAxJumpableRoles({ "AXLink", "AXButton" }) -- Add AXLink and AXButton to axJumpableRoles on top of the default list
 ```
 
 ## Browser Integration

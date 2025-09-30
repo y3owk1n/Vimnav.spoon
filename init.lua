@@ -164,7 +164,13 @@ local DEFAULT_CONFIG = {
 		-- "AXIncrementor",
 		-- "AXDecrementor",
 	},
-	excludedApps = { "Terminal", "Alacritty", "iTerm2", "Kitty", "Ghostty" },
+	excludedApps = {
+		"Terminal",
+		"Alacritty",
+		"iTerm2",
+		"Kitty",
+		"Ghostty",
+	},
 	browsers = {
 		"Safari",
 		"Google Chrome",
@@ -2393,6 +2399,88 @@ function M:stop()
 	Marks.clear()
 
 	cleanupOnAppSwitch()
+end
+
+---@class Hs.Vimnav.Config.SetOpts
+---@field extend? boolean Whether to extend the config or replace it, true = extend, false = replace
+
+local function setTableConfig(key, value, opts)
+	opts = opts or {}
+	local extend = opts.extend
+	if extend == nil then
+		extend = true
+	end
+
+	local foundKey = M.config[key]
+
+	if not foundKey then
+		error("Config key not found: " .. key)
+	end
+
+	if type(foundKey) ~= "table" then
+		error("Config key is not a table: " .. key)
+	end
+
+	if type(value) ~= "table" then
+		value = { value }
+	end
+
+	if extend then
+		for _, v in ipairs(value) do
+			if not Utils.tblContains(foundKey, v) then
+				table.insert(foundKey, v)
+			end
+		end
+	else
+		M.config[key] = value
+	end
+end
+
+---Set axEditableRoles
+---Note that you can also set this in the config
+---But here allows you to extend it rather than replace it
+---@param roles string|string[]
+---@param opts? Hs.Vimnav.Config.SetOpts
+function M.setConfigAxEditableRoles(roles, opts)
+	setTableConfig("axEditableRoles", roles, opts)
+	RoleMaps.init()
+end
+
+---Set axJumpableRoles
+---Note that you can also set this in the config
+---But here allows you to extend it rather than replace it
+---@param roles string|string[]
+---@param opts? Hs.Vimnav.Config.SetOpts
+function M.setConfigAxJumpableRoles(roles, opts)
+	setTableConfig("axJumpableRoles", roles, opts)
+	RoleMaps.init()
+end
+
+---Set apps to exclude from Vimnav
+---Note that you can also set this in the config
+---But here allows you to extend it rather than replace it
+---@param apps string|string[]
+---@param opts? Hs.Vimnav.Config.SetOpts
+function M.setConfigExcludedApps(apps, opts)
+	setTableConfig("excludedApps", apps, opts)
+end
+
+---Set browsers to detect for browser specific actions
+---Note that you can also set this in the config
+---But here allows you to extend it rather than replace it
+---@param browsers string|string[]
+---@param opts? Hs.Vimnav.Config.SetOpts
+function M.setConfigBrowsers(browsers, opts)
+	setTableConfig("browsers", browsers, opts)
+end
+
+---Set launchers to detect for launcher specific actions
+---Note that you can also set this in the config
+---But here allows you to extend it rather than replace it
+---@param launchers string|string[]
+---@param opts? Hs.Vimnav.Config.SetOpts
+function M.setConfigLaunchers(launchers, opts)
+	setTableConfig("launchers", launchers, opts)
 end
 
 return M
