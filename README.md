@@ -2,13 +2,11 @@
 
 **Vim navigation for your entire Mac.** Navigate any macOS application with Vim-like keybindings using Hammerspoon. Think Vimium, but system-wide.
 
-<p align="center">
+<p align="left">
   <img src="https://img.shields.io/badge/platform-macOS-lightgrey" alt="Platform: macOS">
   <img src="https://img.shields.io/badge/requires-Hammerspoon-blue" alt="Requires: Hammerspoon">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT">
 </p>
-
----
 
 ## Why Vimnav?
 
@@ -21,8 +19,6 @@ Stop reaching for your mouse. Navigate Safari, Mail, Finder, or any macOS app wi
 - **Visual link hints** — click anything without touching your mouse
 - **Performance optimized** — async traversal, spatial indexing, memory pooling
 - **Highly customizable** — keybindings, callbacks, excluded apps
-
----
 
 ## Quick Start
 
@@ -50,8 +46,6 @@ Try these basics:
 - `gg`/`G` — jump to top/bottom
 - `f` — show clickable elements
 - `gi` — jump to first input field
-
----
 
 ## Features
 
@@ -109,8 +103,6 @@ Vimnav operates in different modes, shown in the menu bar:
 | **L**  | Links       | Showing link hints            |
 | **M**  | Multi       | Multi-key input (e.g., `gg`)  |
 | **X**  | Disabled    | In excluded apps              |
-
----
 
 ## Configuration
 
@@ -242,8 +234,6 @@ spoon.Vimnav:configure({
 })
 ```
 
----
-
 ## Available Commands
 
 Use these in your `mapping` configuration:
@@ -275,8 +265,6 @@ Use these in your `mapping` configuration:
 - `cmdPassthroughMode` — Enter passthrough mode
 - `cmdNormalMode` — Return to normal mode
 - `cmdInsertMode` — Enter insert mode
-
----
 
 ## API Reference
 
@@ -358,15 +346,12 @@ spoon.Vimnav:debug()                     -- Returns state and config
 
 </details>
 
----
-
 ## Troubleshooting
 
 ### Vimnav isn't working
 
 1. **Check Accessibility permissions**: System Settings → Privacy & Security → Accessibility → Enable Hammerspoon
 2. **Verify installation**: `ls ~/.hammerspoon/Spoons/` should show `Vimnav.spoon`
-3. **Check logs**: Set `logLevel = "info"` in config and watch Console.app
 
 ### Performance issues
 
@@ -387,16 +372,12 @@ spoon.Vimnav:debug()                     -- Returns state and config
 - Verify the app isn't in `excludedApps`
 - Try passthrough mode (`i`) to bypass Vimnav temporarily
 
----
-
 ## Known Limitations
 
 - **Key repeat**: Holding keys (e.g., `jjjjj`) doesn't work reliably
 - **Electron apps**: Limited or no support due to poor accessibility
 - **Web extensions**: May conflict with browser's native Vim extensions
 - **Modal dialogs**: Some system dialogs block accessibility APIs
-
----
 
 ## Performance & Architecture
 
@@ -409,8 +390,6 @@ Vimnav is built for speed and efficiency:
 - **Batch processing** — Elements processed in chunks with yielding
 
 Typical performance: Link hints appear in <100ms on most pages.
-
----
 
 ## Contributing
 
@@ -426,19 +405,13 @@ Contributions are welcome! However, please note:
 4. Test thoroughly on multiple apps
 5. Submit a PR with a description of your changes
 
----
-
 ## Credits
 
 Vimnav is based on [Vifari](https://github.com/dzirtusss/vifari) by dzirtuss, extensively rewritten for system-wide support, performance optimization, and enhanced features.
 
----
-
 ## License
 
 MIT License — See [LICENSE](LICENSE) file for details.
-
----
 
 <p align="center">
   Made with ⌨️  by developers who never touch their mouse
