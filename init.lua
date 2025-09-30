@@ -164,7 +164,7 @@ local DEFAULT_CONFIG = {
 		-- "AXIncrementor",
 		-- "AXDecrementor",
 	},
-	excludedApps = { "Terminal" },
+	excludedApps = { "Terminal", "Alacritty", "iTerm2", "Kitty", "Ghostty" },
 	browsers = {
 		"Safari",
 		"Google Chrome",
@@ -226,14 +226,23 @@ function SpatialIndex.createViewportRegions()
 	}
 end
 
+---@class Hs.Vimnav.SpatialIndex.IsInViewportOpts
+---@field fx number
+---@field fy number
+---@field fw number
+---@field fh number
+---@field viewport table
+
 ---Checks if the element is in the viewport
----@param fx number
----@param fy number
----@param fw number
----@param fh number
----@param viewport table
+---@param opts Hs.Vimnav.SpatialIndex.IsInViewportOpts
 ---@return boolean
-function SpatialIndex.isInViewport(fx, fy, fw, fh, viewport)
+function SpatialIndex.isInViewport(opts)
+	local fx = opts.fx
+	local fy = opts.fy
+	local fw = opts.fw
+	local fh = opts.fh
+	local viewport = opts.viewport
+
 	return fx < viewport.x + viewport.w
 		and fx + fw > viewport.x
 		and fy < viewport.y + viewport.h
@@ -246,13 +255,20 @@ end
 -- Coroutine-based Async Traversal
 --------------------------------------------------------------------------------
 
+---@class Hs.Vimnav.AsyncTraversal.TraversalOpts
+---@field matcher fun(element: table): boolean
+---@field callback fun(results: table)
+---@field maxResults number
+
 ---Process elements in background coroutine to avoid UI blocking
 ---@param element table
----@param matcher fun(element: table): boolean
----@param callback fun(results: table)
----@param maxResults number
+---@param opts Hs.Vimnav.AsyncTraversal.TraversalOpts
 ---@return nil
-function AsyncTraversal.traverseAsync(element, matcher, callback, maxResults)
+function AsyncTraversal.traverseAsync(element, opts)
+	local matcher = opts.matcher
+	local callback = opts.callback
+	local maxResults = opts.maxResults
+
 	local results = {}
 	local viewport = SpatialIndex.createViewportRegions()
 
@@ -262,10 +278,15 @@ function AsyncTraversal.traverseAsync(element, matcher, callback, maxResults)
 	end
 
 	local traverseCoroutine = coroutine.create(function()
-		AsyncTraversal.walkElement(element, 0, matcher, function(el)
-			results[#results + 1] = el
-			return #results >= maxResults
-		end, viewport)
+		AsyncTraversal.walkElement(element, {
+			depth = 0,
+			matcher = matcher,
+			callback = function(el)
+				results[#results + 1] = el
+				return #results >= maxResults
+			end,
+			viewport = viewport,
+		})
 	end)
 
 	-- Resume coroutine in chunks
@@ -286,14 +307,22 @@ function AsyncTraversal.traverseAsync(element, matcher, callback, maxResults)
 	resumeWork()
 end
 
+---@class Hs.Vimnav.AsyncTraversal.WalkElementOpts
+---@field depth number
+---@field matcher fun(element: table): boolean
+---@field callback fun(element: table): boolean
+---@field viewport table
+
 ---Walks an element with a matcher
 ---@param element table
----@param depth number
----@param matcher fun(element: table): boolean
----@param callback fun(element: table): boolean
----@param viewport table
+---@param opts Hs.Vimnav.AsyncTraversal.WalkElementOpts
 ---@return boolean|nil
-function AsyncTraversal.walkElement(element, depth, matcher, callback, viewport)
+function AsyncTraversal.walkElement(element, opts)
+	local depth = opts.depth
+	local matcher = opts.matcher
+	local callback = opts.callback
+	local viewport = opts.viewport
+
 	if depth > M.config.depth then
 		return
 	end -- Hard depth limit
@@ -315,13 +344,13 @@ function AsyncTraversal.walkElement(element, depth, matcher, callback, viewport)
 
 		-- Viewport check
 		if
-			not SpatialIndex.isInViewport(
-				frame.x,
-				frame.y,
-				frame.w,
-				frame.h,
-				viewport
-			)
+			not SpatialIndex.isInViewport({
+				fx = frame.x,
+				fy = frame.y,
+				fw = frame.w,
+				fh = frame.h,
+				viewport = viewport,
+			})
 		then
 			return
 		end
@@ -339,15 +368,14 @@ function AsyncTraversal.walkElement(element, depth, matcher, callback, viewport)
 			or {}
 
 		for i = 1, #children do
-			if
-				AsyncTraversal.walkElement(
-					children[i],
-					depth + 1,
-					matcher,
-					callback,
-					viewport
-				)
-			then
+			local matched = AsyncTraversal.walkElement(children[i], {
+				depth = depth + 1,
+				matcher = matcher,
+				callback = callback,
+				viewport = viewport,
+			})
+
+			if matched then
 				return true
 			end
 		end
@@ -931,14 +959,21 @@ end
 -- Actions
 --------------------------------------------------------------------------------
 
+---@class Hs.Vimnav.Actions.SmoothScrollOpts
+---@field x? number|nil
+---@field y? number|nil
+---@field smooth? boolean
+
 ---Performs a smooth scroll
----@param x number|nil
----@param y number|nil
----@param smooth boolean
+---@param opts Hs.Vimnav.Actions.SmoothScrollOpts
 ---@return nil
-function Actions.smoothScroll(x, y, smooth)
+function Actions.smoothScroll(opts)
+	local x = opts.x or 0
+	local y = opts.y or 0
+	local smooth = opts.smooth or M.config.smoothScroll
+
 	if not smooth then
-		hs.eventtap.event.newScrollEvent({ x or 0, y or 0 }, {}, "pixel"):post()
+		hs.eventtap.event.newScrollEvent({ x, y }, {}, "pixel"):post()
 		return
 	end
 
@@ -1037,12 +1072,16 @@ function Actions.forceUnfocus()
 	end
 end
 
+---@class Hs.Vimnav.Actions.TryClickOpts
+---@field type? string "left"|"right"
+
 ---Tries to click on a frame
 ---@param frame table
----@param type? string "left"|"right"
+---@param opts? Hs.Vimnav.Actions.TryClickOpts
 ---@return nil
-function Actions.tryClick(frame, type)
-	type = type or "left"
+function Actions.tryClick(frame, opts)
+	opts = opts or {}
+	local type = opts.type or "left"
 
 	local clickX, clickY = frame.x + frame.w / 2, frame.y + frame.h / 2
 	local originalPos = hs.mouse.absolutePosition()
@@ -1061,21 +1100,25 @@ end
 -- Element Finders
 --------------------------------------------------------------------------------
 
+---@class Hs.Vimnav.ElementFinder.FindElementsOpts
+---@field callback fun(elements: table)
+
+---@class Hs.Vimnav.ElementFinder.FindClickableElementsOpts: Hs.Vimnav.ElementFinder.FindElementsOpts
+---@field withUrls boolean
+
 ---Finds clickable elements
 ---@param axApp Hs.Vimnav.Element
----@param withUrls boolean
----@param callback fun(elements: table)
+---@param opts Hs.Vimnav.ElementFinder.FindClickableElementsOpts
 ---@return nil
-function ElementFinder.findClickableElements(axApp, withUrls, callback)
+function ElementFinder.findClickableElements(axApp, opts)
 	if type(axApp) == "string" then
 		return
 	end
 
-	if not RoleMaps.jumpableSet then
-		RoleMaps.init()
-	end
+	local callback = opts.callback
+	local withUrls = opts.withUrls
 
-	AsyncTraversal.traverseAsync(axApp, function(element)
+	local function _matcher(element)
 		local role = Utils.getAttribute(element, "AXRole")
 
 		if withUrls then
@@ -1098,27 +1141,33 @@ function ElementFinder.findClickableElements(axApp, withUrls, callback)
 		end
 
 		return true
-	end, callback, State.maxElements)
+	end
+
+	AsyncTraversal.traverseAsync(axApp, {
+		matcher = _matcher,
+		callback = callback,
+		maxResults = State.maxElements,
+	})
 end
 
 ---Finds input elements
 ---@param axApp Hs.Vimnav.Element
----@param callback fun(elements: table)
+---@param opts Hs.Vimnav.ElementFinder.FindElementsOpts
 ---@return nil
-function ElementFinder.findInputElements(axApp, callback)
+function ElementFinder.findInputElements(axApp, opts)
 	if type(axApp) == "string" then
 		return
 	end
 
-	if not RoleMaps.editableSet then
-		RoleMaps.init()
-	end
+	local callback = opts.callback
 
-	AsyncTraversal.traverseAsync(axApp, function(element)
+	local function _matcher(element)
 		local role = Utils.getAttribute(element, "AXRole")
 		return (role and type(role) == "string" and RoleMaps.isEditable(role))
 			or false
-	end, function(results)
+	end
+
+	local function _callback(results)
 		-- Auto-click if single input found
 		if #results == 1 then
 			State.onClickCallback({
@@ -1129,35 +1178,51 @@ function ElementFinder.findInputElements(axApp, callback)
 		else
 			callback(results)
 		end
-	end, 10) -- Limit inputs to 10 max
+	end
+
+	AsyncTraversal.traverseAsync(axApp, {
+		matcher = _matcher,
+		callback = _callback,
+		maxResults = 10,
+	})
 end
 
 ---Finds image elements
 ---@param axApp Hs.Vimnav.Element
----@param callback fun(elements: table)
+---@param opts Hs.Vimnav.ElementFinder.FindElementsOpts
 ---@return nil
-function ElementFinder.findImageElements(axApp, callback)
+function ElementFinder.findImageElements(axApp, opts)
 	if type(axApp) == "string" then
 		return
 	end
 
-	AsyncTraversal.traverseAsync(axApp, function(element)
+	local callback = opts.callback
+
+	local function _matcher(element)
 		local role = Utils.getAttribute(element, "AXRole")
 		local url = Utils.getAttribute(element, "AXURL")
 		return role == "AXImage" and url ~= nil
-	end, callback, 100) -- Limit images
+	end
+
+	AsyncTraversal.traverseAsync(axApp, {
+		matcher = _matcher,
+		callback = callback,
+		maxResults = 100,
+	})
 end
 
 ---Finds next button elemets
 ---@param axApp Hs.Vimnav.Element
----@param callback fun(elements: table)
+---@param opts Hs.Vimnav.ElementFinder.FindElementsOpts
 ---@return nil
-function ElementFinder.findNextButtonElements(axApp, callback)
+function ElementFinder.findNextButtonElements(axApp, opts)
 	if type(axApp) == "string" then
 		return
 	end
 
-	AsyncTraversal.traverseAsync(axApp, function(element)
+	local callback = opts.callback
+
+	local function _matcher(element)
 		local role = Utils.getAttribute(element, "AXRole")
 		local title = Utils.getAttribute(element, "AXTitle")
 
@@ -1169,19 +1234,27 @@ function ElementFinder.findNextButtonElements(axApp, callback)
 			return title:lower():find("next") ~= nil
 		end
 		return false
-	end, callback, 5) -- Only need a few next buttons
+	end
+
+	AsyncTraversal.traverseAsync(axApp, {
+		matcher = _matcher,
+		callback = callback,
+		maxResults = 5,
+	})
 end
 
 ---Finds previous button elemets
 ---@param axApp Hs.Vimnav.Element
----@param callback fun(elements: table)
+---@param opts Hs.Vimnav.ElementFinder.FindElementsOpts
 ---@return nil
-function ElementFinder.findPrevButtonElements(axApp, callback)
+function ElementFinder.findPrevButtonElements(axApp, opts)
 	if type(axApp) == "string" then
 		return
 	end
 
-	AsyncTraversal.traverseAsync(axApp, function(element)
+	local callback = opts.callback
+
+	local function _matcher(element)
 		local role = Utils.getAttribute(element, "AXRole")
 		local title = Utils.getAttribute(element, "AXTitle")
 
@@ -1195,7 +1268,13 @@ function ElementFinder.findPrevButtonElements(axApp, callback)
 				or false
 		end
 		return false
-	end, callback, 5) -- Only need a few prev buttons
+	end
+
+	AsyncTraversal.traverseAsync(axApp, {
+		matcher = _matcher,
+		callback = callback,
+		maxResults = 5,
+	})
 end
 
 --------------------------------------------------------------------------------
@@ -1236,22 +1315,28 @@ function Marks.add(element)
 	State.marks[#State.marks + 1] = mark
 end
 
+---@class Hs.Vimnav.Marks.ShowOpts
+---@field withUrls? boolean
+---@field elementType "link"|"input"|"image"
+
 ---Show marks
----@param withUrls boolean
----@param elementType "link"|"input"|"image"
+---@param opts Hs.Vimnav.Marks.ShowOpts
 ---@return nil
-function Marks.show(withUrls, elementType)
+function Marks.show(opts)
 	local axApp = Elements.getAxApp()
 	if not axApp then
 		return
 	end
+
+	local withUrls = opts.withUrls or false
+	local elementType = opts.elementType
 
 	Marks.clear()
 	State.marks = {}
 	MarkPool.releaseAll()
 
 	if elementType == "link" then
-		ElementFinder.findClickableElements(axApp, withUrls, function(elements)
+		local function _callback(elements)
 			-- Convert to marks
 			for i = 1, math.min(#elements, State.maxElements) do
 				Marks.add(elements[i])
@@ -1263,9 +1348,13 @@ function Marks.show(withUrls, elementType)
 				hs.alert.show("No links found", nil, nil, 1)
 				Commands.cmdNormalMode()
 			end
-		end)
+		end
+		ElementFinder.findClickableElements(axApp, {
+			withUrls = withUrls,
+			callback = _callback,
+		})
 	elseif elementType == "input" then
-		ElementFinder.findInputElements(axApp, function(elements)
+		local function _callback(elements)
 			for i = 1, #elements do
 				Marks.add(elements[i])
 			end
@@ -1275,9 +1364,12 @@ function Marks.show(withUrls, elementType)
 				hs.alert.show("No inputs found", nil, nil, 1)
 				Commands.cmdNormalMode()
 			end
-		end)
+		end
+		ElementFinder.findInputElements(axApp, {
+			callback = _callback,
+		})
 	elseif elementType == "image" then
-		ElementFinder.findImageElements(axApp, function(elements)
+		local function _callback(elements)
 			for i = 1, #elements do
 				Marks.add(elements[i])
 			end
@@ -1287,7 +1379,10 @@ function Marks.show(withUrls, elementType)
 				hs.alert.show("No images found", nil, nil, 1)
 				Commands.cmdNormalMode()
 			end
-		end)
+		end
+		ElementFinder.findImageElements(axApp, {
+			callback = _callback,
+		})
 	end
 end
 
@@ -1479,49 +1574,49 @@ end
 ---Scrolls left
 ---@return nil
 function Commands.cmdScrollLeft()
-	Actions.smoothScroll(M.config.scrollStep, 0, M.config.smoothScroll)
+	Actions.smoothScroll({ x = M.config.scrollStep })
 end
 
 ---Scrolls right
 ---@return nil
 function Commands.cmdScrollRight()
-	Actions.smoothScroll(-M.config.scrollStep, 0, M.config.smoothScroll)
+	Actions.smoothScroll({ x = -M.config.scrollStep })
 end
 
 ---Scrolls up
 ---@return nil
 function Commands.cmdScrollUp()
-	Actions.smoothScroll(0, M.config.scrollStep, M.config.smoothScroll)
+	Actions.smoothScroll({ y = M.config.scrollStep })
 end
 
 ---Scrolls down
 ---@return nil
 function Commands.cmdScrollDown()
-	Actions.smoothScroll(0, -M.config.scrollStep, M.config.smoothScroll)
+	Actions.smoothScroll({ y = -M.config.scrollStep })
 end
 
 ---Scrolls half page down
 ---@return nil
 function Commands.cmdScrollHalfPageDown()
-	Actions.smoothScroll(0, -M.config.scrollStepHalfPage, M.config.smoothScroll)
+	Actions.smoothScroll({ y = -M.config.scrollStepHalfPage })
 end
 
 ---Scrolls half page up
 ---@return nil
 function Commands.cmdScrollHalfPageUp()
-	Actions.smoothScroll(0, M.config.scrollStepHalfPage, M.config.smoothScroll)
+	Actions.smoothScroll({ y = M.config.scrollStepHalfPage })
 end
 
 ---Scrolls to top
 ---@return nil
 function Commands.cmdScrollToTop()
-	Actions.smoothScroll(0, M.config.scrollStepFullPage, M.config.smoothScroll)
+	Actions.smoothScroll({ y = M.config.scrollStepFullPage })
 end
 
 ---Scrolls to bottom
 ---@return nil
 function Commands.cmdScrollToBottom()
-	Actions.smoothScroll(0, -M.config.scrollStepFullPage, M.config.smoothScroll)
+	Actions.smoothScroll({ y = -M.config.scrollStepFullPage })
 end
 
 ---Switches to passthrough mode
@@ -1595,7 +1690,7 @@ function Commands.cmdGotoLink()
 		end
 	end
 	hs.timer.doAfter(0, function()
-		Marks.show(false, "link")
+		Marks.show({ elementType = "link" })
 	end)
 end
 
@@ -1619,7 +1714,7 @@ function Commands.cmdGotoInput()
 		Actions.tryClick(mark.frame)
 	end
 	hs.timer.doAfter(0, function()
-		Marks.show(false, "input")
+		Marks.show({ elementType = "input" })
 	end)
 end
 
@@ -1635,12 +1730,12 @@ function Commands.cmdRightClick()
 		if not pressOk then
 			local frame = mark.frame
 			if frame then
-				Actions.tryClick(frame, "right")
+				Actions.tryClick(frame, { type = "right" })
 			end
 		end
 	end
 	hs.timer.doAfter(0, function()
-		Marks.show(false, "link")
+		Marks.show({ elementType = "link" })
 	end)
 end
 
@@ -1660,7 +1755,7 @@ function Commands.cmdGotoLinkNewTab()
 		end
 	end
 	hs.timer.doAfter(0, function()
-		Marks.show(true, "link")
+		Marks.show({ elementType = "link", withUrls = true })
 	end)
 end
 
@@ -1744,7 +1839,7 @@ function Commands.cmdDownloadImage()
 		end
 	end
 	hs.timer.doAfter(0, function()
-		Marks.show(false, "image")
+		Marks.show({ elementType = "image" })
 	end)
 end
 
@@ -1762,7 +1857,7 @@ function Commands.cmdMoveMouseToLink()
 		end
 	end
 	hs.timer.doAfter(0, function()
-		Marks.show(false, "link")
+		Marks.show({ elementType = "link" })
 	end)
 end
 
@@ -1784,7 +1879,7 @@ function Commands.cmdCopyLinkUrlToClipboard()
 		end
 	end
 	hs.timer.doAfter(0, function()
-		Marks.show(true, "link")
+		Marks.show({ elementType = "link", withUrls = true })
 	end)
 end
 
@@ -1801,13 +1896,17 @@ function Commands.cmdNextPage()
 		return
 	end
 
-	ElementFinder.findNextButtonElements(axWindow, function(elements)
+	local function _callback(elements)
 		if #elements > 0 then
 			elements[1]:performAction("AXPress")
 		else
 			hs.alert.show("No next button found", nil, nil, 2)
 		end
-	end)
+	end
+
+	ElementFinder.findNextButtonElements(axWindow, {
+		callback = _callback,
+	})
 end
 
 ---Prev page
@@ -1823,13 +1922,15 @@ function Commands.cmdPrevPage()
 		return
 	end
 
-	ElementFinder.findPrevButtonElements(axWindow, function(elements)
+	local function _callback(elements)
 		if #elements > 0 then
 			elements[1]:performAction("AXPress")
 		else
 			hs.alert.show("No previous button found", nil, nil, 2)
 		end
-	end)
+	end
+
+	ElementFinder.findPrevButtonElements(axWindow, { callback = _callback })
 end
 
 ---Copy page URL to clipboard
@@ -1866,11 +1967,17 @@ end
 -- Event Handling
 --------------------------------------------------------------------------------
 
+---@class Hs.Vimnav.EventHandler.HandleVimInputOpts
+---@field modifiers? table
+
 ---Handles Vim input
 ---@param char string
----@param modifiers? table
+---@param opts? Hs.Vimnav.EventHandler.HandleVimInputOpts
 ---@return nil
-local function handleVimInput(char, modifiers)
+local function handleVimInput(char, opts)
+	opts = opts or {}
+	local modifiers = opts.modifiers
+
 	log.df(
 		"handleVimInput: " .. char .. " modifiers: " .. hs.inspect(modifiers)
 	)
@@ -2050,7 +2157,9 @@ local function eventHandler(event)
 		end
 	end
 
-	handleVimInput(char, flags)
+	handleVimInput(char, {
+		modifiers = flags,
+	})
 
 	return true
 end
