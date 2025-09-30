@@ -14,8 +14,10 @@ local M = {}
 
 M.__index = M
 
-M.name = "vimnav"
+M.name = "Vimnav"
+M.license = "MIT - https://opensource.org/licenses/MIT"
 
+-- Internal modules
 local Utils = {}
 local Elements = {}
 local MenuBar = {}
@@ -187,12 +189,12 @@ local DEFAULT_CONFIG = {
 --------------------------------------------------------------------------------
 
 ---@type Hs.Vimnav.State
-State = {
+local defaultState = {
 	mode = MODES.DISABLED,
 	multi = nil,
 	marks = {},
 	linkCapture = "",
-	lastEscape = hs.timer.absoluteTime(),
+	lastEscape = 0,
 	mappingPrefixes = {},
 	allCombinations = {},
 	eventLoop = nil,
@@ -204,6 +206,14 @@ State = {
 	focusLastElement = nil,
 	maxElements = 0,
 }
+
+---@type Hs.Vimnav.State
+---@diagnostic disable-next-line: missing-fields
+State = {}
+
+local function resetState()
+	State = defaultState
+end
 
 -- Element cache with weak references for garbage collection
 local elementCache = setmetatable({}, { __mode = "k" })
@@ -557,6 +567,44 @@ function Utils.deepCopy(obj)
 		copy[k] = Utils.deepCopy(v)
 	end
 	return copy
+end
+
+---Merges two tables with optional array extension
+---@param base table Base table
+---@param overlay table Table to merge into base
+---@param extendArrays boolean If true, arrays are merged; if false, arrays are replaced
+---@return table Merged result
+function Utils.tblMerge(base, overlay, extendArrays)
+	local result = Utils.deepCopy(base)
+
+	for key, value in pairs(overlay) do
+		local baseValue = result[key]
+		local isOverlayArray = type(value) == "table" and Utils.isList(value)
+		local isBaseArray = type(baseValue) == "table"
+			and Utils.isList(baseValue)
+
+		if extendArrays and isOverlayArray and isBaseArray then
+			-- Both are arrays, merge them (no duplicates)
+			for _, v in ipairs(value) do
+				if not Utils.tblContains(baseValue, v) then
+					table.insert(baseValue, v)
+				end
+			end
+		elseif
+			type(value) == "table"
+			and type(baseValue) == "table"
+			and not isOverlayArray
+			and not isBaseArray
+		then
+			-- Both are objects (not arrays), deep merge recursively
+			result[key] = Utils.tblDeepExtend("force", baseValue, value)
+		else
+			-- Simple value or mismatched types, just replace
+			result[key] = Utils.deepCopy(value)
+		end
+	end
+
+	return result
 end
 
 ---@param behavior "error"|"keep"|"force"
@@ -2353,14 +2401,75 @@ end
 ---@diagnostic disable-next-line: missing-fields
 M.config = {}
 
----Starts the module
----@param userConfig Hs.Vimnav.Config
----@return nil
-function M:start(userConfig)
-	print("-- Starting Vimnav...")
-	M.config = Utils.tblDeepExtend("force", DEFAULT_CONFIG, userConfig or {})
+-- Private state flag
+M._running = false
+M._initialized = false
 
+---Initializes the module
+---@return Hs.Vimnav
+function M:init()
+	if self._initialized then
+		return self
+	end
+
+	-- Initialize logger with default level
+	log = hs.logger.new(M.name, "info")
+
+	self._initialized = true
+	log.i("Initialized")
+
+	return self
+end
+
+---@class Hs.Vimnav.Config.SetOpts
+---@field extend? boolean Whether to extend the config or replace it, true = extend, false = replace
+
+---Configures the module
+---@param userConfig Hs.Vimnav.Config
+---@param opts? Hs.Vimnav.Config.SetOpts
+---@return Hs.Vimnav
+function M:configure(userConfig, opts)
+	if not self._initialized then
+		self:init()
+	end
+
+	opts = opts or {}
+	local extend = opts.extend
+	if extend == nil then
+		extend = true
+	end
+
+	-- Start with defaults
+	if not M.config or not next(M.config) then
+		M.config = Utils.deepCopy(DEFAULT_CONFIG)
+	end
+
+	-- Merge user config
+	if userConfig then
+		M.config = Utils.tblMerge(M.config, userConfig, extend)
+	end
+
+	-- Reinitialize logger with configured level
 	log = hs.logger.new(M.name, M.config.logLevel)
+
+	log.i("Configured")
+
+	return self
+end
+
+---Starts the module
+---@return Hs.Vimnav
+function M:start()
+	if self._running then
+		log.w("Vimnav already running")
+		return self
+	end
+
+	if not M.config or not next(M.config) then
+		self:configure({})
+	end
+
+	resetState()
 
 	Utils.fetchMappingPrefixes()
 	Utils.generateCombinations()
@@ -2380,11 +2489,20 @@ function M:start(userConfig)
 	else
 		Commands.cmdNormalMode()
 	end
+
+	self._running = true
+	log.i("Started")
+
+	return self
 end
 
 ---Stops the module
----@return nil
+---@return Hs.Vimnav
 function M:stop()
+	if not self._running then
+		return self
+	end
+
 	print("-- Stopping Vimnav...")
 
 	cleanupWatchers()
@@ -2399,88 +2517,37 @@ function M:stop()
 	Marks.clear()
 
 	cleanupOnAppSwitch()
+
+	State = {}
+
+	self._running = false
+	log.i("Vimnav stopped")
+
+	return self
 end
 
----@class Hs.Vimnav.Config.SetOpts
----@field extend? boolean Whether to extend the config or replace it, true = extend, false = replace
-
-local function setTableConfig(key, value, opts)
-	opts = opts or {}
-	local extend = opts.extend
-	if extend == nil then
-		extend = true
-	end
-
-	local foundKey = M.config[key]
-
-	if not foundKey then
-		error("Config key not found: " .. key)
-	end
-
-	if type(foundKey) ~= "table" then
-		error("Config key is not a table: " .. key)
-	end
-
-	if type(value) ~= "table" then
-		value = { value }
-	end
-
-	if extend then
-		for _, v in ipairs(value) do
-			if not Utils.tblContains(foundKey, v) then
-				table.insert(foundKey, v)
-			end
-		end
-	else
-		M.config[key] = value
-	end
+---Restarts the module
+---@return Hs.Vimnav
+function M:restart()
+	log.i("Restarting Vimnav...")
+	self:stop()
+	self:start()
+	return self
 end
 
----Set axEditableRoles
----Note that you can also set this in the config
----But here allows you to extend it rather than replace it
----@param roles string|string[]
----@param opts? Hs.Vimnav.Config.SetOpts
-function M.setConfigAxEditableRoles(roles, opts)
-	setTableConfig("axEditableRoles", roles, opts)
-	RoleMaps.init()
+---Returns current running state
+---@return boolean
+function M:isRunning()
+	return self._running
 end
 
----Set axJumpableRoles
----Note that you can also set this in the config
----But here allows you to extend it rather than replace it
----@param roles string|string[]
----@param opts? Hs.Vimnav.Config.SetOpts
-function M.setConfigAxJumpableRoles(roles, opts)
-	setTableConfig("axJumpableRoles", roles, opts)
-	RoleMaps.init()
-end
-
----Set apps to exclude from Vimnav
----Note that you can also set this in the config
----But here allows you to extend it rather than replace it
----@param apps string|string[]
----@param opts? Hs.Vimnav.Config.SetOpts
-function M.setConfigExcludedApps(apps, opts)
-	setTableConfig("excludedApps", apps, opts)
-end
-
----Set browsers to detect for browser specific actions
----Note that you can also set this in the config
----But here allows you to extend it rather than replace it
----@param browsers string|string[]
----@param opts? Hs.Vimnav.Config.SetOpts
-function M.setConfigBrowsers(browsers, opts)
-	setTableConfig("browsers", browsers, opts)
-end
-
----Set launchers to detect for launcher specific actions
----Note that you can also set this in the config
----But here allows you to extend it rather than replace it
----@param launchers string|string[]
----@param opts? Hs.Vimnav.Config.SetOpts
-function M.setConfigLaunchers(launchers, opts)
-	setTableConfig("launchers", launchers, opts)
+---Returns state and config information
+---@return table
+function M:debug()
+	return {
+		config = M.config,
+		state = State,
+	}
 end
 
 return M

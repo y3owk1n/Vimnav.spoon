@@ -1,364 +1,445 @@
 # Vimnav.spoon
 
-**System-wide Vim navigation for macOS** — Navigate any macOS application with Vim-like keybindings using Hammerspoon. Think Vimium, but for your entire desktop.
+**Vim navigation for your entire Mac.** Navigate any macOS application with Vim-like keybindings using Hammerspoon. Think Vimium, but system-wide.
 
-> [!NOTE]
-> If you like this, please help out with the project instead of just asking for features and fixes. I probably do not
-> have extra time to maintain this project as long as it works for me.
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-macOS-lightgrey" alt="Platform: macOS">
+  <img src="https://img.shields.io/badge/requires-Hammerspoon-blue" alt="Requires: Hammerspoon">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT">
+</p>
 
-## Features
+---
 
-### Core Navigation
+## Why Vimnav?
 
-- **Vim-style scrolling** — `hjkl` for directional movement, `C-d`/`C-u` for half-page scrolling
-- **Link hints** — Visual overlay marks for instant clicking on any interactive element
-- **Smart mode detection** — Automatically switches to insert mode when text fields are focused
-- **Universal compatibility** — Works across all macOS applications (except Terminal by default)
+Stop reaching for your mouse. Navigate Safari, Mail, Finder, or any macOS app with the same muscle memory you use in Vim. Vimnav brings powerful keyboard-driven navigation to your entire desktop.
 
-### Advanced Interactions
+**Key highlights:**
 
-- **Multiple link modes** — Open links in current window (`f`) or new tabs (`F`)
-- **Right-click support** — Context menus with `r`
-- **Input field navigation** — Jump directly to text fields with `gi`
-- **Image downloading** — Save images directly with `di` (browser only)
-- **URL copying** — Copy page or link URLs to clipboard
-- **Mouse control** — Move cursor to elements or center screen
+- Works across **all native macOS apps** (Safari, Mail, Finder, System Settings, etc.)
+- **Smart mode switching** — automatically enters insert mode in text fields
+- **Visual link hints** — click anything without touching your mouse
+- **Performance optimized** — async traversal, spatial indexing, memory pooling
+- **Highly customizable** — keybindings, callbacks, excluded apps
 
-### Performance Optimized
+---
 
-- **Async element traversal** — Non-blocking UI with coroutine-based processing
-- **Spatial indexing** — Viewport culling for faster element detection
-- **Memory pooling** — Efficient mark rendering with object reuse
-- **Smart caching** — Cached accessibility queries with automatic cleanup
+## Quick Start
 
-## Known Issues
+### Installation
 
-- Keys that passed to the event loop does not properly support repeats (e.g. `jjjjjjjj`)
-- It might not work properly when there's lack of accessibility support (e.g. Electron apps)
-
-## Installation
-
-### Prerequisites
-
-- [Hammerspoon](https://www.hammerspoon.org/) installed
-- Accessibility permissions enabled for Hammerspoon
-
-### Setup
-
-#### Manual
-
-1. Download `Vimnav.spoon` and place it in `~/.hammerspoon/Spoons/`
-2. Add to your `~/.hammerspoon/init.lua`:
+1. Install [Hammerspoon](https://www.hammerspoon.org/)
+2. Enable **Accessibility permissions** for Hammerspoon in System Settings
+3. Download and place `Vimnav.spoon` in `~/.hammerspoon/Spoons/`
+4. Add to your `~/.hammerspoon/init.lua`:
 
 ```lua
 hs.loadSpoon("Vimnav")
 spoon.Vimnav:start()
 ```
 
-3. Reload Hammerspoon configuration
+5. Reload Hammerspoon (⌘⌃R)
 
-#### Using [Pack.spoon](https://github.com/y3owk1n/pack.spoon)
+### First Steps
 
-```lua
----@type Hs.Pack.PluginSpec
-return {
- name = "Vimnav",
- url = "https://github.com/y3owk1n/Vimnav.spoon.git",
- config = function()
-  ---@type Hs.Vimnav.Config
-  local vimnavConfig = {}
+Press `f` in Safari to see link hints overlay on all clickable elements. Type the letters shown to click. Press `Esc` to cancel.
 
-  spoon.Vimnav:start(vimnavConfig)
- end,
-}
+Try these basics:
+
+- `j`/`k` — scroll down/up
+- `gg`/`G` — jump to top/bottom
+- `f` — show clickable elements
+- `gi` — jump to first input field
+
+---
+
+## Features
+
+### Core Navigation
+
+| Key             | Action    | Description                    |
+| --------------- | --------- | ------------------------------ |
+| `h`/`j`/`k`/`l` | Scroll    | Vim-style directional movement |
+| `C-d`/`C-u`     | Half page | Fast vertical scrolling        |
+| `gg`/`G`        | Jump      | Top or bottom of page          |
+| `H`/`L`         | History   | Back/forward (⌘[ / ⌘])         |
+
+### Link Hints Mode
+
+Press `f` to enter link hints mode. Interactive elements get labeled with letter combinations:
+
+```
+[AA] Sign In    [AB] Register    [AC] Learn More
+[AD] Products   [AE] Pricing     [AF] Contact
 ```
 
-## Usage
+Type the letters (e.g., `AA`) to click that element. No mouse needed.
+
+| Key  | Action                | Works In |
+| ---- | --------------------- | -------- |
+| `f`  | Click element         | All apps |
+| `F`  | Open in new tab       | Browsers |
+| `r`  | Right-click element   | All apps |
+| `gi` | Jump to input field   | All apps |
+| `gf` | Move mouse to element | All apps |
+| `yf` | Copy link URL         | Browsers |
+
+### Browser-Specific Features
+
+Enhanced functionality in Safari, Chrome, Firefox, Edge, Brave, and Zen:
+
+| Key       | Action                       |
+| --------- | ---------------------------- |
+| `yy`      | Copy current page URL        |
+| `yf`      | Copy link URL (after `f`)    |
+| `F`       | Open link in new tab         |
+| `di`      | Download image               |
+| `]]`/`[[` | Next/previous page           |
+| `Esc Esc` | Force unfocus from web forms |
 
 ### Modes
 
-Vimnav operates in several modes, indicated by the menu bar icon:
+Vimnav operates in different modes, shown in the menu bar:
 
-- **N** — Normal mode (default navigation)
-- **I** — Insert mode (automatically activated in text fields)
-- **IP** — Passthrough mode (manual activated)
-- **L** — Links mode (showing interactive elements)
-- **M** — Multi-character input mode
-- **X** — Disabled mode (in excluded applications)
+| Icon   | Mode        | When                          |
+| ------ | ----------- | ----------------------------- |
+| **N**  | Normal      | Default navigation mode       |
+| **I**  | Insert      | Auto-activated in text fields |
+| **IP** | Passthrough | Manual activation (press `i`) |
+| **L**  | Links       | Showing link hints            |
+| **M**  | Multi       | Multi-key input (e.g., `gg`)  |
+| **X**  | Disabled    | In excluded apps              |
 
-### Default Keybindings
-
-#### Movement
-
-| Key   | Action                |
-| ----- | --------------------- |
-| `h`   | Scroll left           |
-| `j`   | Scroll down           |
-| `k`   | Scroll up             |
-| `l`   | Scroll right          |
-| `C-d` | Scroll half page down |
-| `C-u` | Scroll half page up   |
-| `G`   | Scroll to bottom      |
-| `gg`  | Scroll to top         |
-
-#### Navigation
-
-| Key  | Action                       |
-| ---- | ---------------------------- |
-| `H`  | History back (Cmd+[)         |
-| `L`  | History forward (Cmd+])      |
-| `f`  | Show link hints for clicking |
-| `F`  | Show link hints for new tab  |
-| `gi` | Jump to input field          |
-| `r`  | Right-click on element       |
-
-#### Utilities
-
-| Key  | Action                   |
-| ---- | ------------------------ |
-| `yy` | Copy page URL            |
-| `yf` | Copy link URL            |
-| `di` | Download image (browser) |
-| `gf` | Move mouse to link       |
-| `zz` | Center mouse on screen   |
-| `]]` | Next page button         |
-| `[[` | Previous page button     |
-
-#### Mode Control
-
-| Key       | Action                  |
-| --------- | ----------------------- |
-| `i`       | Enter passthrough mode  |
-| `Esc`     | Return to normal mode   |
-| `Esc Esc` | Force unfocus (browser) |
-
-### Link Hints
-
-When you press `f`, `F`, or similar commands, Vimnav overlays letter combinations on interactive elements:
-
-1. Press the trigger key (`f`, `F`, etc.)
-2. Type the letters shown on your target element
-3. The action executes automatically
+---
 
 ## Configuration
 
-### Basic Configuration
+### Basic Setup
 
 ```lua
-spoon.Vimnav:start({
-    logLevel = "warning",
-    linkHintChars = "abcdefghijklmnopqrstuvwxyz",
-    scrollStep = 50,
-    smoothScroll = true,
-    excludedApps = { "Terminal", "iTerm2" }
-})
+hs.loadSpoon("Vimnav")
+spoon.Vimnav:configure({
+    scrollStep = 100,              -- Faster scrolling
+    smoothScroll = true,           -- Smooth animations
+    linkHintChars = "asdfghjkl",   -- Home row only
+    excludedApps = {               -- Don't run in these apps
+        "Terminal",
+        "iTerm2",
+        "VSCode"
+    }
+}):start()
 ```
 
 ### Custom Keybindings
 
+Map any key to any command or native keystroke:
+
 ```lua
-spoon.Vimnav:start({
+spoon.Vimnav:configure({
     mapping = {
+        -- Use commands
         ["j"] = "cmdScrollDown",
         ["k"] = "cmdScrollUp",
-        ["C-f"] = "cmdScrollHalfPageDown",
+        ["f"] = "cmdGotoLink",
+
+        -- Multi-character combos
         ["gg"] = "cmdScrollToTop",
-        ["custom"] = { "cmd", "t" }, -- Custom key stroke
-        -- Add your mappings here
+        ["gt"] = "cmdGotoInput",
+
+        -- Control key combos
+        ["C-f"] = "cmdScrollHalfPageDown",
+        ["C-b"] = "cmdScrollHalfPageUp",
+
+        -- Pass through native keystrokes
+        ["t"] = { "cmd", "t" },     -- ⌘T (new tab)
+        ["w"] = { "cmd", "w" },     -- ⌘W (close window)
     }
-})
+}):start()
 ```
 
-### Callbacks
+### Integration with Other Spoons
 
-Vimnav provides callbacks for certain events:
-
-- `enterEditableCallback` — Called when entering text fields
-- `exitEditableCallback` — Called when exiting text fields
-- `forceUnfocusCallback` — Called when double-escape is pressed
-
-We can use these callbacks to integrate with other applications or spoons (e.g. VimMode)
+Vimnav provides callbacks for seamless integration:
 
 ```lua
--- you'll need to set up VimMode first
 local VimMode = hs.loadSpoon('VimMode')
 local vim = VimMode:new()
 
-spoon.Vimnav:start({
- enterEditableCallback = function()
-  if vim then
-   vim:enable() -- enable VimMode when entering text fields
-  end
- end,
- exitEditableCallback = function()
-  if vim then
-   vim:disable() -- disable VimMode when exiting text fields
-  end
- end,
- forceUnfocusCallback = function()
-  if vim then
-   vim:exit() -- exit VimMode
-   vim:disable() -- disable VimMode
-  end
- end,
+spoon.Vimnav:configure({
+    -- Enable VimMode when entering text fields
+    enterEditableCallback = function()
+        vim:enable()
+    end,
+
+    -- Disable VimMode when exiting text fields
+    exitEditableCallback = function()
+        vim:disable()
+    end,
+
+    -- Handle force unfocus (double Esc in browser)
+    forceUnfocusCallback = function()
+        vim:exit()
+        vim:disable()
+    end,
+}):start()
+```
+
+### Advanced Configuration
+
+#### Array Extension Behavior
+
+By default, array configs **extend** the defaults:
+
+```lua
+-- This ADDS to the default excluded apps
+spoon.Vimnav:configure({
+    excludedApps = { "VSCode", "Emacs" }
 })
+-- Result: ["Terminal", "Alacritty", "iTerm2", "Kitty", "Ghostty", "VSCode", "Emacs"]
 ```
 
-### Available Commands
-
-| Command                       | Description                |
-| ----------------------------- | -------------------------- |
-| `cmdScrollLeft/Right/Up/Down` | Directional scrolling      |
-| `cmdScrollHalfPageUp/Down`    | Half-page scrolling        |
-| `cmdScrollToTop/Bottom`       | Jump to extremes           |
-| `cmdGotoLink`                 | Show clickable links       |
-| `cmdGotoLinkNewTab`           | Links for new tabs         |
-| `cmdGotoInput`                | Show input fields          |
-| `cmdRightClick`               | Show right-click targets   |
-| `cmdPassthroughMode`          | Switch to passthrough mode |
-| `cmdNormalMode`               | Switch to normal mode      |
-| `cmdCopyPageUrlToClipboard`   | Copy current page URL      |
-| `cmdCopyLinkUrlToClipboard`   | Copy link URLs             |
-| `cmdDownloadImage`            | Download images            |
-| `cmdMoveMouseToLink`          | Move cursor to links       |
-| `cmdMoveMouseToCenter`        | Center cursor              |
-| `cmdNextPage/PrevPage`        | Navigate pagination        |
-
-### Configuration Options
-
-#### Core Settings
+To **replace** instead of extend:
 
 ```lua
-{
-    logLevel = "warning",              -- Log verbosity
-    doublePressDelay = 0.3,           -- Double-press detection (seconds)
-    focusCheckInterval = 0.5,          -- Focus detection interval
-    depth = 20,                        -- Element traversal depth
-}
-```
-
-#### Scrolling
-
-```lua
-{
-    scrollStep = 50,                   -- Basic scroll distance
-    scrollStepHalfPage = 500,         -- Half-page scroll distance
-    scrollStepFullPage = 1000000,     -- Full-page scroll distance
-    smoothScroll = true,               -- Enable smooth scrolling
-    smoothScrollFramerate = 120,       -- Smooth scroll FPS
-}
-```
-
-#### Application Lists
-
-> [!NOTE]
-> Setting in the config table will override the default value
-
-```lua
-{
-    excludedApps = { "Terminal" },     -- Apps to disable Vimnav
-    browsers = {                       -- Browser detection for web features
-        "Safari", "Google Chrome",
-        "Firefox", "Microsoft Edge",
-        "Brave Browser", "Zen"
-    },
-    launchers = {                      -- Launcher detection
-        "Spotlight", "Raycast", "Alfred"
-    }
-}
-```
-
-If you want to extend the list, you can use the `setConfig*` functions:
-
-```lua
-spoon.Vimnav:setConfigExcludedApps({ "iTerm2" }) -- Add iTerm2 to excluded apps on top of the default list
-spoon.Vimnav:setConfigLaunchers({ "Raycast" }) -- Add Raycast to launchers on top of the default list
-spoon.Vimnav:setConfigBrowsers({ "Firefox" }) -- Add Firefox to browsers on top of the default list
+spoon.Vimnav:configure({
+    excludedApps = { "VSCode" }  -- Only exclude VSCode
+}, { extend = false })
 ```
 
 #### Accessibility Roles
 
-> [!NOTE]
-> Setting in the config table will override the default value
+Control which UI elements are detected:
+
+```lua
+spoon.Vimnav:configure({
+    -- Elements treated as text inputs
+    axEditableRoles = {
+        "AXTextField",
+        "AXComboBox",
+        "AXTextArea",
+        "AXSearchField"
+    },
+
+    -- Elements shown in link hints mode
+    axJumpableRoles = {
+        "AXLink",
+        "AXButton",
+        "AXPopUpButton",
+        "AXCheckBox",
+        "AXRadioButton",
+        "AXMenuItem"
+    }
+})
+```
+
+#### Performance Tuning
+
+```lua
+spoon.Vimnav:configure({
+    depth = 15,                    -- Max element depth (lower = faster)
+    focusCheckInterval = 0.2,      -- Focus detection frequency
+    smoothScrollFramerate = 60,    -- Lower FPS for less CPU
+})
+```
+
+---
+
+## Available Commands
+
+Use these in your `mapping` configuration:
+
+### Navigation
+
+- `cmdScrollLeft/Right/Up/Down` — Directional scrolling
+- `cmdScrollHalfPageUp/Down` — Half-page jumps
+- `cmdScrollToTop/Bottom` — Jump to extremes
+
+### Link Hints
+
+- `cmdGotoLink` — Click elements
+- `cmdGotoLinkNewTab` — Open in new tab (browser)
+- `cmdGotoInput` — Jump to input fields
+- `cmdRightClick` — Show right-clickable elements
+- `cmdMoveMouseToLink` — Move cursor to element
+
+### Utilities
+
+- `cmdCopyPageUrlToClipboard` — Copy page URL (browser)
+- `cmdCopyLinkUrlToClipboard` — Copy link URL (browser)
+- `cmdDownloadImage` — Save images (browser)
+- `cmdMoveMouseToCenter` — Center cursor
+- `cmdNextPage/PrevPage` — Navigate pagination (browser)
+
+### Mode Control
+
+- `cmdPassthroughMode` — Enter passthrough mode
+- `cmdNormalMode` — Return to normal mode
+- `cmdInsertMode` — Enter insert mode
+
+---
+
+## API Reference
+
+### Methods
+
+```lua
+-- Lifecycle
+spoon.Vimnav:init()                      -- Initialize (called automatically)
+spoon.Vimnav:configure(config, opts)     -- Set configuration
+spoon.Vimnav:start()                     -- Start Vimnav
+spoon.Vimnav:stop()                      -- Stop Vimnav
+spoon.Vimnav:restart()                   -- Restart Vimnav
+
+-- Status
+spoon.Vimnav:isRunning()                 -- Returns boolean
+
+-- Utility
+spoon.Vimnav:debug()                     -- Returns state and config
+```
+
+### Configuration Options
+
+<details>
+<summary><b>Full Configuration Reference</b></summary>
 
 ```lua
 {
-    axEditableRoles = {                -- Text input detection
-        "AXTextField", "AXComboBox",
-        "AXTextArea", "AXSearchField"
+    -- Logging
+    logLevel = "warning",                    -- "debug", "info", "warning", "error"
+
+    -- Link Hints
+    linkHintChars = "abcdefghijklmnopqrstuvwxyz",
+
+    -- Timing
+    doublePressDelay = 0.3,                  -- Double-press detection (seconds)
+    focusCheckInterval = 0.1,                -- Focus check frequency (seconds)
+
+    -- Scrolling
+    scrollStep = 50,                         -- Basic scroll distance (pixels)
+    scrollStepHalfPage = 500,               -- Half-page scroll (pixels)
+    scrollStepFullPage = 1000000,           -- Full-page scroll (pixels)
+    smoothScroll = true,                     -- Enable smooth scrolling
+    smoothScrollFramerate = 120,             -- Smooth scroll FPS
+
+    -- Performance
+    depth = 20,                              -- Element traversal depth
+
+    -- Application Lists
+    excludedApps = {
+        "Terminal", "Alacritty", "iTerm2", "Kitty", "Ghostty"
     },
-    axJumpableRoles = {               -- Interactive element detection
-        "AXLink", "AXButton", "AXPopUpButton",
-        "AXComboBox", "AXCheckBox", "AXRadioButton"
-        -- ... more roles
-    }
+    browsers = {
+        "Safari", "Google Chrome", "Firefox",
+        "Microsoft Edge", "Brave Browser", "Zen"
+    },
+    launchers = {
+        "Spotlight", "Raycast", "Alfred"
+    },
+
+    -- Accessibility Roles
+    axEditableRoles = {
+        "AXTextField", "AXComboBox", "AXTextArea", "AXSearchField"
+    },
+    axJumpableRoles = {
+        "AXLink", "AXButton", "AXPopUpButton", "AXComboBox",
+        "AXTextField", "AXTextArea", "AXCheckBox", "AXRadioButton",
+        "AXDisclosureTriangle", "AXMenuButton", "AXMenuBarItem", "AXMenuItem", "AXRow"
+    },
+
+    -- Callbacks
+    enterEditableCallback = function() end,  -- Called when entering text field
+    exitEditableCallback = function() end,   -- Called when exiting text field
+    forceUnfocusCallback = function() end,   -- Called on double-escape in browser
+
+    -- Keybindings (see Default Mapping section)
+    mapping = { ... }
 }
 ```
 
-If you want to extend the list, you can use the `setConfig*` functions:
+</details>
 
-```lua
-spoon.Vimnav:setConfigAxEditableRoles({ "AXTextField", "AXComboBox" }) -- Add AXTextField and AXComboBox to axEditableRoles on top of the default list
-spoon.Vimnav:setConfigAxJumpableRoles({ "AXLink", "AXButton" }) -- Add AXLink and AXButton to axJumpableRoles on top of the default list
-```
-
-## Browser Integration
-
-Vimnav provides enhanced features when used with supported browsers:
-
-- **URL operations** — Copy page/link URLs, open in new tabs
-- **Image downloading** — Direct image saving to Downloads folder
-- **Navigation helpers** — Next/previous page detection
-- **Force unfocus** — Double-escape to exit web form focus
+---
 
 ## Troubleshooting
 
-### Performance Issues
+### Vimnav isn't working
 
-- Reduce `depth` setting for faster element detection
-- Adjust `focusCheckInterval` for less frequent focus checks
-- Add problematic apps to `excludedApps`
+1. **Check Accessibility permissions**: System Settings → Privacy & Security → Accessibility → Enable Hammerspoon
+2. **Verify installation**: `ls ~/.hammerspoon/Spoons/` should show `Vimnav.spoon`
+3. **Check logs**: Set `logLevel = "info"` in config and watch Console.app
 
-### Accessibility Permissions
+### Performance issues
 
-Ensure Hammerspoon has Full Disk Access and Accessibility permissions in System Preferences > Security & Privacy.
+- **Reduce depth**: `depth = 10` for faster element detection
+- **Increase intervals**: `focusCheckInterval = 0.3` for less frequent checks
+- **Disable smooth scrolling**: `smoothScroll = false`
+- **Exclude problematic apps**: Add to `excludedApps`
 
-### Application Compatibility
+### Link hints not showing
 
-Some Electron apps may have limited compatibility. Native macOS applications generally work best.
+- App may not expose accessibility elements properly (common in Electron apps)
+- Try pressing `f` multiple times or adjusting `axJumpableRoles`
+- Some web content requires time to load
 
-### Memory Usage
+### Keys not working / conflicts
 
-Vimnav includes automatic cleanup and memory pooling. If you experience issues, restart Hammerspoon.
+- Check if another Hammerspoon module is capturing the same keys
+- Verify the app isn't in `excludedApps`
+- Try passthrough mode (`i`) to bypass Vimnav temporarily
 
-## Technical Details
+---
 
-### Architecture
+## Known Limitations
 
-- **Coroutine-based traversal** — Non-blocking element discovery
-- **Spatial indexing** — Viewport-aware element filtering
-- **Object pooling** — Memory-efficient mark rendering
-- **Caching layers** — Optimized accessibility queries
+- **Key repeat**: Holding keys (e.g., `jjjjj`) doesn't work reliably
+- **Electron apps**: Limited or no support due to poor accessibility
+- **Web extensions**: May conflict with browser's native Vim extensions
+- **Modal dialogs**: Some system dialogs block accessibility APIs
 
-### Accessibility Integration
+---
 
-Uses macOS Accessibility APIs (AXUIElement) for universal application support. Elements are detected by role-based matching with configurable role lists.
+## Performance & Architecture
 
-### Performance Optimizations
+Vimnav is built for speed and efficiency:
 
-- Viewport culling eliminates off-screen elements
-- Attribute caching reduces redundant API calls
-- Background processing prevents UI blocking
-- Memory pools minimize garbage collection
+- **Async coroutines** — Element traversal doesn't block the UI
+- **Spatial indexing** — Only processes visible viewport elements
+- **Object pooling** — Mark elements are reused to minimize GC pressure
+- **Smart caching** — Accessibility queries cached with automatic invalidation
+- **Batch processing** — Elements processed in chunks with yielding
+
+Typical performance: Link hints appear in <100ms on most pages.
+
+---
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit issues or pull requests.
+Contributions are welcome! However, please note:
+
+> This is a personal project maintained on a best-effort basis. If you find it useful, consider contributing fixes and features rather than just requesting them. PRs are more likely to be reviewed than feature requests.
+
+**How to contribute:**
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with clear commit messages
+4. Test thoroughly on multiple apps
+5. Submit a PR with a description of your changes
+
+---
+
+## Credits
+
+Vimnav is based on [Vifari](https://github.com/dzirtusss/vifari) by dzirtuss, extensively rewritten for system-wide support, performance optimization, and enhanced features.
+
+---
 
 ## License
 
-MIT License - See LICENSE file for details.
+MIT License — See [LICENSE](LICENSE) file for details.
 
-## Acknowledgments
+---
 
-Based on the original [Vifari](https://github.com/dzirtusss/vifari) project with extensive modifications for system-wide support and performance improvements.
+<p align="center">
+  Made with ⌨️  by developers who never touch their mouse
+</p>
