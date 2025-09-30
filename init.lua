@@ -72,7 +72,6 @@ local log
 ---@field canvas table|nil Canvas
 ---@field onClickCallback fun(any)|nil On click callback for marks
 ---@field cleanupTimer table|nil Cleanup timer
----@field focusLastCheck number Focus last check time
 ---@field focusCachedResult boolean Focus cached result
 ---@field focusLastElement table|string|nil Focus last element
 ---@field maxElements number Maximum elements to search for (derived from config)
@@ -201,7 +200,6 @@ local defaultState = {
 	canvas = nil,
 	onClickCallback = nil,
 	cleanupTimer = nil,
-	focusLastCheck = 0,
 	focusCachedResult = false,
 	focusLastElement = nil,
 	maxElements = 0,
@@ -1112,7 +1110,6 @@ function Actions.forceUnfocus()
 		hs.alert.show("Force unfocused!")
 
 		-- Reset focus state
-		State.focusLastCheck = 0
 		State.focusCachedResult = false
 		State.focusLastElement = nil
 	end
@@ -2235,7 +2232,6 @@ local function cleanupOnAppSwitch()
 	State.linkCapture = ""
 
 	-- Reset focus state
-	State.focusLastCheck = 0
 	State.focusCachedResult = false
 	State.focusLastElement = nil
 
