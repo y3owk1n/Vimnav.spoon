@@ -2681,8 +2681,14 @@ local function updateFocusState()
 			-- Update mode based on focus change
 			if isEditable and ModeManager.isMode(MODES.NORMAL) then
 				ModeManager.setModeInsert()
-			elseif not isEditable and ModeManager.isMode(MODES.INSERT) then
-				ModeManager.setModeNormal()
+			elseif not isEditable then
+				if
+					ModeManager.isMode(MODES.INSERT)
+					or ModeManager.isMode(MODES.INSERT_NORMAL)
+					or ModeManager.isMode(MODES.INSERT_VISUAL)
+				then
+					ModeManager.setModeNormal()
+				end
 			end
 
 			log.df(
@@ -2695,7 +2701,11 @@ local function updateFocusState()
 	else
 		if State.focusCachedResult then
 			State.focusCachedResult = false
-			if ModeManager.isMode(MODES.INSERT) then
+			if
+				ModeManager.isMode(MODES.INSERT)
+				or ModeManager.isMode(MODES.INSERT_NORMAL)
+				or ModeManager.isMode(MODES.INSERT_VISUAL)
+			then
 				ModeManager.setModeNormal()
 			end
 		end
