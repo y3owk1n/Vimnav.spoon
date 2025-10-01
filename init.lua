@@ -1060,7 +1060,7 @@ function ModeManager.setModeMulti(char)
 		return false
 	end
 
-	State.multi = nil
+	State.multi = char
 
 	return true
 end
