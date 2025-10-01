@@ -30,6 +30,7 @@ local AsyncTraversal = {}
 local RoleMaps = {}
 local MarkPool = {}
 local CanvasCache = {}
+local EventHandler = {}
 
 local log
 
@@ -925,6 +926,13 @@ function ModeManager.setMode(mode, char)
 	end
 
 	log.df(string.format("Mode changed: %s -> %s", previousMode, mode))
+end
+
+---Checks if the current mode is the given mode
+---@param mode number
+---@return boolean
+function ModeManager.isMode(mode)
+	return State.mode == mode
 end
 
 --------------------------------------------------------------------------------
@@ -1870,7 +1878,7 @@ end
 ---@param char string
 ---@param modifiers? table
 ---@return nil
-local function handleVimInput(char, modifiers)
+function EventHandler.handleVimInput(char, modifiers)
 	log.df(
 		"handleVimInput: " .. char .. " modifiers: " .. hs.inspect(modifiers)
 	)
@@ -1955,23 +1963,105 @@ local function handleVimInput(char, modifiers)
 	end
 end
 
+---Checks if the key is a valid key for the given name
+---@param keyCode number
+---@param name string
+---@return boolean
+function EventHandler.isKey(keyCode, name)
+	return keyCode == hs.keycodes.map[name]
+end
+
+function EventHandler.handleEspaceKey(event, singleCb, doubleCb)
+	local delaySinceLastEscape = (hs.timer.absoluteTime() - State.lastEscape)
+		/ 1e9
+	State.lastEscape = hs.timer.absoluteTime()
+
+	if delaySinceLastEscape < M.config.doublePressDelay then
+		return doubleCb()
+	end
+
+	return singleCb()
+end
+
+---Handles disabled mode
+---@param event table
+---@return boolean
+function EventHandler.handleDisabledMode(event)
+	return false
+end
+
+---Handles passthrough mode
+---@param event table
+---@return boolean
+function EventHandler.handlePassthroughMode(event)
+	local keyCode = event:getKeyCode()
+
+	if EventHandler.isKey(keyCode, "escape") then
+		local singleCb = function()
+			Commands.cmdNormalMode()
+			return true
+		end
+
+		local doubleCb = function()
+			if Utils.isInBrowser() then
+				Actions.forceUnfocus()
+				hs.timer.doAfter(0.1, function()
+					Commands.cmdNormalMode()
+				end)
+			end
+			return true
+		end
+
+		return EventHandler.handleEspaceKey(event, singleCb, doubleCb)
+	end
+
+	return false
+end
+
+---Handles insert mode
+---@param event table
+---@return boolean
+function EventHandler.handleInsertMode(event)
+	local keyCode = event:getKeyCode()
+
+	if EventHandler.isKey(keyCode, "escape") then
+		local singleCb = function()
+			Commands.cmdNormalMode()
+			return true
+		end
+
+		local doubleCb = function()
+			if Utils.isInBrowser() then
+				Actions.forceUnfocus()
+				hs.timer.doAfter(0.1, function()
+					Commands.cmdNormalMode()
+				end)
+			end
+			return true
+		end
+
+		return EventHandler.handleEspaceKey(event, singleCb, doubleCb)
+	end
+
+	return false
+end
+
 ---Handles events
 ---@param event table
 ---@return boolean
-local function eventHandler(event)
-	local keyCode = event:getKeyCode()
-
-	if
-		State.mode == MODES.PASSTHROUGH
-		and keyCode ~= hs.keycodes.map["escape"]
-	then
-		log.df("Skipping event handler in passthrough mode")
-		return false
+function EventHandler.process(event)
+	if ModeManager.isMode(MODES.DISABLED) then
+		return EventHandler.handleDisabledMode(event)
 	end
 
-	if State.mode == MODES.INSERT and keyCode ~= hs.keycodes.map["escape"] then
-		log.df("Skipping event handler in insert mode")
-		return false
+	local keyCode = event:getKeyCode()
+
+	if ModeManager.isMode(MODES.PASSTHROUGH) then
+		return EventHandler.handlePassthroughMode(event)
+	end
+
+	if ModeManager.isMode(MODES.INSERT) then
+		return EventHandler.handleInsertMode(event)
 	end
 
 	-- Skip if on places that it shouldn't run
@@ -2015,7 +2105,7 @@ local function eventHandler(event)
 
 	-- Handle backspace in LINKS mode
 	if State.mode == MODES.LINKS and keyCode == hs.keycodes.map["delete"] then
-		handleVimInput("backspace")
+		EventHandler.handleVimInput("backspace")
 		return true
 	end
 
@@ -2050,7 +2140,7 @@ local function eventHandler(event)
 		end
 	end
 
-	handleVimInput(char, flags)
+	EventHandler.handleVimInput(char, flags)
 
 	return true
 end
@@ -2170,7 +2260,7 @@ local function startAppWatcher()
 
 			if not State.eventLoop then
 				State.eventLoop = hs.eventtap
-					.new({ hs.eventtap.event.types.keyDown }, eventHandler)
+					.new({ hs.eventtap.event.types.keyDown }, EventHandler.process)
 					:start()
 				log.df("Started event loop")
 			end
