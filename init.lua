@@ -2434,6 +2434,7 @@ function EventHandler.handleInsertMode(event)
 
 		local singleCb = function()
 			ModeManager.setModeInsertNormal()
+			return true
 		end
 
 		return EventHandler.handleEspaceKey(event, singleCb, doubleCb)
@@ -2486,6 +2487,7 @@ function EventHandler.handleInsertVisualMode(event)
 		local singleCb = function()
 			Utils.keyStroke({}, "right")
 			ModeManager.setModeInsertNormal()
+			return true
 		end
 
 		return EventHandler.handleEspaceKey(event, singleCb, doubleCb)
