@@ -16,9 +16,10 @@ Stop reaching for your mouse. Navigate Safari, Mail, Finder, or any macOS app wi
 
 - Works across **all native macOS apps** (Safari, Mail, Finder, System Settings, etc.)
 - **Smart mode switching** — automatically enters insert mode in text fields
+- **Vim text editing** — basic mappings for full modal editing inside text fields (Normal, Visual modes)
 - **Visual link hints** — click anything without touching your mouse
 - **Performance optimized** — async traversal, spatial indexing, memory pooling
-- **Highly customizable** — keybindings, callbacks, excluded apps
+- **Highly customizable** — keybindings, launchers, excluded apps
 
 ## Quick Start
 
@@ -46,6 +47,7 @@ Try these basics:
 - `gg`/`G` — jump to top/bottom
 - `f` — show clickable elements
 - `gi` — jump to first input field
+- Click in a text field, press `Esc` to enter Insert Normal mode, then `v` for Visual mode
 
 ## Features
 
@@ -78,6 +80,69 @@ Type the letters (e.g., `AA`) to click that element. No mouse needed.
 | `gf` | Move mouse to element | All apps |
 | `yf` | Copy link URL         | Browsers |
 
+### Text Editing Modes
+
+When you focus a text field, Vimnav automatically enters **Insert mode**. Press `Esc` to enter **Insert Normal mode** for Vim-like editing:
+
+#### Insert Normal Mode (`Esc` from Insert)
+
+Navigate and manipulate text without leaving the input field:
+
+| Key   | Action                    | Description                 |
+| ----- | ------------------------- | --------------------------- |
+| `h`   | ← cursor left             | Move left                   |
+| `l`   | → cursor right            | Move right                  |
+| `j`   | ↓ cursor down             | Move down                   |
+| `k`   | ↑ cursor up               | Move up                     |
+| `e`   | ⌥→ word end               | Jump to end of word         |
+| `b`   | ⌥← word back              | Jump to start of word       |
+| `0`   | ⌘← line start             | Jump to line start          |
+| `$`   | ⌘→ line end               | Jump to line end            |
+| `gg`  | ⌘↑ document start         | Jump to document start      |
+| `G`   | ⌘↓ document end           | Jump to document end        |
+| `diw` | Delete inner word         | Delete word under cursor    |
+| `ciw` | Change inner word         | Delete word + insert mode   |
+| `yiw` | Yank inner word           | Copy word                   |
+| `dd`  | Delete line               | Delete current line         |
+| `cc`  | Change line               | Delete line + insert mode   |
+| `yy`  | Yank line                 | Copy current line           |
+| `u`   | Undo                      | Undo last change (⌘Z)       |
+| `i`   | Insert mode               | Return to insert mode       |
+| `A`   | Insert at line end        | Jump to end + insert mode   |
+| `I`   | Insert at line start      | Jump to start + insert mode |
+| `v`   | Visual mode               | Enter visual mode           |
+| `V`   | Visual line mode          | Select entire line          |
+| `p`   | Paste                     | Paste from clipboard (⌘V)   |
+| `Esc` | Force unfocus (2x in web) | Exit field completely       |
+
+#### Insert Visual Mode (`v` from Insert Normal)
+
+Select text visually with Vim motions:
+
+| Key   | Action                  | Description                |
+| ----- | ----------------------- | -------------------------- |
+| `h`   | ⇧← extend left          | Extend selection left      |
+| `l`   | ⇧→ extend right         | Extend selection right     |
+| `j`   | ⇧↓ extend down          | Extend selection down      |
+| `k`   | ⇧↑ extend up            | Extend selection up        |
+| `e`   | ⇧⌥→ extend word end     | Extend to word end         |
+| `b`   | ⇧⌥← extend word back    | Extend to word start       |
+| `0`   | ⇧⌘← extend line start   | Extend to line start       |
+| `$`   | ⇧⌘→ extend line end     | Extend to line end         |
+| `gg`  | ⇧⌘↑ extend doc start    | Extend to document start   |
+| `G`   | ⇧⌘↓ extend doc end      | Extend to document end     |
+| `d`   | Delete selection        | Delete highlighted text    |
+| `c`   | Change selection        | Delete + enter insert mode |
+| `y`   | Yank selection          | Copy highlighted text      |
+| `Esc` | Exit visual (→ IN mode) | Back to insert normal      |
+
+**Mode transitions:**
+
+- **Insert → Insert Normal**: Press `Esc` once
+- **Insert Normal → Insert Visual**: Press `v` or `V`
+- **Insert Visual → Insert Normal**: Press `Esc` once
+- **Any Insert mode → Normal**: Press `Esc` twice (browsers: force unfocus)
+
 ### Browser-Specific Features
 
 Enhanced functionality in Safari, Chrome, Firefox, Edge, Brave, and Zen:
@@ -95,13 +160,15 @@ Enhanced functionality in Safari, Chrome, Firefox, Edge, Brave, and Zen:
 
 Vimnav operates in different modes, shown in the menu bar:
 
-| Icon  | Mode        | When                          |
-| ----- | ----------- | ----------------------------- |
-| **N** | Normal      | Default navigation mode       |
-| **I** | Insert      | Auto-activated in text fields |
-| **P** | Passthrough | Manual activation (press `i`) |
-| **L** | Links       | Showing link hints            |
-| **X** | Disabled    | In excluded apps              |
+| Icon   | Mode          | When                                |
+| ------ | ------------- | ----------------------------------- |
+| **N**  | Normal        | Default navigation mode             |
+| **I**  | Insert        | Auto-activated in text fields       |
+| **IN** | Insert Normal | Vim navigation within text fields   |
+| **IV** | Insert Visual | Vim visual selection in text fields |
+| **P**  | Passthrough   | Manual activation (press `i`)       |
+| **L**  | Links         | Showing link hints                  |
+| **X**  | Disabled      | In excluded apps                    |
 
 ## Configuration
 
@@ -128,50 +195,37 @@ Map any key to any command or native keystroke:
 ```lua
 spoon.Vimnav:configure({
     mapping = {
-        -- Use commands
-        ["j"] = "cmdScrollDown",
-        ["k"] = "cmdScrollUp",
-        ["f"] = "cmdGotoLink",
+        normal = {
+            -- Use commands
+            ["j"] = "cmdScrollDown",
+            ["k"] = "cmdScrollUp",
+            ["f"] = "cmdGotoLink",
 
-        -- Multi-character combos
-        ["gg"] = "cmdScrollToTop",
-        ["gt"] = "cmdGotoInput",
+            -- Multi-character combos
+            ["gg"] = "cmdScrollToTop",
+            ["gt"] = "cmdGotoInput",
 
-        -- Control key combos
-        ["C-f"] = "cmdScrollHalfPageDown",
-        ["C-b"] = "cmdScrollHalfPageUp",
+            -- Control key combos
+            ["C-f"] = "cmdScrollHalfPageDown",
+            ["C-b"] = "cmdScrollHalfPageUp",
 
-        -- Pass through native keystrokes
-        ["t"] = { "cmd", "t" },     -- ⌘T (new tab)
-        ["w"] = { "cmd", "w" },     -- ⌘W (close window)
+            -- Pass through native keystrokes
+            ["t"] = { "cmd", "t" },     -- ⌘T (new tab)
+            ["w"] = { "cmd", "w" },     -- ⌘W (close window)
+        },
+        insertNormal = {
+            -- Customize text editing keys
+            ["h"] = { {}, "left" },
+            ["l"] = { {}, "right" },
+            ["w"] = { "alt", "right" },
+            ["b"] = { "alt", "left" },
+        },
+        insertVisual = {
+            -- Customize visual selection keys
+            ["h"] = { { "shift" }, "left" },
+            ["l"] = { { "shift" }, "right" },
+        }
     }
-}):start()
-```
-
-### Integration with Other Spoons
-
-Vimnav provides callbacks for seamless integration:
-
-```lua
-local VimMode = hs.loadSpoon('VimMode')
-local vim = VimMode:new()
-
-spoon.Vimnav:configure({
-    -- Enable VimMode when entering text fields
-    enterEditableCallback = function()
-        vim:enable()
-    end,
-
-    -- Disable VimMode when exiting text fields
-    exitEditableCallback = function()
-        vim:disable()
-    end,
-
-    -- Handle force unfocus (double Esc in browser)
-    forceUnfocusCallback = function()
-        vim:exit()
-        vim:disable()
-    end,
 }):start()
 ```
 
@@ -203,7 +257,7 @@ Control which UI elements are detected:
 
 ```lua
 spoon.Vimnav:configure({
-    -- Elements treated as text inputs
+    -- Elements treated as text inputs (auto-enter Insert mode)
     axEditableRoles = {
         "AXTextField",
         "AXComboBox",
@@ -250,6 +304,27 @@ Use these in your `mapping` configuration:
 - `cmdGotoInput` — Jump to input fields
 - `cmdRightClick` — Show right-clickable elements
 - `cmdMoveMouseToLink` — Move cursor to element
+
+### Text Editing (Insert Normal Mode)
+
+- `cmdDeleteWord/Line` — Delete operations
+- `cmdChangeWord/Line` — Change operations (delete + insert)
+- `cmdYankWord/Line` — Copy operations
+- `cmdUndo` — Undo last change
+
+### Text Editing (Insert Visual Mode)
+
+- `cmdDeleteHighlighted` — Delete selection
+- `cmdChangeHighlighted` — Change selection (delete + insert)
+- `cmdYankHighlighted` — Copy selection
+
+### Insert Mode Control
+
+- `cmdInsertMode` — Enter insert mode
+- `cmdInsertModeEnd` — Insert mode at line end
+- `cmdInsertModeStart` — Insert mode at line start
+- `cmdInsertVisualMode` — Enter visual mode
+- `cmdInsertVisualLineMode` — Enter visual line mode
 
 ### Utilities
 
@@ -331,13 +406,12 @@ spoon.Vimnav:debug()                     -- Returns state and config
         "AXDisclosureTriangle", "AXMenuButton", "AXMenuBarItem", "AXMenuItem", "AXRow"
     },
 
-    -- Callbacks
-    enterEditableCallback = function() end,  -- Called when entering text field
-    exitEditableCallback = function() end,   -- Called when exiting text field
-    forceUnfocusCallback = function() end,   -- Called on double-escape in browser
-
-    -- Keybindings (see Default Mapping section)
-    mapping = { ... }
+    -- Keybindings
+    mapping = {
+        normal = { ... },        -- Normal mode mappings
+        insertNormal = { ... },  -- Insert normal mode mappings
+        insertVisual = { ... },  -- Insert visual mode mappings
+    }
 }
 ```
 
@@ -349,6 +423,13 @@ spoon.Vimnav:debug()                     -- Returns state and config
 
 1. **Check Accessibility permissions**: System Settings → Privacy & Security → Accessibility → Enable Hammerspoon
 2. **Verify installation**: `ls ~/.hammerspoon/Spoons/` should show `Vimnav.spoon`
+3. **Check Hammerspoon console**: Look for error messages
+
+### Text editing commands not working
+
+- Ensure you're in Insert Normal mode (press `Esc` once in a text field)
+- Check that the text field is actually focused
+- Some apps may not fully support accessibility APIs
 
 ### Performance issues
 
@@ -369,11 +450,20 @@ spoon.Vimnav:debug()                     -- Returns state and config
 - Verify the app isn't in `excludedApps`
 - Try passthrough mode (`i`) to bypass Vimnav temporarily
 
+### Launcher detection issues
+
+If Spotlight/Raycast/Alfred triggers Vimnav modes unexpectedly, add them to excluded apps:
+
+```lua
+excludedApps = { "Spotlight", "Raycast", "Alfred" }
+```
+
 ## Known Limitations
 
 - **Electron apps**: Limited or no support due to poor accessibility
 - **Web extensions**: May conflict with browser's native Vim extensions
 - **Modal dialogs**: Some system dialogs block accessibility APIs
+- **Complex text editing**: Some Vim operations (macros, registers) aren't supported
 
 ## Performance & Architecture
 
@@ -403,11 +493,13 @@ Contributions are welcome! However, please note:
 
 ## Credits
 
-Vimnav is based on [Vifari](https://github.com/dzirtusss/vifari) by dzirtuss, extensively rewritten for system-wide support, performance optimization, and enhanced features.
+Vimnav is based on [Vifari](https://github.com/dzirtusss/vifari) by dzirtuss, extensively rewritten for system-wide support, performance optimization, and enhanced features including full modal text editing.
 
 ## License
 
 MIT License — See [LICENSE](LICENSE) file for details.
+
+---
 
 <p align="center">
   Made with ⌨️  by developers who never touch their mouse

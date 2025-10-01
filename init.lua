@@ -57,12 +57,11 @@ local log
 ---@field excludedApps? string[] Apps to exclude from Vimnav (e.g. Terminal)
 ---@field browsers? string[] Browsers to to detect for browser specific actions (e.g. Safari)
 ---@field launchers? string[] Launchers to to detect for launcher specific actions (e.g. Spotlight)
----@field enterEditableCallback? fun() Callback to run when in editable control
----@field exitEditableCallback? fun() Callback to run when out of editable control
----@field forceUnfocusCallback? fun() Callback to run when force unfocusing
 
 ---@class Hs.Vimnav.Config.Mapping
 ---@field normal? table<string, string|table> Normal mode mappings
+---@field insertNormal? table<string, string|table> Insert normal mode mappings
+---@field insertVisual? table<string, string|table> Insert visual mode mappings
 
 ---@class Hs.Vimnav.State
 ---@field mode number Vimnav mode
@@ -82,6 +81,8 @@ local log
 
 ---@class Hs.Vimnav.State.MappingPrefixes
 ---@field normal table<string, boolean> Normal mode mappings
+---@field insertNormal table<string, boolean> Insert normal mode mappings
+---@field insertVisual table<string, boolean> Insert visual mode mappings
 
 ---@alias Hs.Vimnav.Element table|string
 
@@ -95,13 +96,17 @@ local MODES = {
 	DISABLED = 1,
 	NORMAL = 2,
 	INSERT = 3,
-	LINKS = 5,
-	PASSTHROUGH = 6,
+	INSERT_NORMAL = 4,
+	INSERT_VISUAL = 5,
+	LINKS = 6,
+	PASSTHROUGH = 7,
 }
 
 local defaultModeChars = {
 	[MODES.DISABLED] = "X",
 	[MODES.INSERT] = "I",
+	[MODES.INSERT_NORMAL] = "IN",
+	[MODES.INSERT_VISUAL] = "IV",
 	[MODES.LINKS] = "L",
 	[MODES.NORMAL] = "N",
 	[MODES.PASSTHROUGH] = "P",
@@ -132,6 +137,46 @@ local DEFAULT_MAPPING = {
 		["yf"] = "cmdCopyLinkUrlToClipboard",
 		["]]"] = "cmdNextPage",
 		["[["] = "cmdPrevPage",
+	},
+	insertNormal = {
+		["h"] = { {}, "left" },
+		["j"] = { {}, "down" },
+		["k"] = { {}, "up" },
+		["l"] = { {}, "right" },
+		["e"] = { "alt", "right" },
+		["b"] = { "alt", "left" },
+		["0"] = { "cmd", "left" },
+		["$"] = { "cmd", "right" },
+		["gg"] = { "cmd", "up" },
+		["G"] = { "cmd", "down" },
+		["diw"] = "cmdDeleteWord",
+		["ciw"] = "cmdChangeWord",
+		["yiw"] = "cmdYankWord",
+		["dd"] = "cmdDeleteLine",
+		["cc"] = "cmdChangeLine",
+		["yy"] = "cmdYankLine",
+		["u"] = "cmdUndo",
+		["i"] = "cmdInsertMode",
+		["A"] = "cmdInsertModeEnd",
+		["I"] = "cmdInsertModeStart",
+		["v"] = "cmdInsertVisualMode",
+		["V"] = "cmdInsertVisualLineMode",
+		["p"] = { "cmd", "v" },
+	},
+	insertVisual = {
+		["h"] = { { "shift" }, "left" },
+		["j"] = { { "shift" }, "down" },
+		["k"] = { { "shift" }, "up" },
+		["l"] = { { "shift" }, "right" },
+		["e"] = { { "shift", "alt" }, "right" },
+		["b"] = { { "shift", "alt" }, "left" },
+		["0"] = { { "shift", "cmd" }, "left" },
+		["$"] = { { "shift", "cmd" }, "right" },
+		["gg"] = { { "shift", "cmd" }, "up" },
+		["G"] = { { "shift", "cmd" }, "down" },
+		["d"] = "cmdDeleteHighlighted",
+		["c"] = "cmdChangeHighlighted",
+		["y"] = "cmdYankHighlighted",
 	},
 }
 
@@ -796,11 +841,31 @@ end
 function Utils.fetchMappingPrefixes()
 	State.mappingPrefixes = {}
 	State.mappingPrefixes.normal = {}
+	State.mappingPrefixes.insertNormal = {}
+	State.mappingPrefixes.insertVisual = {}
+
 	for k, _ in pairs(M.config.mapping.normal) do
 		if #k == 2 then
 			State.mappingPrefixes.normal[string.sub(k, 1, 1)] = true
 		end
 	end
+
+	for k, _ in pairs(M.config.mapping.insertNormal) do
+		if #k == 2 then
+			State.mappingPrefixes.insertNormal[string.sub(k, 1, 1)] = true
+		end
+		if #k == 3 then
+			State.mappingPrefixes.insertNormal[string.sub(k, 1, 1)] = true
+			State.mappingPrefixes.insertNormal[string.sub(k, 1, 2)] = true
+		end
+	end
+
+	for k, _ in pairs(M.config.mapping.insertVisual) do
+		if #k == 2 then
+			State.mappingPrefixes.insertVisual[string.sub(k, 1, 1)] = true
+		end
+	end
+
 	log.df("Fetched mapping prefixes")
 end
 
@@ -968,13 +1033,13 @@ function MenuBar.create()
 		MenuBar.destroy()
 	end
 	MenuBar.item = hs.menubar.new()
-	MenuBar.item:setTitle("N")
+	MenuBar.item:setTitle(defaultModeChars[MODES.NORMAL])
 	log.df("Created menu bar item")
 end
 
 ---Set the menubar title
 ---@param mode number
----@char string|nil
+---@param keys string|nil
 function MenuBar.setTitle(mode, keys)
 	if not MenuBar.item then
 		return
@@ -1073,7 +1138,7 @@ end
 ---Set mode to insert
 ---@return boolean
 function ModeManager.setModeInsert()
-	local ok, prevMode = ModeManager.setMode(MODES.INSERT)
+	local ok = ModeManager.setMode(MODES.INSERT)
 
 	if not ok then
 		return false
@@ -1081,18 +1146,33 @@ function ModeManager.setModeInsert()
 
 	hs.timer.doAfter(0, Marks.clear)
 
-	-- Check if we are coming from normal mode
-	-- if its so, meaning that we are focused in an input
-	-- run the callback
-	if
-		ok
-		and prevMode == MODES.NORMAL
-		and M.config.enterEditableCallback
-		and type(M.config.enterEditableCallback) == "function"
-	then
-		log.df("called enterEditableCallback()")
-		M.config.enterEditableCallback()
+	return true
+end
+
+---Set mode to insert normal
+---@return boolean
+function ModeManager.setModeInsertNormal()
+	local ok = ModeManager.setMode(MODES.INSERT_NORMAL)
+
+	if not ok then
+		return false
 	end
+
+	hs.timer.doAfter(0, Marks.clear)
+
+	return true
+end
+
+---Set mode to insert visual
+---@return boolean
+function ModeManager.setModeInsertVisual()
+	local ok = ModeManager.setMode(MODES.INSERT_VISUAL)
+
+	if not ok then
+		return false
+	end
+
+	hs.timer.doAfter(0, Marks.clear)
 
 	return true
 end
@@ -1100,26 +1180,13 @@ end
 ---Set mode to normal
 ---@return boolean
 function ModeManager.setModeNormal()
-	local ok, prevMode = ModeManager.setMode(MODES.NORMAL)
+	local ok = ModeManager.setMode(MODES.NORMAL)
 
 	if not ok then
 		return false
 	end
 
 	hs.timer.doAfter(0, Marks.clear)
-
-	-- Check if we are coming from insert mode
-	-- if its so, meaning that we are focused out of an input
-	-- run the callback
-	if
-		ok
-		and prevMode == MODES.INSERT
-		and M.config.exitEditableCallback
-		and type(M.config.exitEditableCallback) == "function"
-	then
-		log.df("called exitEditableCallback()")
-		M.config.exitEditableCallback()
-	end
 
 	return true
 end
@@ -1229,14 +1296,6 @@ function Actions.forceUnfocus()
 		-- Reset focus state
 		State.focusCachedResult = false
 		State.focusLastElement = nil
-	end
-
-	if
-		M.config.forceUnfocusCallback
-		and type(M.config.forceUnfocusCallback) == "function"
-	then
-		log.df("called forceUnfocusCallback()")
-		M.config.forceUnfocusCallback()
 	end
 end
 
@@ -1793,6 +1852,41 @@ function Commands.cmdPassthroughMode()
 	return ModeManager.setModePassthrough()
 end
 
+---Switches to insert mode
+---@return boolean
+function Commands.cmdInsertMode()
+	return ModeManager.setModeInsert()
+end
+
+---Switches to insert mode and put cursor at the end of the line
+---@return boolean
+function Commands.cmdInsertModeEnd()
+	Utils.keyStroke("cmd", "right")
+	return ModeManager.setModeInsert()
+end
+
+---Switches to insert mode and put cursor at the start of the line
+---@return boolean
+function Commands.cmdInsertModeStart()
+	Utils.keyStroke("cmd", "left")
+	return ModeManager.setModeInsert()
+end
+
+---Switches to insert visual mode
+---@return boolean
+function Commands.cmdInsertVisualMode()
+	return ModeManager.setModeInsertVisual()
+end
+
+---Switches to insert visual mode with line selection
+---@return boolean
+function Commands.cmdInsertVisualLineMode()
+	Utils.keyStroke("cmd", "left")
+	Utils.keyStroke({ "shift", "cmd" }, "right")
+
+	return ModeManager.setModeInsertVisual()
+end
+
 ---Switches to links mode
 ---@return nil
 function Commands.cmdGotoLink()
@@ -2118,6 +2212,58 @@ function Commands.cmdMoveMouseToCenter()
 	})
 end
 
+function Commands.cmdDeleteWord()
+	Utils.keyStroke("alt", "right")
+	Utils.keyStroke("alt", "delete")
+end
+
+function Commands.cmdChangeWord()
+	Commands.cmdDeleteWord()
+	ModeManager.setModeInsert()
+end
+
+function Commands.cmdYankWord()
+	Utils.keyStroke("alt", "right")
+	Utils.keyStroke({ "shift", "alt" }, "left")
+	Utils.keyStroke("cmd", "c")
+	Utils.keyStroke({}, "right")
+end
+
+function Commands.cmdDeleteLine()
+	Utils.keyStroke("cmd", "right")
+	Utils.keyStroke("cmd", "delete")
+end
+
+function Commands.cmdChangeLine()
+	Commands.cmdDeleteLine()
+	ModeManager.setModeInsert()
+end
+
+function Commands.cmdYankLine()
+	Utils.keyStroke("cmd", "left")
+	Utils.keyStroke({ "shift", "cmd" }, "right")
+	Utils.keyStroke("cmd", "c")
+	Utils.keyStroke({}, "right")
+end
+
+function Commands.cmdUndo()
+	Utils.keyStroke("cmd", "z")
+end
+
+function Commands.cmdDeleteHighlighted()
+	Utils.keyStroke({}, "delete")
+end
+
+function Commands.cmdChangeHighlighted()
+	Commands.cmdDeleteHighlighted()
+	ModeManager.setModeInsert()
+end
+
+function Commands.cmdYankHighlighted()
+	Utils.keyStroke("cmd", "c")
+	Utils.keyStroke({}, "right")
+end
+
 --------------------------------------------------------------------------------
 -- Event Handling
 --------------------------------------------------------------------------------
@@ -2181,6 +2327,16 @@ function EventHandler.handleVimInput(char, opts)
 		prefixes = State.mappingPrefixes.normal
 	end
 
+	if ModeManager.isMode(MODES.INSERT_NORMAL) then
+		mapping = M.config.mapping.insertNormal[State.keyCapture]
+		prefixes = State.mappingPrefixes.insertNormal
+	end
+
+	if ModeManager.isMode(MODES.INSERT_VISUAL) then
+		mapping = M.config.mapping.insertVisual[State.keyCapture]
+		prefixes = State.mappingPrefixes.insertVisual
+	end
+
 	if mapping then
 		if type(mapping) == "string" then
 			local cmd = Commands[mapping]
@@ -2194,8 +2350,8 @@ function EventHandler.handleVimInput(char, opts)
 			Utils.keyStroke(mapping[1], mapping[2])
 			State.keyCapture = nil
 		end
-	elseif prefixes and prefixes[keyCombo] then
-		State.keyCapture = keyCombo
+	elseif prefixes and prefixes[State.keyCapture] then
+		-- do nothing?
 	else
 		State.keyCapture = nil
 	end
@@ -2276,10 +2432,66 @@ function EventHandler.handleInsertMode(event)
 			return true
 		end
 
-		return EventHandler.handleEspaceKey(event, nil, doubleCb)
+		local singleCb = function()
+			ModeManager.setModeInsertNormal()
+		end
+
+		return EventHandler.handleEspaceKey(event, singleCb, doubleCb)
 	end
 
 	return false
+end
+
+---Handles insert normal mode
+---@param event table
+---@return boolean
+function EventHandler.handleInsertNormalMode(event)
+	local keyCode = event:getKeyCode()
+
+	if EventHandler.isKey(keyCode, "escape") then
+		local doubleCb = function()
+			if Utils.isInBrowser() then
+				Actions.forceUnfocus()
+				hs.timer.doAfter(0.1, function()
+					ModeManager.setModeNormal()
+				end)
+			end
+			return true
+		end
+
+		return EventHandler.handleEspaceKey(event, nil, doubleCb)
+	end
+
+	return EventHandler.processVimInput(event)
+end
+
+---Handles insert visual mode
+---@param event table
+---@return boolean
+function EventHandler.handleInsertVisualMode(event)
+	local keyCode = event:getKeyCode()
+
+	if EventHandler.isKey(keyCode, "escape") then
+		local doubleCb = function()
+			if Utils.isInBrowser() then
+				Actions.forceUnfocus()
+				hs.timer.doAfter(0.1, function()
+					Utils.keyStroke({}, "left")
+					ModeManager.setModeNormal()
+				end)
+			end
+			return true
+		end
+
+		local singleCb = function()
+			Utils.keyStroke({}, "right")
+			ModeManager.setModeInsertNormal()
+		end
+
+		return EventHandler.handleEspaceKey(event, singleCb, doubleCb)
+	end
+
+	return EventHandler.processVimInput(event)
 end
 
 ---Handles links mode
@@ -2352,6 +2564,14 @@ function EventHandler.processVimInput(event)
 			modeMapping = M.config.mapping.normal
 		end
 
+		if ModeManager.isMode(MODES.INSERT_NORMAL) then
+			modeMapping = M.config.mapping.insertNormal
+		end
+
+		if ModeManager.isMode(MODES.INSERT_VISUAL) then
+			modeMapping = M.config.mapping.insertVisual
+		end
+
 		if modeMapping then
 			for _key, _ in pairs(modeMapping) do
 				if _key:sub(1, 2) == "C-" then
@@ -2386,6 +2606,14 @@ function EventHandler.process(event)
 
 	if ModeManager.isMode(MODES.INSERT) then
 		return EventHandler.handleInsertMode(event)
+	end
+
+	if ModeManager.isMode(MODES.INSERT_NORMAL) then
+		return EventHandler.handleInsertNormalMode(event)
+	end
+
+	if ModeManager.isMode(MODES.INSERT_VISUAL) then
+		return EventHandler.handleInsertVisualMode(event)
 	end
 
 	if ModeManager.isMode(MODES.LINKS) then
