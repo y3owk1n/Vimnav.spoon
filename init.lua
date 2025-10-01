@@ -32,6 +32,7 @@ local AsyncTraversal = {}
 local RoleMaps = {}
 local MarkPool = {}
 local CanvasCache = {}
+local EventHandler = {}
 
 local log
 
@@ -983,17 +984,23 @@ function ModeManager.setMode(mode, char)
 		[MODES.PASSTHROUGH] = "IP",
 	}
 
+	if mode == State.mode then
+		log.df("Mode already set to %s... abort", mode)
+		return
+	end
+
 	local previousMode = State.mode
+
 	State.mode = mode
 
-	if mode == MODES.LINKS and previousMode ~= MODES.LINKS then
+	if ModeManager.isMode(MODES.LINKS) and previousMode ~= MODES.LINKS then
 		State.linkCapture = ""
 		Marks.clear()
 	elseif previousMode == MODES.LINKS and mode ~= MODES.LINKS then
 		hs.timer.doAfter(0, Marks.clear)
 	end
 
-	if mode == MODES.MULTI then
+	if ModeManager.isMode(MODES.MULTI) then
 		State.multi = char
 	else
 		State.multi = nil
@@ -1005,6 +1012,13 @@ function ModeManager.setMode(mode, char)
 	end
 
 	log.df(string.format("Mode changed: %s -> %s", previousMode, mode))
+end
+
+---Checks if the current mode is the given mode
+---@param mode number
+---@return boolean
+function ModeManager.isMode(mode)
+	return State.mode == mode
 end
 
 --------------------------------------------------------------------------------
@@ -1673,26 +1687,20 @@ end
 ---Switches to passthrough mode
 ---@return nil
 function Commands.cmdPassthroughMode()
-	local prevMode = State.mode
-
-	if prevMode == MODES.PASSTHROUGH then
-		return
-	end
-
 	ModeManager.setMode(MODES.PASSTHROUGH)
 end
 
 ---Switches to insert mode
 ---@return nil
 function Commands.cmdInsertMode()
+	-- Save previous mode to compare
 	local prevMode = State.mode
-
-	if prevMode == MODES.INSERT then
-		return
-	end
 
 	ModeManager.setMode(MODES.INSERT)
 
+	-- Check if we are coming from normal mode
+	-- if its so, meaning that we are focused in an input
+	-- run the callback
 	if
 		prevMode == MODES.NORMAL
 		and M.config.enterEditableCallback
@@ -1706,14 +1714,14 @@ end
 ---Switches to normal mode
 ---@return nil
 function Commands.cmdNormalMode()
+	-- Save previous mode to compare
 	local prevMode = State.mode
-
-	if prevMode == MODES.NORMAL then
-		return
-	end
 
 	ModeManager.setMode(MODES.NORMAL)
 
+	-- Check if we are coming from insert mode
+	-- if its so, meaning that we are focused out of an input
+	-- run the callback
 	if
 		prevMode == MODES.INSERT
 		and M.config.exitEditableCallback
@@ -1728,6 +1736,7 @@ end
 ---@return nil
 function Commands.cmdGotoLink()
 	ModeManager.setMode(MODES.LINKS)
+
 	State.onClickCallback = function(mark)
 		local element = mark.element
 
@@ -1749,6 +1758,7 @@ end
 ---@return nil
 function Commands.cmdGotoInput()
 	ModeManager.setMode(MODES.LINKS)
+
 	State.onClickCallback = function(mark)
 		local element = mark.element
 
@@ -1773,6 +1783,7 @@ end
 ---@return nil
 function Commands.cmdRightClick()
 	ModeManager.setMode(MODES.LINKS)
+
 	State.onClickCallback = function(mark)
 		local element = mark.element
 
@@ -1799,6 +1810,7 @@ function Commands.cmdGotoLinkNewTab()
 	end
 
 	ModeManager.setMode(MODES.LINKS)
+
 	State.onClickCallback = function(mark)
 		local url = Utils.getAttribute(mark.element, "AXURL")
 		if url then
@@ -1819,6 +1831,7 @@ function Commands.cmdDownloadImage()
 	end
 
 	ModeManager.setMode(MODES.LINKS)
+
 	State.onClickCallback = function(mark)
 		local element = mark.element
 		local role = Utils.getAttribute(element, "AXRole")
@@ -1898,6 +1911,7 @@ end
 ---@return nil
 function Commands.cmdMoveMouseToLink()
 	ModeManager.setMode(MODES.LINKS)
+
 	State.onClickCallback = function(mark)
 		local frame = mark.frame
 		if frame then
@@ -2025,7 +2039,7 @@ end
 ---@param char string
 ---@param opts? Hs.Vimnav.EventHandler.HandleVimInputOpts
 ---@return nil
-local function handleVimInput(char, opts)
+function EventHandler.handleVimInput(char, opts)
 	opts = opts or {}
 	local modifiers = opts.modifiers
 
@@ -2035,18 +2049,8 @@ local function handleVimInput(char, opts)
 
 	Utils.clearCache()
 
-	if State.mode == MODES.LINKS then
-		if char == "backspace" then
-			if #State.linkCapture > 0 then
-				State.linkCapture = State.linkCapture:sub(1, -2)
-				Marks.draw()
-			end
-			return
-		end
-
+	if ModeManager.isMode(MODES.LINKS) then
 		State.linkCapture = State.linkCapture .. char:upper()
-
-		-- Check for exact match
 		for i, _ in ipairs(State.marks) do
 			if i > #State.allCombinations then
 				break
@@ -2059,27 +2063,6 @@ local function handleVimInput(char, opts)
 				return
 			end
 		end
-
-		-- Check for partial matches
-		local hasPartialMatches = false
-		for i, _ in ipairs(State.marks) do
-			if i > #State.allCombinations then
-				break
-			end
-
-			local markText = State.allCombinations[i]:upper()
-			if markText:sub(1, #State.linkCapture) == State.linkCapture then
-				hasPartialMatches = true
-				break
-			end
-		end
-
-		if not hasPartialMatches then
-			State.linkCapture = ""
-		end
-
-		Marks.draw()
-		return
 	end
 
 	-- Build key combination
@@ -2089,12 +2072,13 @@ local function handleVimInput(char, opts)
 	end
 	keyCombo = keyCombo .. char
 
-	if State.mode == MODES.MULTI then
+	if ModeManager.isMode(MODES.MULTI) then
 		keyCombo = State.multi .. keyCombo
 	end
 
 	-- Execute mapping
 	local mapping = M.config.mapping[keyCombo]
+
 	if mapping then
 		Commands.cmdNormalMode()
 
@@ -2113,69 +2097,135 @@ local function handleVimInput(char, opts)
 	end
 end
 
----Handles events
----@param event table
+---Checks if the key is a valid key for the given name
+---@param keyCode number
+---@param name string
 ---@return boolean
-local function eventHandler(event)
-	local keyCode = event:getKeyCode()
+function EventHandler.isKey(keyCode, name)
+	return keyCode == hs.keycodes.map[name]
+end
 
-	if
-		State.mode == MODES.PASSTHROUGH
-		and keyCode ~= hs.keycodes.map["escape"]
-	then
-		log.df("Skipping event handler in passthrough mode")
-		return false
-	end
+function EventHandler.handleEspaceKey(event, singleCb, doubleCb)
+	local hasDoubleCb = type(doubleCb) == "function"
 
-	if State.mode == MODES.INSERT and keyCode ~= hs.keycodes.map["escape"] then
-		log.df("Skipping event handler in insert mode")
-		return false
-	end
-
-	-- Skip if on places that it shouldn't run
-	-- - At configured exclusions
-	-- - During launchers
-	if Utils.isExcludedApp() or Utils.isLauncherActive() then
-		log.df("Skipping event handler on excluded app or launcher")
-		return false
-	end
-
-	-- Handle single and double escape key
-	if keyCode == hs.keycodes.map["escape"] then
+	if hasDoubleCb then
 		local delaySinceLastEscape = (
 			hs.timer.absoluteTime() - State.lastEscape
 		) / 1e9
 		State.lastEscape = hs.timer.absoluteTime()
 
-		-- Double escape key
-		if
-			Utils.isInBrowser()
-			and delaySinceLastEscape < M.config.doublePressDelay
-		then
-			Actions.forceUnfocus()
-			hs.timer.doAfter(0.1, function()
-				Commands.cmdNormalMode()
-			end)
-			return true
+		if delaySinceLastEscape < M.config.doublePressDelay then
+			return doubleCb()
 		end
 
-		-- Single escape key
-		-- Do not allow escape on normal mode and insert mode, the rest should go through
-		if State.mode ~= MODES.NORMAL and State.mode ~= MODES.INSERT then
+		if type(singleCb) == "function" then
+			return singleCb()
+		end
+	else
+		if type(singleCb) == "function" then
+			return singleCb()
+		end
+	end
+
+	return false
+end
+
+---Handles disabled mode
+---@param event table
+---@return boolean
+function EventHandler.handleDisabledMode(event)
+	return false
+end
+
+---Handles passthrough mode
+---@param event table
+---@return boolean
+function EventHandler.handlePassthroughMode(event)
+	local keyCode = event:getKeyCode()
+
+	if EventHandler.isKey(keyCode, "escape") then
+		local singleCb = function()
 			Commands.cmdNormalMode()
 			return true
 		end
 
-		return false
+		return EventHandler.handleEspaceKey(event, singleCb, nil)
 	end
 
+	return false
+end
+
+---Handles insert mode
+---@param event table
+---@return boolean
+function EventHandler.handleInsertMode(event)
+	local keyCode = event:getKeyCode()
+
+	if EventHandler.isKey(keyCode, "escape") then
+		local doubleCb = function()
+			if Utils.isInBrowser() then
+				Actions.forceUnfocus()
+				hs.timer.doAfter(0.1, function()
+					Commands.cmdNormalMode()
+				end)
+			end
+			return true
+		end
+
+		return EventHandler.handleEspaceKey(event, nil, doubleCb)
+	end
+
+	return false
+end
+
+---Handles links mode
+---@param event table
+---@return boolean
+function EventHandler.handleLinkMode(event)
+	local keyCode = event:getKeyCode()
+
+	if EventHandler.isKey(keyCode, "escape") then
+		local singleCb = function()
+			Commands.cmdNormalMode()
+			return true
+		end
+
+		return EventHandler.handleEspaceKey(event, singleCb, nil)
+	end
+
+	return EventHandler.processVimInput(event)
+end
+
+---Handles normal mode
+---@param event table
+---@return boolean
+function EventHandler.handleNormalMode(event)
+	return EventHandler.processVimInput(event)
+end
+
+---Handles multi mode
+---@param event table
+---@return boolean
+function EventHandler.handleMultiMode(event)
+	local keyCode = event:getKeyCode()
+	if EventHandler.isKey(keyCode, "escape") then
+		local singleCb = function()
+			Commands.cmdNormalMode()
+			return true
+		end
+
+		return EventHandler.handleEspaceKey(event, singleCb, nil)
+	end
+
+	return EventHandler.processVimInput(event)
+end
+
+---Handles vim input
+---@param event table
+---@return boolean
+function EventHandler.processVimInput(event)
+	local keyCode = event:getKeyCode()
 	local flags = event:getFlags()
-
-	-- Handle backspace in LINKS mode
-	if State.mode == MODES.LINKS and keyCode == hs.keycodes.map["delete"] then
-		handleVimInput("backspace")
-		return true
-	end
 
 	for key, modifier in pairs(flags) do
 		if modifier and key ~= "shift" and key ~= "ctrl" then
@@ -2185,13 +2235,12 @@ local function eventHandler(event)
 
 	local char = hs.keycodes.map[keyCode]
 
-	if flags.shift then
-		char = event:getCharacters()
-	end
-
-	-- Only handle single alphanumeric characters and some symbols
 	if not char:match("[%a%d%[%]%$]") or #char ~= 1 then
 		return false
+	end
+
+	if flags.shift then
+		char = event:getCharacters()
 	end
 
 	if flags.ctrl then
@@ -2208,11 +2257,42 @@ local function eventHandler(event)
 		end
 	end
 
-	handleVimInput(char, {
+	EventHandler.handleVimInput(char, {
 		modifiers = flags,
 	})
 
 	return true
+end
+
+---Handles events
+---@param event table
+---@return boolean
+function EventHandler.process(event)
+	if ModeManager.isMode(MODES.DISABLED) then
+		return EventHandler.handleDisabledMode(event)
+	end
+
+	if ModeManager.isMode(MODES.PASSTHROUGH) then
+		return EventHandler.handlePassthroughMode(event)
+	end
+
+	if ModeManager.isMode(MODES.INSERT) then
+		return EventHandler.handleInsertMode(event)
+	end
+
+	if ModeManager.isMode(MODES.LINKS) then
+		return EventHandler.handleLinkMode(event)
+	end
+
+	if ModeManager.isMode(MODES.NORMAL) then
+		return EventHandler.handleNormalMode(event)
+	end
+
+	if ModeManager.isMode(MODES.MULTI) then
+		return EventHandler.handleMultiMode(event)
+	end
+
+	return false
 end
 
 --------------------------------------------------------------------------------
@@ -2265,9 +2345,9 @@ local function updateFocusState()
 			State.focusCachedResult = isEditable
 
 			-- Update mode based on focus change
-			if isEditable and State.mode == MODES.NORMAL then
+			if isEditable and ModeManager.isMode(MODES.NORMAL) then
 				Commands.cmdInsertMode()
-			elseif not isEditable and State.mode == MODES.INSERT then
+			elseif not isEditable and ModeManager.isMode(MODES.INSERT) then
 				Commands.cmdNormalMode()
 			end
 
@@ -2281,7 +2361,7 @@ local function updateFocusState()
 	else
 		if State.focusCachedResult then
 			State.focusCachedResult = false
-			if State.mode == MODES.INSERT then
+			if ModeManager.isMode(MODES.INSERT) then
 				Commands.cmdNormalMode()
 			end
 		end
@@ -2329,7 +2409,7 @@ local function startAppWatcher()
 
 			if not State.eventLoop then
 				State.eventLoop = hs.eventtap
-					.new({ hs.eventtap.event.types.keyDown }, eventHandler)
+					.new({ hs.eventtap.event.types.keyDown }, EventHandler.process)
 					:start()
 				log.df("Started event loop")
 			end

@@ -374,7 +374,6 @@ spoon.Vimnav:debug()                     -- Returns state and config
 
 ## Known Limitations
 
-- **Key repeat**: Holding keys (e.g., `jjjjj`) doesn't work reliably
 - **Electron apps**: Limited or no support due to poor accessibility
 - **Web extensions**: May conflict with browser's native Vim extensions
 - **Modal dialogs**: Some system dialogs block accessibility APIs
