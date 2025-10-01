@@ -45,7 +45,7 @@ local log
 ---@field linkHintChars? string Link hint characters
 ---@field doublePressDelay? number Double press delay in seconds (e.g. 0.3 for 300ms)
 ---@field focusCheckInterval? number Focus check interval in seconds (e.g. 0.5 for 500ms)
----@field mapping? table<string, string|table> Mappings to use
+---@field mapping? Hs.Vimnav.Config.Mapping Mappings to use
 ---@field scrollStep? number Scroll step in pixels
 ---@field scrollStepHalfPage? number Scroll step in pixels for half page
 ---@field scrollStepFullPage? number Scroll step in pixels for full page
@@ -61,13 +61,16 @@ local log
 ---@field exitEditableCallback? fun() Callback to run when out of editable control
 ---@field forceUnfocusCallback? fun() Callback to run when force unfocusing
 
+---@class Hs.Vimnav.Config.Mapping
+---@field normal? table<string, string|table> Normal mode mappings
+
 ---@class Hs.Vimnav.State
 ---@field mode number Vimnav mode
----@field multi string|nil Multi character input
+---@field keyCapture string|nil Multi character input
 ---@field marks table<number, table<string, table|nil>> Marks
 ---@field linkCapture string Link capture state
 ---@field lastEscape number Last escape key press time
----@field mappingPrefixes table<string, boolean> Mapping prefixes
+---@field mappingPrefixes Hs.Vimnav.State.MappingPrefixes Mapping prefixes
 ---@field allCombinations string[] All combinations
 ---@field eventLoop table|nil Event loop
 ---@field canvas table|nil Canvas
@@ -76,6 +79,9 @@ local log
 ---@field focusCachedResult boolean Focus cached result
 ---@field focusLastElement table|string|nil Focus last element
 ---@field maxElements number Maximum elements to search for (derived from config)
+
+---@class Hs.Vimnav.State.MappingPrefixes
+---@field normal table<string, boolean> Normal mode mappings
 
 ---@alias Hs.Vimnav.Element table|string
 
@@ -89,35 +95,44 @@ local MODES = {
 	DISABLED = 1,
 	NORMAL = 2,
 	INSERT = 3,
-	MULTI = 4,
 	LINKS = 5,
 	PASSTHROUGH = 6,
 }
 
+local defaultModeChars = {
+	[MODES.DISABLED] = "X",
+	[MODES.INSERT] = "I",
+	[MODES.LINKS] = "L",
+	[MODES.NORMAL] = "N",
+	[MODES.PASSTHROUGH] = "P",
+}
+
 local DEFAULT_MAPPING = {
-	["i"] = "cmdPassthroughMode",
-	-- movements
-	["h"] = "cmdScrollLeft",
-	["j"] = "cmdScrollDown",
-	["k"] = "cmdScrollUp",
-	["l"] = "cmdScrollRight",
-	["C-d"] = "cmdScrollHalfPageDown",
-	["C-u"] = "cmdScrollHalfPageUp",
-	["G"] = "cmdScrollToBottom",
-	["gg"] = "cmdScrollToTop",
-	["H"] = { "cmd", "[" }, -- history back
-	["L"] = { "cmd", "]" }, -- history forward
-	["f"] = "cmdGotoLink",
-	["r"] = "cmdRightClick",
-	["F"] = "cmdGotoLinkNewTab",
-	["di"] = "cmdDownloadImage",
-	["gf"] = "cmdMoveMouseToLink",
-	["gi"] = "cmdGotoInput",
-	["zz"] = "cmdMoveMouseToCenter",
-	["yy"] = "cmdCopyPageUrlToClipboard",
-	["yf"] = "cmdCopyLinkUrlToClipboard",
-	["]]"] = "cmdNextPage",
-	["[["] = "cmdPrevPage",
+	normal = {
+		["i"] = "cmdPassthroughMode",
+		-- movements
+		["h"] = "cmdScrollLeft",
+		["j"] = "cmdScrollDown",
+		["k"] = "cmdScrollUp",
+		["l"] = "cmdScrollRight",
+		["C-d"] = "cmdScrollHalfPageDown",
+		["C-u"] = "cmdScrollHalfPageUp",
+		["G"] = "cmdScrollToBottom",
+		["gg"] = "cmdScrollToTop",
+		["H"] = { "cmd", "[" }, -- history back
+		["L"] = { "cmd", "]" }, -- history forward
+		["f"] = "cmdGotoLink",
+		["r"] = "cmdRightClick",
+		["F"] = "cmdGotoLinkNewTab",
+		["di"] = "cmdDownloadImage",
+		["gf"] = "cmdMoveMouseToLink",
+		["gi"] = "cmdGotoInput",
+		["zz"] = "cmdMoveMouseToCenter",
+		["yy"] = "cmdCopyPageUrlToClipboard",
+		["yf"] = "cmdCopyLinkUrlToClipboard",
+		["]]"] = "cmdNextPage",
+		["[["] = "cmdPrevPage",
+	},
 }
 
 ---@type Hs.Vimnav.Config
@@ -191,7 +206,7 @@ local DEFAULT_CONFIG = {
 ---@type Hs.Vimnav.State
 local defaultState = {
 	mode = MODES.DISABLED,
-	multi = nil,
+	keyCapture = nil,
 	marks = {},
 	linkCapture = "",
 	lastEscape = 0,
@@ -780,9 +795,10 @@ end
 ---@return nil
 function Utils.fetchMappingPrefixes()
 	State.mappingPrefixes = {}
-	for k, _ in pairs(M.config.mapping) do
+	State.mappingPrefixes.normal = {}
+	for k, _ in pairs(M.config.mapping.normal) do
 		if #k == 2 then
-			State.mappingPrefixes[string.sub(k, 1, 1)] = true
+			State.mappingPrefixes.normal[string.sub(k, 1, 1)] = true
 		end
 	end
 	log.df("Fetched mapping prefixes")
@@ -956,6 +972,25 @@ function MenuBar.create()
 	log.df("Created menu bar item")
 end
 
+---Set the menubar title
+---@param mode number
+---@char string|nil
+function MenuBar.setTitle(mode, keys)
+	if not MenuBar.item then
+		return
+	end
+
+	local modeChar = defaultModeChars[mode] or "?"
+
+	local toDisplayModeChar = modeChar
+
+	if keys then
+		toDisplayModeChar = string.format("%s [%s]", modeChar, keys)
+	end
+
+	MenuBar.item:setTitle(toDisplayModeChar)
+end
+
 ---Destroys the menu bar item
 ---@return nil
 function MenuBar.destroy()
@@ -972,19 +1007,9 @@ end
 
 ---Sets the mode
 ---@param mode number
----@param char string|nil
 ---@return boolean success Whether the mode was set
 ---@return number|nil prevMode The previous mode
-function ModeManager.setMode(mode, char)
-	local defaultModeChars = {
-		[MODES.DISABLED] = "X",
-		[MODES.INSERT] = "I",
-		[MODES.LINKS] = "L",
-		[MODES.MULTI] = "M",
-		[MODES.NORMAL] = "N",
-		[MODES.PASSTHROUGH] = "IP",
-	}
-
+function ModeManager.setMode(mode)
 	if mode == State.mode then
 		log.df("Mode already set to %s... abort", mode)
 		return false
@@ -994,10 +1019,7 @@ function ModeManager.setMode(mode, char)
 
 	State.mode = mode
 
-	if MenuBar.item then
-		local modeChar = char or defaultModeChars[mode] or "?"
-		MenuBar.item:setTitle(modeChar)
-	end
+	MenuBar.setTitle(mode)
 
 	log.df(string.format("Mode changed: %s -> %s", previousMode, mode))
 
@@ -1035,7 +1057,7 @@ end
 
 ---Set mode to links
 ---@return boolean
-function ModeManager.setModeLinks()
+function ModeManager.setModeLink()
 	local ok = ModeManager.setMode(MODES.LINKS)
 
 	if not ok then
@@ -1044,23 +1066,6 @@ function ModeManager.setModeLinks()
 
 	State.linkCapture = ""
 	Marks.clear()
-
-	return true
-end
-
----Set mode to multi
----@param char string The character to capture
----@return boolean
-function ModeManager.setModeMulti(char)
-	local ok = ModeManager.setMode(MODES.MULTI, char)
-
-	State.multi = nil
-
-	if not ok then
-		return false
-	end
-
-	State.multi = char
 
 	return true
 end
@@ -2134,6 +2139,7 @@ function EventHandler.handleVimInput(char, opts)
 
 	Utils.clearCache()
 
+	-- handle link capture first
 	if ModeManager.isMode(MODES.LINKS) then
 		State.linkCapture = State.linkCapture .. char:upper()
 		for i, _ in ipairs(State.marks) do
@@ -2145,6 +2151,7 @@ function EventHandler.handleVimInput(char, opts)
 			if markText == State.linkCapture then
 				Marks.click(markText:lower())
 				ModeManager.setModeNormal()
+				State.keyCapture = nil
 				return
 			end
 		end
@@ -2157,20 +2164,24 @@ function EventHandler.handleVimInput(char, opts)
 	end
 	keyCombo = keyCombo .. char
 
-	if ModeManager.isMode(MODES.MULTI) then
-		keyCombo = State.multi .. keyCombo
+	if State.keyCapture then
+		State.keyCapture = State.keyCapture .. keyCombo
+	else
+		State.keyCapture = keyCombo
 	end
 
+	MenuBar.setTitle(State.mode, State.keyCapture)
+
 	-- Execute mapping
-	local mapping = M.config.mapping[keyCombo]
+	local mapping
+	local prefixes
+
+	if ModeManager.isMode(MODES.NORMAL) then
+		mapping = M.config.mapping.normal[State.keyCapture]
+		prefixes = State.mappingPrefixes.normal
+	end
 
 	if mapping then
-		-- TODO: Find a better way to handle this
-		-- We are forcing mode to normal here when we process
-		-- This will cause mode changes and will cause some other cache clearing happens
-		-- We should handle keys in different modes differently
-		ModeManager.setMode(MODES.NORMAL)
-
 		if type(mapping) == "string" then
 			local cmd = Commands[mapping]
 			if cmd then
@@ -2178,11 +2189,15 @@ function EventHandler.handleVimInput(char, opts)
 			else
 				log.wf("Unknown command: " .. mapping)
 			end
+			State.keyCapture = nil
 		elseif type(mapping) == "table" then
 			Utils.keyStroke(mapping[1], mapping[2])
+			State.keyCapture = nil
 		end
-	elseif State.mappingPrefixes[keyCombo] then
-		ModeManager.setModeMulti(keyCombo)
+	elseif prefixes and prefixes[keyCombo] then
+		State.keyCapture = keyCombo
+	else
+		State.keyCapture = nil
 	end
 end
 
@@ -2289,17 +2304,13 @@ end
 ---@param event table
 ---@return boolean
 function EventHandler.handleNormalMode(event)
-	return EventHandler.processVimInput(event)
-end
-
----Handles multi mode
----@param event table
----@return boolean
-function EventHandler.handleMultiMode(event)
 	local keyCode = event:getKeyCode()
+
 	if EventHandler.isKey(keyCode, "escape") then
 		local singleCb = function()
-			ModeManager.setModeNormal()
+			State.keyCapture = nil
+			MenuBar.setTitle(State.mode)
+
 			return true
 		end
 
@@ -2335,14 +2346,22 @@ function EventHandler.processVimInput(event)
 	if flags.ctrl then
 		local filteredMappings = {}
 
-		for _key, _ in pairs(M.config.mapping) do
-			if _key:sub(1, 2) == "C-" then
-				table.insert(filteredMappings, _key:sub(3))
-			end
+		local modeMapping
+
+		if ModeManager.isMode(MODES.NORMAL) then
+			modeMapping = M.config.mapping.normal
 		end
 
-		if Utils.tblContains(filteredMappings, char) == false then
-			return false
+		if modeMapping then
+			for _key, _ in pairs(modeMapping) do
+				if _key:sub(1, 2) == "C-" then
+					table.insert(filteredMappings, _key:sub(3))
+				end
+			end
+
+			if Utils.tblContains(filteredMappings, char) == false then
+				return false
+			end
 		end
 	end
 
@@ -2375,10 +2394,6 @@ function EventHandler.process(event)
 
 	if ModeManager.isMode(MODES.NORMAL) then
 		return EventHandler.handleNormalMode(event)
-	end
-
-	if ModeManager.isMode(MODES.MULTI) then
-		return EventHandler.handleMultiMode(event)
 	end
 
 	return false
