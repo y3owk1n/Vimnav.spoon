@@ -95,14 +95,13 @@ Enhanced functionality in Safari, Chrome, Firefox, Edge, Brave, and Zen:
 
 Vimnav operates in different modes, shown in the menu bar:
 
-| Icon   | Mode        | When                          |
-| ------ | ----------- | ----------------------------- |
-| **N**  | Normal      | Default navigation mode       |
-| **I**  | Insert      | Auto-activated in text fields |
-| **IP** | Passthrough | Manual activation (press `i`) |
-| **L**  | Links       | Showing link hints            |
-| **M**  | Multi       | Multi-key input (e.g., `gg`)  |
-| **X**  | Disabled    | In excluded apps              |
+| Icon  | Mode        | When                          |
+| ----- | ----------- | ----------------------------- |
+| **N** | Normal      | Default navigation mode       |
+| **I** | Insert      | Auto-activated in text fields |
+| **P** | Passthrough | Manual activation (press `i`) |
+| **L** | Links       | Showing link hints            |
+| **X** | Disabled    | In excluded apps              |
 
 ## Configuration
 
@@ -263,8 +262,6 @@ Use these in your `mapping` configuration:
 ### Mode Control
 
 - `cmdPassthroughMode` — Enter passthrough mode
-- `cmdNormalMode` — Return to normal mode
-- `cmdInsertMode` — Enter insert mode
 
 ## API Reference
 
