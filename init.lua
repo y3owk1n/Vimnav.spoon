@@ -869,33 +869,6 @@ function Utils.fetchMappingPrefixes()
 	log.df("Fetched mapping prefixes")
 end
 
----Checks if the current application is excluded
----@return boolean
-function Utils.isExcludedApp()
-	local app = Elements.getApp()
-	return app and Utils.tblContains(M.config.excludedApps, app:name()) or false
-end
-
----Checks if the launcher is active
----@return boolean
----@return string|nil
-function Utils.isLauncherActive()
-	for _, launcher in ipairs(M.config.launchers) do
-		local app = hs.application.get(launcher)
-		if app then
-			local appElement = hs.axuielement.applicationElement(app)
-			if appElement then
-				local windows = Utils.getAttribute(appElement, "AXWindows")
-					or {}
-				if #windows > 0 then
-					return true, launcher
-				end
-			end
-		end
-	end
-	return false
-end
-
 ---Checks if the application is in the browser list
 ---@return boolean
 function Utils.isInBrowser()
@@ -2772,6 +2745,44 @@ local function startAppWatcher()
 	log.df("App watcher started")
 end
 
+local launcherWatcher = {}
+
+local function startLaunchersWatcher()
+	local launchers = M.config.launchers
+
+	if not launchers or #launchers == 0 then
+		return
+	end
+
+	for _, launcher in ipairs(launchers) do
+		if launcherWatcher[launcher] then
+			launcherWatcher[launcher]:unsubscribeAll()
+			launcherWatcher[launcher] = nil
+			log.df("Stopped launcher watcher: " .. launcher)
+		end
+
+		launcherWatcher[launcher] = hs.window.filter
+			.new(false)
+			:setAppFilter(launcher, { visible = true })
+
+		launcherWatcher[launcher]:subscribe(
+			hs.window.filter.windowCreated,
+			function()
+				log.df("Launcher opened: " .. launcher)
+				ModeManager.setModeDisabled()
+			end
+		)
+
+		launcherWatcher[launcher]:subscribe(
+			hs.window.filter.windowDestroyed,
+			function()
+				log.df("Launcher closed: " .. launcher)
+				ModeManager.setModeNormal()
+			end
+		)
+	end
+end
+
 ---Periodic cache cleanup to prevent memory leaks
 ---@return nil
 local function setupPeriodicCleanup()
@@ -2810,6 +2821,14 @@ local function cleanupWatchers()
 		focusCheckTimer:stop()
 		focusCheckTimer = nil
 		log.df("Stopped focus check timer")
+	end
+
+	for _, launcher in pairs(launcherWatcher) do
+		if launcher then
+			launcher:unsubscribeAll()
+			launcher = nil
+			log.df("Stopped launcher watcher")
+		end
 	end
 end
 
@@ -2897,6 +2916,7 @@ function M:start()
 
 	cleanupWatchers()
 	startAppWatcher()
+	startLaunchersWatcher()
 	setupPeriodicCleanup()
 	MenuBar.create()
 
