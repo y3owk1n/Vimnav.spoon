@@ -973,7 +973,8 @@ end
 ---Sets the mode
 ---@param mode number
 ---@param char string|nil
----@return nil
+---@return boolean success Whether the mode was set
+---@return number|nil prevMode The previous mode
 function ModeManager.setMode(mode, char)
 	local defaultModeChars = {
 		[MODES.DISABLED] = "X",
@@ -986,25 +987,12 @@ function ModeManager.setMode(mode, char)
 
 	if mode == State.mode then
 		log.df("Mode already set to %s... abort", mode)
-		return
+		return false
 	end
 
 	local previousMode = State.mode
 
 	State.mode = mode
-
-	if ModeManager.isMode(MODES.LINKS) and previousMode ~= MODES.LINKS then
-		State.linkCapture = ""
-		Marks.clear()
-	elseif previousMode == MODES.LINKS and mode ~= MODES.LINKS then
-		hs.timer.doAfter(0, Marks.clear)
-	end
-
-	if ModeManager.isMode(MODES.MULTI) then
-		State.multi = char
-	else
-		State.multi = nil
-	end
 
 	if MenuBar.item then
 		local modeChar = char or defaultModeChars[mode] or "?"
@@ -1012,6 +1000,8 @@ function ModeManager.setMode(mode, char)
 	end
 
 	log.df(string.format("Mode changed: %s -> %s", previousMode, mode))
+
+	return true, previousMode
 end
 
 ---Checks if the current mode is the given mode
@@ -1019,6 +1009,114 @@ end
 ---@return boolean
 function ModeManager.isMode(mode)
 	return State.mode == mode
+end
+
+---Set mode to disabled
+---@return boolean
+function ModeManager.setModeDisabled()
+	return ModeManager.setMode(MODES.DISABLED)
+end
+
+---Set mode to passthrough
+---@return boolean
+function ModeManager.setModePassthrough()
+	local ok = ModeManager.setMode(MODES.PASSTHROUGH)
+
+	if not ok then
+		return false
+	end
+
+	if ok then
+		hs.timer.doAfter(0, Marks.clear)
+	end
+
+	return true
+end
+
+---Set mode to links
+---@return boolean
+function ModeManager.setModeLinks()
+	local ok = ModeManager.setMode(MODES.LINKS)
+
+	if not ok then
+		return false
+	end
+
+	State.linkCapture = ""
+	Marks.clear()
+
+	return true
+end
+
+---Set mode to multi
+---@param char string The character to capture
+---@return boolean
+function ModeManager.setModeMulti(char)
+	local ok = ModeManager.setMode(MODES.MULTI, char)
+
+	State.multi = nil
+
+	if not ok then
+		return false
+	end
+
+	State.multi = nil
+
+	return true
+end
+
+---Set mode to insert
+---@return boolean
+function ModeManager.setModeInsert()
+	local ok, prevMode = ModeManager.setMode(MODES.INSERT)
+
+	if not ok then
+		return false
+	end
+
+	hs.timer.doAfter(0, Marks.clear)
+
+	-- Check if we are coming from normal mode
+	-- if its so, meaning that we are focused in an input
+	-- run the callback
+	if
+		ok
+		and prevMode == MODES.NORMAL
+		and M.config.enterEditableCallback
+		and type(M.config.enterEditableCallback) == "function"
+	then
+		log.df("called enterEditableCallback()")
+		M.config.enterEditableCallback()
+	end
+
+	return true
+end
+
+---Set mode to normal
+---@return boolean
+function ModeManager.setModeNormal()
+	local ok, prevMode = ModeManager.setMode(MODES.NORMAL)
+
+	if not ok then
+		return false
+	end
+
+	hs.timer.doAfter(0, Marks.clear)
+
+	-- Check if we are coming from insert mode
+	-- if its so, meaning that we are focused out of an input
+	-- run the callback
+	if
+		ok
+		and prevMode == MODES.INSERT
+		and M.config.exitEditableCallback
+		and type(M.config.exitEditableCallback) == "function"
+	then
+		log.df("called exitEditableCallback()")
+		M.config.exitEditableCallback()
+	end
+
+	return true
 end
 
 --------------------------------------------------------------------------------
@@ -1239,7 +1337,7 @@ function ElementFinder.findInputElements(axApp, opts)
 				element = results[1],
 				frame = Utils.getAttribute(results[1], "AXFrame"),
 			})
-			Commands.cmdNormalMode()
+			ModeManager.setModeNormal()
 		else
 			callback(results)
 		end
@@ -1411,7 +1509,7 @@ function Marks.show(opts)
 				Marks.draw()
 			else
 				hs.alert.show("No links found", nil, nil, 1)
-				Commands.cmdNormalMode()
+				ModeManager.setModeNormal()
 			end
 		end
 		ElementFinder.findClickableElements(axApp, {
@@ -1427,7 +1525,7 @@ function Marks.show(opts)
 				Marks.draw()
 			else
 				hs.alert.show("No inputs found", nil, nil, 1)
-				Commands.cmdNormalMode()
+				ModeManager.setModeNormal()
 			end
 		end
 		ElementFinder.findInputElements(axApp, {
@@ -1442,7 +1540,7 @@ function Marks.show(opts)
 				Marks.draw()
 			else
 				hs.alert.show("No images found", nil, nil, 1)
-				Commands.cmdNormalMode()
+				ModeManager.setModeNormal()
 			end
 		end
 		ElementFinder.findImageElements(axApp, {
@@ -1685,57 +1783,19 @@ function Commands.cmdScrollToBottom()
 end
 
 ---Switches to passthrough mode
----@return nil
+---@return boolean
 function Commands.cmdPassthroughMode()
-	ModeManager.setMode(MODES.PASSTHROUGH)
-end
-
----Switches to insert mode
----@return nil
-function Commands.cmdInsertMode()
-	-- Save previous mode to compare
-	local prevMode = State.mode
-
-	ModeManager.setMode(MODES.INSERT)
-
-	-- Check if we are coming from normal mode
-	-- if its so, meaning that we are focused in an input
-	-- run the callback
-	if
-		prevMode == MODES.NORMAL
-		and M.config.enterEditableCallback
-		and type(M.config.enterEditableCallback) == "function"
-	then
-		log.df("called enterEditableCallback()")
-		M.config.enterEditableCallback()
-	end
-end
-
----Switches to normal mode
----@return nil
-function Commands.cmdNormalMode()
-	-- Save previous mode to compare
-	local prevMode = State.mode
-
-	ModeManager.setMode(MODES.NORMAL)
-
-	-- Check if we are coming from insert mode
-	-- if its so, meaning that we are focused out of an input
-	-- run the callback
-	if
-		prevMode == MODES.INSERT
-		and M.config.exitEditableCallback
-		and type(M.config.exitEditableCallback) == "function"
-	then
-		log.df("called exitEditableCallback()")
-		M.config.exitEditableCallback()
-	end
+	return ModeManager.setModePassthrough()
 end
 
 ---Switches to links mode
 ---@return nil
 function Commands.cmdGotoLink()
-	ModeManager.setMode(MODES.LINKS)
+	local ok = ModeManager.setModeLink()
+
+	if not ok then
+		return
+	end
 
 	State.onClickCallback = function(mark)
 		local element = mark.element
@@ -1757,7 +1817,11 @@ end
 ---Go to input mode
 ---@return nil
 function Commands.cmdGotoInput()
-	ModeManager.setMode(MODES.LINKS)
+	local ok = ModeManager.setModeLink()
+
+	if not ok then
+		return
+	end
 
 	State.onClickCallback = function(mark)
 		local element = mark.element
@@ -1782,7 +1846,11 @@ end
 ---Right click
 ---@return nil
 function Commands.cmdRightClick()
-	ModeManager.setMode(MODES.LINKS)
+	local ok = ModeManager.setModeLink()
+
+	if not ok then
+		return
+	end
 
 	State.onClickCallback = function(mark)
 		local element = mark.element
@@ -1809,7 +1877,11 @@ function Commands.cmdGotoLinkNewTab()
 		return
 	end
 
-	ModeManager.setMode(MODES.LINKS)
+	local ok = ModeManager.setModeLink()
+
+	if not ok then
+		return
+	end
 
 	State.onClickCallback = function(mark)
 		local url = Utils.getAttribute(mark.element, "AXURL")
@@ -1830,7 +1902,11 @@ function Commands.cmdDownloadImage()
 		return
 	end
 
-	ModeManager.setMode(MODES.LINKS)
+	local ok = ModeManager.setModeLink()
+
+	if not ok then
+		return
+	end
 
 	State.onClickCallback = function(mark)
 		local element = mark.element
@@ -1910,7 +1986,11 @@ end
 ---Move mouse to link
 ---@return nil
 function Commands.cmdMoveMouseToLink()
-	ModeManager.setMode(MODES.LINKS)
+	local ok = ModeManager.setModeLink()
+
+	if not ok then
+		return
+	end
 
 	State.onClickCallback = function(mark)
 		local frame = mark.frame
@@ -1934,7 +2014,12 @@ function Commands.cmdCopyLinkUrlToClipboard()
 		return
 	end
 
-	ModeManager.setMode(MODES.LINKS)
+	local ok = ModeManager.setModeLink()
+
+	if not ok then
+		return
+	end
+
 	State.onClickCallback = function(mark)
 		local url = Utils.getAttribute(mark.element, "AXURL")
 		if url then
@@ -2059,7 +2144,7 @@ function EventHandler.handleVimInput(char, opts)
 			local markText = State.allCombinations[i]:upper()
 			if markText == State.linkCapture then
 				Marks.click(markText:lower())
-				Commands.cmdNormalMode()
+				ModeManager.setModeNormal()
 				return
 			end
 		end
@@ -2080,7 +2165,11 @@ function EventHandler.handleVimInput(char, opts)
 	local mapping = M.config.mapping[keyCombo]
 
 	if mapping then
-		Commands.cmdNormalMode()
+		-- TODO: Find a better way to handle this
+		-- We are forcing mode to normal here when we process
+		-- This will cause mode changes and will cause some other cache clearing happens
+		-- We should handle keys in different modes differently
+		ModeManager.setMode(MODES.NORMAL)
 
 		if type(mapping) == "string" then
 			local cmd = Commands[mapping]
@@ -2093,7 +2182,7 @@ function EventHandler.handleVimInput(char, opts)
 			Utils.keyStroke(mapping[1], mapping[2])
 		end
 	elseif State.mappingPrefixes[keyCombo] then
-		ModeManager.setMode(MODES.MULTI, keyCombo)
+		ModeManager.setModeMulti(keyCombo)
 	end
 end
 
@@ -2145,7 +2234,7 @@ function EventHandler.handlePassthroughMode(event)
 
 	if EventHandler.isKey(keyCode, "escape") then
 		local singleCb = function()
-			Commands.cmdNormalMode()
+			ModeManager.setModeNormal()
 			return true
 		end
 
@@ -2166,7 +2255,7 @@ function EventHandler.handleInsertMode(event)
 			if Utils.isInBrowser() then
 				Actions.forceUnfocus()
 				hs.timer.doAfter(0.1, function()
-					Commands.cmdNormalMode()
+					ModeManager.setModeNormal()
 				end)
 			end
 			return true
@@ -2186,7 +2275,7 @@ function EventHandler.handleLinkMode(event)
 
 	if EventHandler.isKey(keyCode, "escape") then
 		local singleCb = function()
-			Commands.cmdNormalMode()
+			ModeManager.setModeNormal()
 			return true
 		end
 
@@ -2210,7 +2299,7 @@ function EventHandler.handleMultiMode(event)
 	local keyCode = event:getKeyCode()
 	if EventHandler.isKey(keyCode, "escape") then
 		local singleCb = function()
-			Commands.cmdNormalMode()
+			ModeManager.setModeNormal()
 			return true
 		end
 
@@ -2346,9 +2435,9 @@ local function updateFocusState()
 
 			-- Update mode based on focus change
 			if isEditable and ModeManager.isMode(MODES.NORMAL) then
-				Commands.cmdInsertMode()
+				ModeManager.setModeInsert()
 			elseif not isEditable and ModeManager.isMode(MODES.INSERT) then
-				Commands.cmdNormalMode()
+				ModeManager.setModeNormal()
 			end
 
 			log.df(
@@ -2362,7 +2451,7 @@ local function updateFocusState()
 		if State.focusCachedResult then
 			State.focusCachedResult = false
 			if ModeManager.isMode(MODES.INSERT) then
-				Commands.cmdNormalMode()
+				ModeManager.setModeNormal()
 			end
 		end
 	end
@@ -2415,10 +2504,10 @@ local function startAppWatcher()
 			end
 
 			if Utils.tblContains(M.config.excludedApps, appName) then
-				ModeManager.setMode(MODES.DISABLED)
+				ModeManager.setModeDisabled()
 				log.df("Disabled mode for excluded app: " .. appName)
 			else
-				Commands.cmdNormalMode()
+				ModeManager.setModeNormal()
 			end
 		end
 	end)
@@ -2561,9 +2650,9 @@ function M:start()
 		currentApp
 		and Utils.tblContains(M.config.excludedApps, currentApp:name())
 	then
-		ModeManager.setMode(MODES.DISABLED)
+		ModeManager.setModeDisabled()
 	else
-		Commands.cmdNormalMode()
+		ModeManager.setModeNormal()
 	end
 
 	self._running = true
