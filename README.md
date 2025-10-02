@@ -238,20 +238,18 @@ spoon.Vimnav
    normal = {
     -- Commands
     ["j"] = "scrollDown",
-    ["k"] = "scrollUp",
-    ["f"] = "gotoLink",
 
     -- Multi-character combos
     ["gg"] = "scrollToTop",
-    ["gt"] = "gotoInput",
 
     -- Control key combos
     ["C-f"] = "scrollHalfPageDown",
-    ["C-b"] = "scrollHalfPageUp",
 
     -- Native keystrokes
     ["t"] = { "cmd", "t" }, -- ⌘T (new tab)
-    ["w"] = { "cmd", "w" }, -- ⌘W (close window)
+
+    -- Map to other keystrokes
+    ["h"] = { "shift", "4" }, -- map to `$` key
 
     -- Custom function
     ["Q"] = function()
@@ -259,19 +257,8 @@ spoon.Vimnav
      hs.alert.show("Hello from Vimnav!")
     end,
 
-    ["/"] = "noop", -- Disable mapping and pass through to the app
-   },
-   insertNormal = {
-    -- Customize text editing
-    ["h"] = { {}, "left" },
-    ["l"] = { {}, "right" },
-    ["w"] = { "alt", "right" },
-    ["b"] = { "alt", "left" },
-   },
-   insertVisual = {
-    -- Customize visual selection
-    ["h"] = { { "shift" }, "left" },
-    ["l"] = { { "shift" }, "right" },
+    -- Disable mapping and pass through to the app
+    ["/"] = "noop",
    },
   },
  })
