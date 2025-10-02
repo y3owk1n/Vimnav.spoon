@@ -231,6 +231,49 @@ spoon.Vimnav:configure({
 }):start()
 ```
 
+### Indicator
+
+#### Menubar indicator
+
+<https://github.com/user-attachments/assets/671cc359-3500-4baa-baa5-1582d39c8986>
+
+By default, Vimnav shows a small indicator in the menu bar.
+
+```lua
+spoon.Vimnav:configure({
+    menubar = { enabled = false } -- disable the menubar indicator
+})
+```
+
+#### Overlay indicator
+
+Vimnav can also show an overlay indicator in the certain position of the screen.
+
+<https://github.com/user-attachments/assets/a43af6b7-0947-4e2b-bc91-9b8cf969ee28>
+
+```lua
+spoon.Vimnav:configure({
+ menubar = {
+  enabled = false, -- disable the menubar indicator
+ },
+ overlay = {
+  enabled = true, -- enable the overlay indicator
+  position = "top-center", -- pick a position, this is the default
+  size = 25, -- pick a size, this is the default
+  padding = 2, -- pick a padding, this is the default
+  colors = { -- colors for different modes
+   disabled = "#5a5672",
+   normal = "#80b8e8",
+   insert = "#abe9b3",
+   insertNormal = "#f9e2af",
+   insertVisual = "#c9a0e9",
+   links = "#f8bd96",
+   passthrough = "#f28fad",
+  },
+ },
+})
+```
+
 ### Advanced Configuration
 
 #### Array Extension Behavior
