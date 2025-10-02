@@ -37,7 +37,7 @@ hs.loadSpoon("Vimnav")
 spoon.Vimnav:start()
 ```
 
-5. **Reload** → Press `⌘⌃R` in Hammerspoon
+5. **Reload** Hammerspoon
 
 ### 🎓 First Steps
 
@@ -229,7 +229,7 @@ spoon.Vimnav
 
 ### ⌨️ Custom Keybindings
 
-Map any key to any command or native keystroke or any function:
+Map any key to any command or native keystroke or any function or disable it:
 
 ```lua
 spoon.Vimnav
@@ -237,17 +237,17 @@ spoon.Vimnav
   mapping = {
    normal = {
     -- Commands
-    ["j"] = "cmdScrollDown",
-    ["k"] = "cmdScrollUp",
-    ["f"] = "cmdGotoLink",
+    ["j"] = "scrollDown",
+    ["k"] = "scrollUp",
+    ["f"] = "gotoLink",
 
     -- Multi-character combos
-    ["gg"] = "cmdScrollToTop",
-    ["gt"] = "cmdGotoInput",
+    ["gg"] = "scrollToTop",
+    ["gt"] = "gotoInput",
 
     -- Control key combos
-    ["C-f"] = "cmdScrollHalfPageDown",
-    ["C-b"] = "cmdScrollHalfPageUp",
+    ["C-f"] = "scrollHalfPageDown",
+    ["C-b"] = "scrollHalfPageUp",
 
     -- Native keystrokes
     ["t"] = { "cmd", "t" }, -- ⌘T (new tab)
@@ -258,6 +258,8 @@ spoon.Vimnav
      -- this is just an example, you can do anything
      hs.alert.show("Hello from Vimnav!")
     end,
+
+    ["/"] = "noop", -- Disable mapping and pass through to the app
    },
    insertNormal = {
     -- Customize text editing
@@ -388,51 +390,13 @@ spoon.Vimnav:configure({
 
 ## 🎮 Available Commands
 
-Use these in your `mapping` configuration:
+There are lots of commands available, but you can also use any key combination you want.
 
-### 🧭 Navigation Commands
+Check out the source code for all available commands and their usage or use this function to get all the defaults.
 
-- `cmdScrollLeft/Right/Up/Down` — Directional scrolling
-- `cmdScrollHalfPageUp/Down` — Half-page jumps
-- `cmdScrollToTop/Bottom` — Jump to extremes
-
-### 🎯 Link Hint Commands
-
-- `cmdGotoLink` — Click elements
-- `cmdGotoLinkNewTab` — Open in new tab (browser)
-- `cmdGotoInput` — Jump to input fields
-- `cmdRightClick` — Show right-clickable elements
-- `cmdMoveMouseToLink` — Move cursor to element
-
-### ✍️ Text Editing Commands (Insert Normal)
-
-- `cmdDeleteWord/Line` — Delete operations
-- `cmdChangeWord/Line` — Change operations (delete + insert)
-- `cmdYankWord/Line` — Copy operations
-- `cmdUndo` — Undo last change
-
-### 🎨 Text Editing Commands (Insert Visual)
-
-- `cmdDeleteHighlighted` — Delete selection
-- `cmdChangeHighlighted` — Change selection
-- `cmdYankHighlighted` — Copy selection
-
-### 🔄 Mode Control Commands
-
-- `cmdInsertMode` — Enter insert mode
-- `cmdInsertModeEnd` — Insert at line end
-- `cmdInsertModeStart` — Insert at line start
-- `cmdInsertVisualMode` — Enter visual mode
-- `cmdInsertVisualLineMode` — Enter visual line mode
-- `cmdPassthroughMode` — Enter passthrough mode
-
-### 🛠️ Utility Commands
-
-- `cmdCopyPageUrlToClipboard` — Copy page URL (browser)
-- `cmdCopyLinkUrlToClipboard` — Copy link URL (browser)
-- `cmdDownloadImage` — Save images (browser)
-- `cmdMoveMouseToCenter` — Center cursor
-- `cmdNextPage/PrevPage` — Navigate pagination (browser)
+```lua
+print(hs.inspect(spoon.Vimnav:getDefaultConfig()))
+```
 
 ## 🔧 API Reference
 
@@ -451,6 +415,7 @@ spoon.Vimnav:isRunning()                 -- Returns boolean
 
 -- Utility
 spoon.Vimnav:debug()                     -- Returns state and config
+spoon.Vimnav:getDefaultConfig()          -- Returns default config
 ```
 
 ### Configuration Options
