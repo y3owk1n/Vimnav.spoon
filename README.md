@@ -55,12 +55,15 @@ Press `f` in Safari to see link hints overlay on all clickable elements. Type th
 
 ### 🧭 Core Navigation
 
-| Key             | Action    | Description                    |
-| --------------- | --------- | ------------------------------ |
-| `h`/`j`/`k`/`l` | Scroll    | Vim-style directional movement |
-| `C-d`/`C-u`     | Half page | Fast vertical scrolling        |
-| `gg`/`G`        | Jump      | Top or bottom of page          |
-| `H`/`L`         | History   | Back/forward (⌘[ / ⌘])         |
+| Key             | Action    | Description                                               |
+| --------------- | --------- | --------------------------------------------------------- |
+| `h`/`j`/`k`/`l` | Scroll    | Vim-style directional movement                            |
+| `C-d`/`C-u`     | Half page | Fast vertical scrolling                                   |
+| `gg`/`G`        | Jump      | Top or bottom of page                                     |
+| `H`/`L`         | History   | Back/forward (⌘[ / ⌘])                                    |
+| `/`             | Search    | Search in page                                            |
+| `n`             | Next      | Search next (need to do a `tab` press if right after `/`) |
+| `N`             | Prev      | Search previous                                           |
 
 ### ❌ Passthrough Mode
 
@@ -123,18 +126,21 @@ Navigate and manipulate text without leaving the input field:
 | `cc`  | Change line       | Delete line + insert mode |
 | `yy`  | Yank line         | Copy current line         |
 | `u`   | Undo              | Undo last change (⌘Z)     |
+| `C-r` | Redo              | Redo last change (⌘⇧Z)    |
 | `p`   | Paste             | Paste from clipboard (⌘V) |
 
 **Mode Switching:**
 
-| Key         | Action               | Description               |
-| ----------- | -------------------- | ------------------------- |
-| `i`         | Insert mode          | Return to insert mode     |
-| `A`         | Insert at line end   | Jump to end + insert mode |
-| `I`         | Insert at line start | Jump to start + insert    |
-| `v`         | Visual mode          | Enter visual mode         |
-| `V`         | Visual line mode     | Select entire line        |
-| `Shift-Esc` | Force unfocus        | Exit field completely     |
+| Key         | Action                | Description                  |
+| ----------- | --------------------- | ---------------------------- |
+| `i`         | Insert mode           | Return to insert mode        |
+| `o`         | Insert new line below | New line below + insert mode |
+| `O`         | Insert new line above | New line above + insert mode |
+| `A`         | Insert at line end    | Jump to end + insert mode    |
+| `I`         | Insert at line start  | Jump to start + insert       |
+| `v`         | Visual mode           | Enter visual mode            |
+| `V`         | Visual line mode      | Select entire line           |
+| `Shift-Esc` | Force unfocus         | Exit field completely        |
 
 #### 🎨 Insert Visual Mode (`v` from Insert Normal)
 
@@ -170,14 +176,14 @@ Insert → [Esc] → Insert Normal → [v/V] → Insert Visual
 
 Enhanced functionality in Safari, Chrome, Firefox, Edge, Brave, and Zen:
 
-| Key       | Action                    |
-| --------- | ------------------------- |
-| `yy`      | Copy current page URL     |
-| `yf`      | Copy link URL (after `f`) |
-| `F`       | Open link in new tab      |
-| `di`      | Download image            |
-| `]]`/`[[` | Next/previous page        |
-| `Esc Esc` | Force unfocus from forms  |
+| Key         | Action                    |
+| ----------- | ------------------------- |
+| `yy`        | Copy current page URL     |
+| `yf`        | Copy link URL (after `f`) |
+| `F`         | Open link in new tab      |
+| `di`        | Download image            |
+| `]]`/`[[`   | Next/previous page        |
+| `Shift-Esc` | Force unfocus from forms  |
 
 ### 🎭 Modes Overview
 
