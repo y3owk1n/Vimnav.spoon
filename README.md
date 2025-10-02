@@ -215,43 +215,51 @@ spoon.Vimnav
 
 ### ⌨️ Custom Keybindings
 
-Map any key to any command or native keystroke:
+Map any key to any command or native keystroke or any function:
 
 ```lua
-spoon.Vimnav:configure({
- mapping = {
-  normal = {
-   -- Commands
-   ["j"] = "cmdScrollDown",
-   ["k"] = "cmdScrollUp",
-   ["f"] = "cmdGotoLink",
+spoon.Vimnav
+ :configure({
+  mapping = {
+   normal = {
+    -- Commands
+    ["j"] = "cmdScrollDown",
+    ["k"] = "cmdScrollUp",
+    ["f"] = "cmdGotoLink",
 
-   -- Multi-character combos
-   ["gg"] = "cmdScrollToTop",
-   ["gt"] = "cmdGotoInput",
+    -- Multi-character combos
+    ["gg"] = "cmdScrollToTop",
+    ["gt"] = "cmdGotoInput",
 
-   -- Control key combos
-   ["C-f"] = "cmdScrollHalfPageDown",
-   ["C-b"] = "cmdScrollHalfPageUp",
+    -- Control key combos
+    ["C-f"] = "cmdScrollHalfPageDown",
+    ["C-b"] = "cmdScrollHalfPageUp",
 
-   -- Native keystrokes
-   ["t"] = { "cmd", "t" },     -- ⌘T (new tab)
-   ["w"] = { "cmd", "w" },     -- ⌘W (close window)
+    -- Native keystrokes
+    ["t"] = { "cmd", "t" }, -- ⌘T (new tab)
+    ["w"] = { "cmd", "w" }, -- ⌘W (close window)
+
+    -- Custom function
+    ["Q"] = function()
+     -- this is just an example, you can do anything
+     hs.alert.show("Hello from Vimnav!")
+    end,
+   },
+   insertNormal = {
+    -- Customize text editing
+    ["h"] = { {}, "left" },
+    ["l"] = { {}, "right" },
+    ["w"] = { "alt", "right" },
+    ["b"] = { "alt", "left" },
+   },
+   insertVisual = {
+    -- Customize visual selection
+    ["h"] = { { "shift" }, "left" },
+    ["l"] = { { "shift" }, "right" },
+   },
   },
-  insertNormal = {
-   -- Customize text editing
-   ["h"] = { {}, "left" },
-   ["l"] = { {}, "right" },
-   ["w"] = { "alt", "right" },
-   ["b"] = { "alt", "left" },
-  },
-  insertVisual = {
-   -- Customize visual selection
-   ["h"] = { { "shift" }, "left" },
-   ["l"] = { { "shift" }, "right" },
-  }
- }
-}):start()
+ })
+ :start()
 ```
 
 ### 📊 Visual Indicators
