@@ -2659,7 +2659,7 @@ end
 ---Checks if the key is a valid key for the given name
 ---@param keyCode number
 ---@param name string
----@return boolean
+---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.isKey(keyCode, name)
 	return keyCode == hs.keycodes.map[name]
 end
@@ -2691,14 +2691,14 @@ end
 
 ---Handles disabled mode
 ---@param event table
----@return boolean
+---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.handleDisabledMode(event)
 	return false
 end
 
 ---Handles passthrough mode
 ---@param event table
----@return boolean
+---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.handlePassthroughMode(event)
 	local keyCode = event:getKeyCode()
 
@@ -2716,7 +2716,7 @@ end
 
 ---Handles insert mode
 ---@param event table
----@return boolean
+---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.handleInsertMode(event)
 	local keyCode = event:getKeyCode()
 
@@ -2744,7 +2744,7 @@ end
 
 ---Handles insert normal mode
 ---@param event table
----@return boolean
+---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.handleInsertNormalMode(event)
 	local keyCode = event:getKeyCode()
 
@@ -2767,7 +2767,7 @@ end
 
 ---Handles insert visual mode
 ---@param event table
----@return boolean
+---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.handleInsertVisualMode(event)
 	local keyCode = event:getKeyCode()
 
@@ -2797,7 +2797,7 @@ end
 
 ---Handles links mode
 ---@param event table
----@return boolean
+---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.handleLinkMode(event)
 	local keyCode = event:getKeyCode()
 
@@ -2815,7 +2815,7 @@ end
 
 ---Handles normal mode
 ---@param event table
----@return boolean
+---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.handleNormalMode(event)
 	local keyCode = event:getKeyCode()
 
@@ -2824,7 +2824,7 @@ function EventHandler.handleNormalMode(event)
 			State.keyCapture = nil
 			MenuBar.setTitle(State.mode)
 
-			return true
+			return false
 		end
 
 		return EventHandler.handleEspaceKey(event, singleCb, nil)
@@ -2835,7 +2835,7 @@ end
 
 ---Handles vim input
 ---@param event table
----@return boolean
+---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.processVimInput(event)
 	local keyCode = event:getKeyCode()
 	local flags = event:getFlags()
@@ -2895,7 +2895,7 @@ end
 
 ---Handles events
 ---@param event table
----@return boolean
+---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.process(event)
 	if ModeManager.isMode(MODES.DISABLED) then
 		return EventHandler.handleDisabledMode(event)
