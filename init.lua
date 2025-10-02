@@ -2588,7 +2588,7 @@ function Commands.deleteWord()
 end
 
 function Commands.changeWord()
-	Commands.cmdDeleteWord()
+	Commands.deleteWord()
 	ModeManager.setModeInsert()
 end
 
@@ -2605,7 +2605,7 @@ function Commands.deleteLine()
 end
 
 function Commands.changeLine()
-	Commands.cmdDeleteLine()
+	Commands.deleteLine()
 	ModeManager.setModeInsert()
 end
 
@@ -2621,7 +2621,7 @@ function Commands.deleteHighlighted()
 end
 
 function Commands.changeHighlighted()
-	Commands.cmdDeleteHighlighted()
+	Commands.deleteHighlighted()
 	ModeManager.setModeInsert()
 end
 
