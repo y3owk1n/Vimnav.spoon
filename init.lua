@@ -94,9 +94,9 @@ local log
 ---@field passthrough? string Color of passthrough mode indicator
 
 ---@class Hs.Vimnav.Config.Mapping
----@field normal? table<string, string|table> Normal mode mappings
----@field insertNormal? table<string, string|table> Insert normal mode mappings
----@field insertVisual? table<string, string|table> Insert visual mode mappings
+---@field normal? table<string, string|table|function> Normal mode mappings
+---@field insertNormal? table<string, string|table|function> Insert normal mode mappings
+---@field insertVisual? table<string, string|table|function> Insert visual mode mappings
 
 ---@class Hs.Vimnav.State
 ---@field mode number Vimnav mode
@@ -2667,11 +2667,12 @@ function EventHandler.handleVimInput(char, opts)
 			else
 				log.wf("Unknown command: " .. mapping)
 			end
-			State.keyCapture = nil
 		elseif type(mapping) == "table" then
 			Utils.keyStroke(mapping[1], mapping[2])
-			State.keyCapture = nil
+		elseif type(mapping) == "function" then
+			mapping()
 		end
+		State.keyCapture = nil
 	elseif prefixes and prefixes[State.keyCapture] then
 		-- do nothing?
 	else
