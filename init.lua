@@ -43,24 +43,36 @@ local log
 
 ---@class Hs.Vimnav.Config
 ---@field logLevel? string Log level to show in the console
----@field linkHintChars? string Link hint characters
----@field hintFontSize? number Font size for link hints
+---@field hints? Hs.Vimnav.Config.Hints Settings for hints
 ---@field doublePressDelay? number Double press delay in seconds (e.g. 0.3 for 300ms)
 ---@field focusCheckInterval? number Focus check interval in seconds (e.g. 0.5 for 500ms)
 ---@field mapping? Hs.Vimnav.Config.Mapping Mappings to use
+---@field scroll? Hs.Vimnav.Config.Scroll Scroll settings
+---@field axRoles? Hs.Vimnav.Config.AxRoles Roles to use for AXUIElement
+---@field applicationGroups? Hs.Vimnav.Config.ApplicationGroups App groups to work with vimnav
+---@field menubar? Hs.Vimnav.Config.Menubar Configure menubar indicator
+---@field overlay? Hs.Vimnav.Config.Overlay Configure overlay indicator
+
+---@class Hs.Vimnav.Config.ApplicationGroups
+---@field exclusions? string[] Apps to exclude from Vimnav (e.g. Terminal)
+---@field browsers? string[] Browsers to to detect for browser specific actions (e.g. Safari)
+---@field launchers? string[] Launchers to to detect for launcher specific actions (e.g. Spotlight)
+
+---@class Hs.Vimnav.Config.AxRoles
+---@field editable? string[] Roles for detect editable inputs
+---@field jumpable? string[] Roles for detect jumpable inputs (links and more)
+
+---@class Hs.Vimnav.Config.Hints
+---@field chars? string Link hint characters
+---@field fontSize? number Font size for link hints
+---@field depth? number Maximum depth to search for elements
+
+---@class Hs.Vimnav.Config.Scroll
 ---@field scrollStep? number Scroll step in pixels
 ---@field scrollStepHalfPage? number Scroll step in pixels for half page
 ---@field scrollStepFullPage? number Scroll step in pixels for full page
 ---@field smoothScroll? boolean Enable/disable smooth scrolling
 ---@field smoothScrollFramerate? number Smooth scroll framerate in frames per second
----@field depth? number Maximum depth to search for elements
----@field axEditableRoles? string[] Roles for detect editable inputs
----@field axJumpableRoles? string[] Roles for detect jumpable inputs (links and more)
----@field excludedApps? string[] Apps to exclude from Vimnav (e.g. Terminal)
----@field browsers? string[] Browsers to to detect for browser specific actions (e.g. Safari)
----@field launchers? string[] Launchers to to detect for launcher specific actions (e.g. Spotlight)
----@field menubar? Hs.Vimnav.Config.Menubar Configure menubar indicator
----@field overlay? Hs.Vimnav.Config.Overlay Configure overlay indicator
 
 ---@class Hs.Vimnav.Config.Menubar
 ---@field enabled? boolean Enable menubar indicator
@@ -206,66 +218,74 @@ local DEFAULT_MAPPING = {
 ---@type Hs.Vimnav.Config
 local DEFAULT_CONFIG = {
 	logLevel = "warning",
-	linkHintChars = "abcdefghijklmnopqrstuvwxyz",
-	hintFontSize = 12,
+	hints = {
+		chars = "abcdefghijklmnopqrstuvwxyz",
+		fontSize = 12,
+		depth = 20,
+	},
 	doublePressDelay = 0.3,
 	focusCheckInterval = 0.1,
 	mapping = DEFAULT_MAPPING,
-	scrollStep = 50,
-	scrollStepHalfPage = 500,
-	scrollStepFullPage = 1e6,
-	smoothScroll = true,
-	smoothScrollFramerate = 120,
-	depth = 20,
-	axEditableRoles = {
-		"AXTextField",
-		"AXComboBox",
-		"AXTextArea",
-		"AXSearchField",
+	scroll = {
+		scrollStep = 50,
+		scrollStepHalfPage = 500,
+		scrollStepFullPage = 1e6,
+		smoothScroll = true,
+		smoothScrollFramerate = 120,
 	},
-	axJumpableRoles = {
-		"AXLink",
-		"AXButton",
-		"AXPopUpButton",
-		"AXComboBox",
-		"AXTextField",
-		"AXTextArea",
-		"AXCheckBox",
-		"AXRadioButton",
-		"AXDisclosureTriangle",
-		"AXMenuButton",
-		"AXMenuBarItem", -- To support top menu bar
-		"AXMenuItem",
-		"AXRow", -- To support Mail.app without using "AXStaticText"
-		-- "AXColorWell", -- Macos Color Picker
-		-- "AXCell", -- This can help with showing marks on Calendar.app
-		-- "AXGroup", -- This can help with lots of MacOS apps, but creates lot of noise!
-		-- "AXStaticText",
-		-- "AXMenu",
-		-- "AXToolbar",
-		-- "AXToolbarButton",
-		-- "AXTabGroup",
-		-- "AXTab",
-		-- "AXSlider",
-		-- "AXIncrementor",
-		-- "AXDecrementor",
+	axRoles = {
+		editable = {
+			"AXTextField",
+			"AXComboBox",
+			"AXTextArea",
+			"AXSearchField",
+		},
+		jumpable = {
+			"AXLink",
+			"AXButton",
+			"AXPopUpButton",
+			"AXComboBox",
+			"AXTextField",
+			"AXTextArea",
+			"AXCheckBox",
+			"AXRadioButton",
+			"AXDisclosureTriangle",
+			"AXMenuButton",
+			"AXMenuBarItem", -- To support top menu bar
+			"AXMenuItem",
+			"AXRow", -- To support Mail.app without using "AXStaticText"
+			-- "AXColorWell", -- Macos Color Picker
+			-- "AXCell", -- This can help with showing marks on Calendar.app
+			-- "AXGroup", -- This can help with lots of MacOS apps, but creates lot of noise!
+			-- "AXStaticText",
+			-- "AXMenu",
+			-- "AXToolbar",
+			-- "AXToolbarButton",
+			-- "AXTabGroup",
+			-- "AXTab",
+			-- "AXSlider",
+			-- "AXIncrementor",
+			-- "AXDecrementor",
+		},
 	},
-	excludedApps = {
-		"Terminal",
-		"Alacritty",
-		"iTerm2",
-		"Kitty",
-		"Ghostty",
+	applicationGroups = {
+		exclusions = {
+			"Terminal",
+			"Alacritty",
+			"iTerm2",
+			"Kitty",
+			"Ghostty",
+		},
+		browsers = {
+			"Safari",
+			"Google Chrome",
+			"Firefox",
+			"Microsoft Edge",
+			"Brave Browser",
+			"Zen",
+		},
+		launchers = { "Spotlight", "Raycast", "Alfred" },
 	},
-	browsers = {
-		"Safari",
-		"Google Chrome",
-		"Firefox",
-		"Microsoft Edge",
-		"Brave Browser",
-		"Zen",
-	},
-	launchers = { "Spotlight", "Raycast", "Alfred" },
 	menubar = {
 		enabled = true,
 	},
@@ -440,7 +460,7 @@ function AsyncTraversal.walkElement(element, opts)
 	local callback = opts.callback
 	local viewport = opts.viewport
 
-	if depth > M.config.depth then
+	if depth > M.config.hints.depth then
 		return
 	end -- Hard depth limit
 
@@ -519,12 +539,12 @@ end
 ---@return nil
 function RoleMaps.init()
 	RoleMaps.jumpableSet = {}
-	for _, role in ipairs(M.config.axJumpableRoles) do
+	for _, role in ipairs(M.config.axRoles.jumpable) do
 		RoleMaps.jumpableSet[role] = true
 	end
 
 	RoleMaps.editableSet = {}
-	for _, role in ipairs(M.config.axEditableRoles) do
+	for _, role in ipairs(M.config.axRoles.editable) do
 		RoleMaps.editableSet[role] = true
 	end
 
@@ -626,7 +646,7 @@ function CanvasCache.getMarkTemplate()
 			type = "text",
 			textAlignment = "center",
 			textColor = { red = 0, green = 0, blue = 0, alpha = 1 },
-			textSize = M.config.hintFontSize,
+			textSize = M.config.hints.fontSize,
 			textFont = ".AppleSystemUIFontHeavy",
 		},
 	}
@@ -685,22 +705,17 @@ function Utils.tblMerge(base, overlay, extendArrays)
 			and Utils.isList(baseValue)
 
 		if extendArrays and isOverlayArray and isBaseArray then
-			-- Both are arrays, merge them (no duplicates)
+			-- both are arrays: merge without duplicates
 			for _, v in ipairs(value) do
 				if not Utils.tblContains(baseValue, v) then
 					table.insert(baseValue, v)
 				end
 			end
-		elseif
-			type(value) == "table"
-			and type(baseValue) == "table"
-			and not isOverlayArray
-			and not isBaseArray
-		then
-			-- Both are objects (not arrays), deep merge recursively
-			result[key] = Utils.tblDeepExtend("force", baseValue, value)
+		elseif type(value) == "table" and type(baseValue) == "table" then
+			-- both are tables (objects or mixed): recurse
+			result[key] = Utils.tblMerge(baseValue, value, extendArrays)
 		else
-			-- Simple value or mismatched types, just replace
+			-- plain value or type mismatch: replace
 			result[key] = Utils.deepCopy(value)
 		end
 	end
@@ -855,7 +870,7 @@ function Utils.generateCombinations()
 		return
 	end -- Already generated
 
-	local chars = M.config.linkHintChars
+	local chars = M.config.hints.chars
 
 	if not chars then
 		log.ef("No link hint characters configured")
@@ -915,7 +930,12 @@ end
 ---@return boolean
 function Utils.isInBrowser()
 	local app = Elements.getApp()
-	return app and Utils.tblContains(M.config.browsers, app:name()) or false
+	return app
+			and Utils.tblContains(
+				M.config.applicationGroups.browsers,
+				app:name()
+			)
+		or false
 end
 
 --------------------------------------------------------------------------------
@@ -1506,7 +1526,7 @@ end
 function Actions.smoothScroll(opts)
 	local x = opts.x or 0
 	local y = opts.y or 0
-	local smooth = opts.smooth or M.config.smoothScroll
+	local smooth = opts.smooth or M.config.scroll.smoothScroll
 
 	if not smooth then
 		hs.eventtap.event.newScrollEvent({ x, y }, {}, "pixel"):post()
@@ -1517,7 +1537,7 @@ function Actions.smoothScroll(opts)
 	local dx = x and (x / steps) or 0
 	local dy = y and (y / steps) or 0
 	local frame = 0
-	local interval = 1 / M.config.smoothScrollFramerate
+	local interval = 1 / M.config.scroll.smoothScrollFramerate
 
 	local function animate()
 		frame = frame + 1
@@ -1956,7 +1976,7 @@ function Marks.draw()
 			local frame = mark.frame
 			if frame then
 				local padding = 2
-				local fontSize = M.config.hintFontSize
+				local fontSize = M.config.hints.fontSize
 				local textWidth = #markText * (fontSize * 1.1)
 				local textHeight = fontSize * 1.1
 				local containerWidth = textWidth + (padding * 2)
@@ -2102,49 +2122,49 @@ end
 ---Scrolls left
 ---@return nil
 function Commands.cmdScrollLeft()
-	Actions.smoothScroll({ x = M.config.scrollStep })
+	Actions.smoothScroll({ x = M.config.scroll.scrollStep })
 end
 
 ---Scrolls right
 ---@return nil
 function Commands.cmdScrollRight()
-	Actions.smoothScroll({ x = -M.config.scrollStep })
+	Actions.smoothScroll({ x = -M.config.scroll.scrollStep })
 end
 
 ---Scrolls up
 ---@return nil
 function Commands.cmdScrollUp()
-	Actions.smoothScroll({ y = M.config.scrollStep })
+	Actions.smoothScroll({ y = M.config.scroll.scrollStep })
 end
 
 ---Scrolls down
 ---@return nil
 function Commands.cmdScrollDown()
-	Actions.smoothScroll({ y = -M.config.scrollStep })
+	Actions.smoothScroll({ y = -M.config.scroll.scrollStep })
 end
 
 ---Scrolls half page down
 ---@return nil
 function Commands.cmdScrollHalfPageDown()
-	Actions.smoothScroll({ y = -M.config.scrollStepHalfPage })
+	Actions.smoothScroll({ y = -M.config.scroll.scrollStepHalfPage })
 end
 
 ---Scrolls half page up
 ---@return nil
 function Commands.cmdScrollHalfPageUp()
-	Actions.smoothScroll({ y = M.config.scrollStepHalfPage })
+	Actions.smoothScroll({ y = M.config.scroll.scrollStepHalfPage })
 end
 
 ---Scrolls to top
 ---@return nil
 function Commands.cmdScrollToTop()
-	Actions.smoothScroll({ y = M.config.scrollStepFullPage })
+	Actions.smoothScroll({ y = M.config.scroll.scrollStepFullPage })
 end
 
 ---Scrolls to bottom
 ---@return nil
 function Commands.cmdScrollToBottom()
-	Actions.smoothScroll({ y = -M.config.scrollStepFullPage })
+	Actions.smoothScroll({ y = -M.config.scroll.scrollStepFullPage })
 end
 
 ---Switches to passthrough mode
@@ -3060,7 +3080,12 @@ local function startAppWatcher()
 				log.df("Started event loop")
 			end
 
-			if Utils.tblContains(M.config.excludedApps, appName) then
+			if
+				Utils.tblContains(
+					M.config.applicationGroups.exclusions,
+					appName
+				)
+			then
 				ModeManager.setModeDisabled()
 				log.df("Disabled mode for excluded app: " .. appName)
 			else
@@ -3077,7 +3102,7 @@ end
 local launcherWatcher = {}
 
 local function startLaunchersWatcher()
-	local launchers = M.config.launchers
+	local launchers = M.config.applicationGroups.launchers
 
 	if not launchers or #launchers == 0 then
 		return
@@ -3253,7 +3278,10 @@ function M:start()
 	local currentApp = Elements.getApp()
 	if
 		currentApp
-		and Utils.tblContains(M.config.excludedApps, currentApp:name())
+		and Utils.tblContains(
+			M.config.applicationGroups.exclusions,
+			currentApp:name()
+		)
 	then
 		ModeManager.setModeDisabled()
 	else
