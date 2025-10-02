@@ -8,6 +8,8 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License: MIT">
 </p>
 
+![vimnav-demo](https://github.com/user-attachments/assets/b32374e0-5446-46f8-99d2-bfae1bc90799)
+
 ## Why Vimnav?
 
 Stop reaching for your mouse. Navigate Safari, Mail, Finder, or any macOS app with the same muscle memory you use in Vim. Vimnav brings powerful keyboard-driven navigation to your entire desktop.
