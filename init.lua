@@ -93,9 +93,9 @@ local log
 ---@field passthrough? string Color of passthrough mode indicator
 
 ---@class Hs.Vimnav.Config.Mapping
----@field normal? table<string, string|table|function> Normal mode mappings
----@field insertNormal? table<string, string|table|function> Insert normal mode mappings
----@field insertVisual? table<string, string|table|function> Insert visual mode mappings
+---@field normal? table<string, string|table|function|"noop"> Normal mode mappings
+---@field insertNormal? table<string, string|table|function|"noop"> Insert normal mode mappings
+---@field insertVisual? table<string, string|table|function|"noop"> Insert visual mode mappings
 
 ---@class Hs.Vimnav.State
 ---@field mode number Vimnav mode
@@ -148,34 +148,42 @@ local defaultModeChars = {
 
 local DEFAULT_MAPPING = {
 	normal = {
-		["i"] = "cmdPassthroughMode",
-		-- movements
-		["h"] = "cmdScrollLeft",
-		["j"] = "cmdScrollDown",
-		["k"] = "cmdScrollUp",
-		["l"] = "cmdScrollRight",
-		["C-d"] = "cmdScrollHalfPageDown",
-		["C-u"] = "cmdScrollHalfPageUp",
-		["G"] = "cmdScrollToBottom",
-		["gg"] = "cmdScrollToTop",
-		["H"] = { "cmd", "[" }, -- history back
-		["L"] = { "cmd", "]" }, -- history forward
-		["f"] = "cmdGotoLink",
-		["r"] = "cmdRightClick",
-		["F"] = "cmdGotoLinkNewTab",
-		["di"] = "cmdDownloadImage",
-		["gf"] = "cmdMoveMouseToLink",
-		["gi"] = "cmdGotoInput",
-		["zz"] = "cmdMoveMouseToCenter",
-		["yy"] = "cmdCopyPageUrlToClipboard",
-		["yf"] = "cmdCopyLinkUrlToClipboard",
-		["]]"] = "cmdNextPage",
-		["[["] = "cmdPrevPage",
+		-- modes
+		["i"] = "enterPassthroughMode",
+		-- scrolls
+		["h"] = "scrollLeft",
+		["j"] = "scrollDown",
+		["k"] = "scrollUp",
+		["l"] = "scrollRight",
+		["C-d"] = "scrollHalfPageDown",
+		["C-u"] = "scrollHalfPageUp",
+		["G"] = "scrollToBottom",
+		["gg"] = "scrollToTop",
+		-- go back/forward
+		["H"] = { "cmd", "[" },
+		["L"] = { "cmd", "]" },
+		-- hints click
+		["f"] = "gotoLink",
+		["r"] = "rightClick",
+		["F"] = "gotoLinkNewTab",
+		["di"] = "downloadImage",
+		["gi"] = "gotoInput",
+		["yf"] = "copyLinkUrlToClipboard",
+		["gf"] = "moveMouseToLink",
+		-- move mouse
+		["zz"] = "moveMouseToCenter",
+		-- copy page url
+		["yy"] = "copyPageUrlToClipboard",
+		-- next/prev page
+		["]]"] = "gotoNextPage",
+		["[["] = "gotoPrevPage",
+		-- searches
 		["/"] = { "cmd", "f" },
 		["n"] = { "cmd", "g" },
 		["N"] = { { "cmd", "shift" }, "g" },
 	},
 	insertNormal = {
+		-- movements
 		["h"] = { {}, "left" },
 		["j"] = { {}, "down" },
 		["k"] = { {}, "up" },
@@ -186,24 +194,29 @@ local DEFAULT_MAPPING = {
 		["$"] = { "cmd", "right" },
 		["gg"] = { "cmd", "up" },
 		["G"] = { "cmd", "down" },
-		["diw"] = "cmdDeleteWord",
-		["ciw"] = "cmdChangeWord",
-		["yiw"] = "cmdYankWord",
-		["dd"] = "cmdDeleteLine",
-		["cc"] = "cmdChangeLine",
-		["yy"] = "cmdYankLine",
+		-- edits
+		["diw"] = "deleteWord",
+		["ciw"] = "changeWord",
+		["yiw"] = "yankWord",
+		["dd"] = "deleteLine",
+		["cc"] = "changeLine",
+		-- yank and paste
+		["yy"] = "yankLine",
+		["p"] = { "cmd", "v" },
+		-- undo/redo
 		["u"] = { "cmd", "z" },
 		["C-r"] = { { "cmd", "shift" }, "z" },
-		["i"] = "cmdInsertMode",
-		["o"] = "cmdInsertModeNewLineBelow",
-		["O"] = "cmdInsertModeNewLineAbove",
-		["A"] = "cmdInsertModeEnd",
-		["I"] = "cmdInsertModeStart",
-		["v"] = "cmdInsertVisualMode",
-		["V"] = "cmdInsertVisualLineMode",
-		["p"] = { "cmd", "v" },
+		-- modes
+		["i"] = "enterInsertMode",
+		["o"] = "enterInsertModeNewLineBelow",
+		["O"] = "enterInsertModeNewLineAbove",
+		["A"] = "enterInsertModeEndOfLine",
+		["I"] = "enterInsertModeStartLine",
+		["v"] = "enterInsertVisualMode",
+		["V"] = "enterInsertVisualLineMode",
 	},
 	insertVisual = {
+		-- movements
 		["h"] = { { "shift" }, "left" },
 		["j"] = { { "shift" }, "down" },
 		["k"] = { { "shift" }, "up" },
@@ -214,9 +227,11 @@ local DEFAULT_MAPPING = {
 		["$"] = { { "shift", "cmd" }, "right" },
 		["gg"] = { { "shift", "cmd" }, "up" },
 		["G"] = { { "shift", "cmd" }, "down" },
-		["d"] = "cmdDeleteHighlighted",
-		["c"] = "cmdChangeHighlighted",
-		["y"] = "cmdYankHighlighted",
+		-- edits
+		["d"] = "deleteHighlighted",
+		["c"] = "changeHighlighted",
+		-- yank
+		["y"] = "yankHighlighted",
 	},
 }
 
@@ -905,13 +920,20 @@ function Utils.fetchMappingPrefixes()
 	State.mappingPrefixes.insertNormal = {}
 	State.mappingPrefixes.insertVisual = {}
 
-	for k, _ in pairs(M.config.mapping.normal) do
+	for k, v in pairs(M.config.mapping.normal) do
+		if v == "noop" then
+			goto continue
+		end
 		if #k == 2 then
 			State.mappingPrefixes.normal[string.sub(k, 1, 1)] = true
 		end
+		::continue::
 	end
 
-	for k, _ in pairs(M.config.mapping.insertNormal) do
+	for k, v in pairs(M.config.mapping.insertNormal) do
+		if v == "noop" then
+			goto continue
+		end
 		if #k == 2 then
 			State.mappingPrefixes.insertNormal[string.sub(k, 1, 1)] = true
 		end
@@ -919,12 +941,17 @@ function Utils.fetchMappingPrefixes()
 			State.mappingPrefixes.insertNormal[string.sub(k, 1, 1)] = true
 			State.mappingPrefixes.insertNormal[string.sub(k, 1, 2)] = true
 		end
+		::continue::
 	end
 
 	for k, _ in pairs(M.config.mapping.insertVisual) do
+		if v == "noop" then
+			goto continue
+		end
 		if #k == 2 then
 			State.mappingPrefixes.insertVisual[string.sub(k, 1, 1)] = true
 		end
+		::continue::
 	end
 
 	log.df("Fetched mapping prefixes")
@@ -2125,67 +2152,67 @@ end
 
 ---Scrolls left
 ---@return nil
-function Commands.cmdScrollLeft()
+function Commands.scrollLeft()
 	Actions.smoothScroll({ x = M.config.scroll.scrollStep })
 end
 
 ---Scrolls right
 ---@return nil
-function Commands.cmdScrollRight()
+function Commands.scrollRight()
 	Actions.smoothScroll({ x = -M.config.scroll.scrollStep })
 end
 
 ---Scrolls up
 ---@return nil
-function Commands.cmdScrollUp()
+function Commands.scrollUp()
 	Actions.smoothScroll({ y = M.config.scroll.scrollStep })
 end
 
 ---Scrolls down
 ---@return nil
-function Commands.cmdScrollDown()
+function Commands.scrollDown()
 	Actions.smoothScroll({ y = -M.config.scroll.scrollStep })
 end
 
 ---Scrolls half page down
 ---@return nil
-function Commands.cmdScrollHalfPageDown()
+function Commands.scrollHalfPageDown()
 	Actions.smoothScroll({ y = -M.config.scroll.scrollStepHalfPage })
 end
 
 ---Scrolls half page up
 ---@return nil
-function Commands.cmdScrollHalfPageUp()
+function Commands.scrollHalfPageUp()
 	Actions.smoothScroll({ y = M.config.scroll.scrollStepHalfPage })
 end
 
 ---Scrolls to top
 ---@return nil
-function Commands.cmdScrollToTop()
+function Commands.scrollToTop()
 	Actions.smoothScroll({ y = M.config.scroll.scrollStepFullPage })
 end
 
 ---Scrolls to bottom
 ---@return nil
-function Commands.cmdScrollToBottom()
+function Commands.scrollToBottom()
 	Actions.smoothScroll({ y = -M.config.scroll.scrollStepFullPage })
 end
 
 ---Switches to passthrough mode
 ---@return boolean
-function Commands.cmdPassthroughMode()
+function Commands.enterPassthroughMode()
 	return ModeManager.setModePassthrough()
 end
 
 ---Switches to insert mode
 ---@return boolean
-function Commands.cmdInsertMode()
+function Commands.enterInsertMode()
 	return ModeManager.setModeInsert()
 end
 
 ---Switches to insert mode and make a new line above
 ---@return boolean
-function Commands.cmdInsertModeNewLineAbove()
+function Commands.enterInsertModeNewLineAbove()
 	Utils.keyStroke({}, "up")
 	Utils.keyStroke("cmd", "right")
 	Utils.keyStroke("ctrl", "o")
@@ -2195,7 +2222,7 @@ end
 
 ---Switches to insert mode and make a new line below
 ---@return boolean
-function Commands.cmdInsertModeNewLineBelow()
+function Commands.enterInsertModeNewLineBelow()
 	Utils.keyStroke("cmd", "right")
 	Utils.keyStroke("ctrl", "o")
 	Utils.keyStroke({}, "down")
@@ -2204,27 +2231,27 @@ end
 
 ---Switches to insert mode and put cursor at the end of the line
 ---@return boolean
-function Commands.cmdInsertModeEnd()
+function Commands.enterInsertModeEndOfLine()
 	Utils.keyStroke("cmd", "right")
 	return ModeManager.setModeInsert()
 end
 
 ---Switches to insert mode and put cursor at the start of the line
 ---@return boolean
-function Commands.cmdInsertModeStart()
+function Commands.enterInsertModeStartLine()
 	Utils.keyStroke("cmd", "left")
 	return ModeManager.setModeInsert()
 end
 
 ---Switches to insert visual mode
 ---@return boolean
-function Commands.cmdInsertVisualMode()
+function Commands.enterInsertVisualMode()
 	return ModeManager.setModeInsertVisual()
 end
 
 ---Switches to insert visual mode with line selection
 ---@return boolean
-function Commands.cmdInsertVisualLineMode()
+function Commands.enterInsertVisualLineMode()
 	Utils.keyStroke("cmd", "left")
 	Utils.keyStroke({ "shift", "cmd" }, "right")
 
@@ -2233,7 +2260,7 @@ end
 
 ---Switches to links mode
 ---@return nil
-function Commands.cmdGotoLink()
+function Commands.gotoLink()
 	local ok = ModeManager.setModeLink()
 
 	if not ok then
@@ -2259,7 +2286,7 @@ end
 
 ---Go to input mode
 ---@return nil
-function Commands.cmdGotoInput()
+function Commands.gotoInput()
 	local ok = ModeManager.setModeLink()
 
 	if not ok then
@@ -2288,7 +2315,7 @@ end
 
 ---Right click
 ---@return nil
-function Commands.cmdRightClick()
+function Commands.rightClick()
 	local ok = ModeManager.setModeLink()
 
 	if not ok then
@@ -2314,7 +2341,7 @@ end
 
 ---Go to link in new tab
 ---@return nil
-function Commands.cmdGotoLinkNewTab()
+function Commands.gotoLinkNewTab()
 	if not Utils.isInBrowser() then
 		hs.alert.show("Only available in browser", nil, nil, 2)
 		return
@@ -2339,7 +2366,7 @@ end
 
 ---Download image
 ---@return nil
-function Commands.cmdDownloadImage()
+function Commands.downloadImage()
 	if not Utils.isInBrowser() then
 		hs.alert.show("Only available in browser", nil, nil, 2)
 		return
@@ -2428,7 +2455,7 @@ end
 
 ---Move mouse to link
 ---@return nil
-function Commands.cmdMoveMouseToLink()
+function Commands.moveMouseToLink()
 	local ok = ModeManager.setModeLink()
 
 	if not ok then
@@ -2451,7 +2478,7 @@ end
 
 ---Copy link URL to clipboard
 ---@return nil
-function Commands.cmdCopyLinkUrlToClipboard()
+function Commands.copyLinkUrlToClipboard()
 	if not Utils.isInBrowser() then
 		hs.alert.show("Only available in browser", nil, nil, 2)
 		return
@@ -2478,7 +2505,7 @@ end
 
 ---Next page
 ---@return nil
-function Commands.cmdNextPage()
+function Commands.gotoNextPage()
 	if not Utils.isInBrowser() then
 		hs.alert.show("Only available in browser", nil, nil, 2)
 		return
@@ -2504,7 +2531,7 @@ end
 
 ---Prev page
 ---@return nil
-function Commands.cmdPrevPage()
+function Commands.gotoPrevPage()
 	if not Utils.isInBrowser() then
 		hs.alert.show("Only available in browser", nil, nil, 2)
 		return
@@ -2528,7 +2555,7 @@ end
 
 ---Copy page URL to clipboard
 ---@return nil
-function Commands.cmdCopyPageUrlToClipboard()
+function Commands.copyPageUrlToClipboard()
 	if not Utils.isInBrowser() then
 		hs.alert.show("Only available in browser", nil, nil, 2)
 		return
@@ -2543,7 +2570,7 @@ end
 
 ---Move mouse to center
 ---@return nil
-function Commands.cmdMoveMouseToCenter()
+function Commands.moveMouseToCenter()
 	local window = Elements.getWindow()
 	if not window then
 		return
@@ -2556,50 +2583,50 @@ function Commands.cmdMoveMouseToCenter()
 	})
 end
 
-function Commands.cmdDeleteWord()
+function Commands.deleteWord()
 	Utils.keyStroke("alt", "right")
 	Utils.keyStroke("alt", "delete")
 end
 
-function Commands.cmdChangeWord()
+function Commands.changeWord()
 	Commands.cmdDeleteWord()
 	ModeManager.setModeInsert()
 end
 
-function Commands.cmdYankWord()
+function Commands.yankWord()
 	Utils.keyStroke("alt", "right")
 	Utils.keyStroke({ "shift", "alt" }, "left")
 	Utils.keyStroke("cmd", "c")
 	Utils.keyStroke({}, "right")
 end
 
-function Commands.cmdDeleteLine()
+function Commands.deleteLine()
 	Utils.keyStroke("cmd", "right")
 	Utils.keyStroke("cmd", "delete")
 end
 
-function Commands.cmdChangeLine()
+function Commands.changeLine()
 	Commands.cmdDeleteLine()
 	ModeManager.setModeInsert()
 end
 
-function Commands.cmdYankLine()
+function Commands.yankLine()
 	Utils.keyStroke("cmd", "left")
 	Utils.keyStroke({ "shift", "cmd" }, "right")
 	Utils.keyStroke("cmd", "c")
 	Utils.keyStroke({}, "right")
 end
 
-function Commands.cmdDeleteHighlighted()
+function Commands.deleteHighlighted()
 	Utils.keyStroke({}, "delete")
 end
 
-function Commands.cmdChangeHighlighted()
+function Commands.changeHighlighted()
 	Commands.cmdDeleteHighlighted()
 	ModeManager.setModeInsert()
 end
 
-function Commands.cmdYankHighlighted()
+function Commands.yankHighlighted()
 	Utils.keyStroke("cmd", "c")
 	Utils.keyStroke({}, "right")
 end
@@ -2680,11 +2707,15 @@ function EventHandler.handleVimInput(char, opts)
 
 	if mapping then
 		if type(mapping) == "string" then
-			local cmd = Commands[mapping]
-			if cmd then
-				cmd()
+			if mapping == "noop" then
+				log.df("No mapping")
 			else
-				log.wf("Unknown command: " .. mapping)
+				local cmd = Commands[mapping]
+				if cmd then
+					cmd()
+				else
+					log.wf("Unknown command: " .. mapping)
+				end
 			end
 		elseif type(mapping) == "table" then
 			Utils.keyStroke(mapping[1], mapping[2])
@@ -2693,7 +2724,7 @@ function EventHandler.handleVimInput(char, opts)
 		end
 		State.keyCapture = nil
 	elseif prefixes and prefixes[State.keyCapture] then
-		-- do nothing?
+		log.df("Found prefix: " .. State.keyCapture)
 	else
 		State.keyCapture = nil
 	end
@@ -3316,6 +3347,12 @@ function M:debug()
 		config = M.config,
 		state = State,
 	}
+end
+
+---Returns default config
+---@return table
+function M:getDefaultConfig()
+	return Utils.deepCopy(DEFAULT_CONFIG)
 end
 
 return M
