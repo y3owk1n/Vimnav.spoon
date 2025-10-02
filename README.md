@@ -409,54 +409,99 @@ spoon.Vimnav:debug()                     -- Returns state and config
 
 ```lua
 {
-    -- Logging
-    logLevel = "warning",                    -- "debug", "info", "warning", "error"
+ -- Logging
+ logLevel = "warning", -- "debug", "info", "warning", "error"
 
-    -- Link Hints
-    linkHintChars = "abcdefghijklmnopqrstuvwxyz",
+ -- Link Hints
+ linkHintChars = "abcdefghijklmnopqrstuvwxyz",
 
-    -- Timing
-    doublePressDelay = 0.3,                  -- Double-press detection (seconds)
-    focusCheckInterval = 0.1,                -- Focus check frequency (seconds)
+ -- Timing
+ doublePressDelay = 0.3, -- Double-press detection (seconds)
+ focusCheckInterval = 0.1, -- Focus check frequency (seconds)
 
-    -- Scrolling
-    scrollStep = 50,                         -- Basic scroll distance (pixels)
-    scrollStepHalfPage = 500,               -- Half-page scroll (pixels)
-    scrollStepFullPage = 1000000,           -- Full-page scroll (pixels)
-    smoothScroll = true,                     -- Enable smooth scrolling
-    smoothScrollFramerate = 120,             -- Smooth scroll FPS
+ -- Scrolling
+ scrollStep = 50, -- Basic scroll distance (pixels)
+ scrollStepHalfPage = 500, -- Half-page scroll (pixels)
+ scrollStepFullPage = 1e6, -- Full-page scroll (pixels)
+ smoothScroll = true, -- Enable smooth scrolling
+ smoothScrollFramerate = 120, -- Smooth scroll FPS
 
-    -- Performance
-    depth = 20,                              -- Element traversal depth
+ -- Performance
+ depth = 20, -- Element traversal depth
 
-    -- Application Lists
-    excludedApps = {
-        "Terminal", "Alacritty", "iTerm2", "Kitty", "Ghostty"
-    },
-    browsers = {
-        "Safari", "Google Chrome", "Firefox",
-        "Microsoft Edge", "Brave Browser", "Zen"
-    },
-    launchers = {
-        "Spotlight", "Raycast", "Alfred"
-    },
+ -- Application Lists
+ excludedApps = {
+  "Terminal",
+  "Alacritty",
+  "iTerm2",
+  "Kitty",
+  "Ghostty",
+ },
+ browsers = {
+  "Safari",
+  "Google Chrome",
+  "Firefox",
+  "Microsoft Edge",
+  "Brave Browser",
+  "Zen",
+ },
+ launchers = {
+  "Spotlight",
+  "Raycast",
+  "Alfred",
+ },
 
-    -- Accessibility Roles
-    axEditableRoles = {
-        "AXTextField", "AXComboBox", "AXTextArea", "AXSearchField"
-    },
-    axJumpableRoles = {
-        "AXLink", "AXButton", "AXPopUpButton", "AXComboBox",
-        "AXTextField", "AXTextArea", "AXCheckBox", "AXRadioButton",
-        "AXDisclosureTriangle", "AXMenuButton", "AXMenuBarItem", "AXMenuItem", "AXRow"
-    },
+ -- Accessibility Roles
+ axEditableRoles = {
+  "AXTextField",
+  "AXComboBox",
+  "AXTextArea",
+  "AXSearchField",
+ },
+ axJumpableRoles = {
+  "AXLink",
+  "AXButton",
+  "AXPopUpButton",
+  "AXComboBox",
+  "AXTextField",
+  "AXTextArea",
+  "AXCheckBox",
+  "AXRadioButton",
+  "AXDisclosureTriangle",
+  "AXMenuButton",
+  "AXMenuBarItem",
+  "AXMenuItem",
+  "AXRow",
+ },
 
-    -- Keybindings
-    mapping = {
-        normal = { ... },        -- Normal mode mappings
-        insertNormal = { ... },  -- Insert normal mode mappings
-        insertVisual = { ... },  -- Insert visual mode mappings
-    }
+ -- Keybindings
+ mapping = {
+  normal = { ... }, -- Normal mode mappings
+  insertNormal = { ... }, -- Insert normal mode mappings
+  insertVisual = { ... }, -- Insert visual mode mappings
+ },
+
+ -- Menubar indicator
+ menubar = {
+  enabled = true,
+ },
+
+ -- Overlay indicator
+ overlay = {
+  enabled = false,
+  position = "top-center",
+  size = 25,
+  padding = 2,
+  colors = {
+   disabled = "#5a5672",
+   normal = "#80b8e8",
+   insert = "#abe9b3",
+   insertNormal = "#f9e2af",
+   insertVisual = "#c9a0e9",
+   links = "#f8bd96",
+   passthrough = "#f28fad",
+  },
+ },
 }
 ```
 
