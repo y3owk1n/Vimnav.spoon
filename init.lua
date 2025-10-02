@@ -21,6 +21,7 @@ M.license = "MIT - https://opensource.org/licenses/MIT"
 local Utils = {}
 local Elements = {}
 local MenuBar = {}
+local Overlay = {}
 local ModeManager = {}
 local Actions = {}
 local ElementFinder = {}
@@ -57,6 +58,27 @@ local log
 ---@field excludedApps? string[] Apps to exclude from Vimnav (e.g. Terminal)
 ---@field browsers? string[] Browsers to to detect for browser specific actions (e.g. Safari)
 ---@field launchers? string[] Launchers to to detect for launcher specific actions (e.g. Spotlight)
+---@field menubar? Hs.Vimnav.Config.Menubar Configure menubar indicator
+---@field overlay? Hs.Vimnav.Config.Overlay Configure overlay indicator
+
+---@class Hs.Vimnav.Config.Menubar
+---@field enabled? boolean Enable menubar indicator
+
+---@class Hs.Vimnav.Config.Overlay
+---@field enabled? boolean Enable overlay mode indicator
+---@field position? "top-left"|"top-center"|"top-right"|"bottom-left"|"bottom-center"|"bottom-right"|"left-top"|"left-center"|"left-bottom"|"right-top"|"right-center"|"right-bottom" Position of overlay indicator
+---@field size? number Size of overlay indicator in pixels
+---@field padding? number Padding of overlay indicator in pixels from the screen frame
+---@field colors? Hs.Vimnav.Config.Overlay.Colors Colors of overlay indicator
+
+---@class Hs.Vimnav.Config.Overlay.Colors
+---@field disabled? string Color of disabled mode indicator
+---@field normal? string Color of normal mode indicator
+---@field insert? string Color of insert mode indicator
+---@field insertNormal? string Color of insert normal mode indicator
+---@field insertVisual? string Color of insert visual mode indicator
+---@field links? string Color of links mode indicator
+---@field passthrough? string Color of passthrough mode indicator
 
 ---@class Hs.Vimnav.Config.Mapping
 ---@field normal? table<string, string|table> Normal mode mappings
@@ -242,6 +264,24 @@ local DEFAULT_CONFIG = {
 		"Zen",
 	},
 	launchers = { "Spotlight", "Raycast", "Alfred" },
+	menubar = {
+		enabled = true,
+	},
+	overlay = {
+		enabled = false,
+		position = "top-center",
+		size = 25,
+		padding = 2,
+		colors = {
+			disabled = "#5a5672",
+			normal = "#80b8e8",
+			insert = "#abe9b3",
+			insertNormal = "#f9e2af",
+			insertVisual = "#c9a0e9",
+			links = "#f8bd96",
+			passthrough = "#f28fad",
+		},
+	},
 }
 
 --------------------------------------------------------------------------------
@@ -1002,6 +1042,10 @@ end
 ---Creates the menu bar item
 ---@return nil
 function MenuBar.create()
+	if not M.config.menubar.enabled then
+		return
+	end
+
 	if MenuBar.item then
 		MenuBar.destroy()
 	end
@@ -1014,7 +1058,7 @@ end
 ---@param mode number
 ---@param keys string|nil
 function MenuBar.setTitle(mode, keys)
-	if not MenuBar.item then
+	if not M.config.menubar.enabled or not MenuBar.item then
 		return
 	end
 
@@ -1040,6 +1084,286 @@ function MenuBar.destroy()
 end
 
 --------------------------------------------------------------------------------
+-- Overlay Indicator
+--------------------------------------------------------------------------------
+
+---Creates the overlay indicator
+---@return nil
+function Overlay.create()
+	if not M.config.overlay.enabled then
+		return
+	end
+
+	if Overlay.canvas then
+		Overlay.destroy()
+	end
+
+	local screen = hs.screen.mainScreen()
+	local frame = screen:fullFrame()
+	local height = M.config.overlay.size or 30
+	local position = M.config.overlay.position or "top-center"
+
+	-- Start with a default width, will be adjusted when text is set
+	local initialWidth = height * 2
+
+	local overlayFrame
+
+	-- Parse position string
+	local parts = {}
+	for part in position:gmatch("[^-]+") do
+		table.insert(parts, part)
+	end
+
+	local edge = parts[1] -- top, bottom, left, right
+	local alignment = parts[2] -- left, center, right, top, bottom
+
+	local padding = M.config.overlay.padding
+
+	if edge == "top" then
+		if alignment == "left" then
+			overlayFrame = {
+				x = frame.x + padding,
+				y = frame.y + padding,
+				w = initialWidth,
+				h = height,
+			}
+		elseif alignment == "center" then
+			overlayFrame = {
+				x = frame.x + (frame.w / 2) - (initialWidth / 2),
+				y = frame.y + padding,
+				w = initialWidth,
+				h = height,
+			}
+		elseif alignment == "right" then
+			overlayFrame = {
+				x = frame.x + frame.w - initialWidth - padding,
+				y = frame.y + padding,
+				w = initialWidth,
+				h = height,
+			}
+		end
+	elseif edge == "bottom" then
+		if alignment == "left" then
+			overlayFrame = {
+				x = frame.x + padding,
+				y = frame.y + frame.h - height - padding,
+				w = initialWidth,
+				h = height,
+			}
+		elseif alignment == "center" then
+			overlayFrame = {
+				x = frame.x + (frame.w / 2) - (initialWidth / 2),
+				y = frame.y + frame.h - height - padding,
+				w = initialWidth,
+				h = height,
+			}
+		elseif alignment == "right" then
+			overlayFrame = {
+				x = frame.x + frame.w - initialWidth - padding,
+				y = frame.y + frame.h - height - padding,
+				w = initialWidth,
+				h = height,
+			}
+		end
+	elseif edge == "left" then
+		if alignment == "top" then
+			overlayFrame = {
+				x = frame.x + padding,
+				y = frame.y + padding,
+				w = initialWidth,
+				h = height,
+			}
+		elseif alignment == "center" then
+			overlayFrame = {
+				x = frame.x + padding,
+				y = frame.y + (frame.h / 2) - (height / 2),
+				w = initialWidth,
+				h = height,
+			}
+		elseif alignment == "bottom" then
+			overlayFrame = {
+				x = frame.x + padding,
+				y = frame.y + frame.h - height - padding,
+				w = initialWidth,
+				h = height,
+			}
+		end
+	elseif edge == "right" then
+		if alignment == "top" then
+			overlayFrame = {
+				x = frame.x + frame.w - initialWidth - padding,
+				y = frame.y + padding,
+				w = initialWidth,
+				h = height,
+			}
+		elseif alignment == "center" then
+			overlayFrame = {
+				x = frame.x + frame.w - initialWidth - padding,
+				y = frame.y + (frame.h / 2) - (height / 2),
+				w = initialWidth,
+				h = height,
+			}
+		elseif alignment == "bottom" then
+			overlayFrame = {
+				x = frame.x + frame.w - initialWidth - padding,
+				y = frame.y + frame.h - height - padding,
+				w = initialWidth,
+				h = height,
+			}
+		end
+	end
+
+	Overlay.canvas = hs.canvas.new(overlayFrame)
+	Overlay.canvas:level("overlay")
+	Overlay.canvas:behavior("canJoinAllSpaces")
+
+	log.df("Created overlay indicator at " .. position)
+end
+
+---Convert hex to RGB table
+---@param hex string
+---@return table
+local function hexToRgb(hex)
+	hex = hex:gsub("#", "")
+	return {
+		red = tonumber("0x" .. hex:sub(1, 2)) / 255,
+		green = tonumber("0x" .. hex:sub(3, 4)) / 255,
+		blue = tonumber("0x" .. hex:sub(5, 6)) / 255,
+	}
+end
+
+---Get color for mode
+---@param mode number
+---@return table
+function Overlay.getModeColor(mode)
+	local colors = {
+		[MODES.DISABLED] = hexToRgb(
+			M.config.overlay.colors.disabled or "#5a5672"
+		),
+		[MODES.NORMAL] = hexToRgb(M.config.overlay.colors.normal or "#80b8e8"),
+		[MODES.INSERT] = hexToRgb(M.config.overlay.colors.insert or "#abe9b3"),
+		[MODES.INSERT_NORMAL] = hexToRgb(
+			M.config.overlay.colors.insertNormal or "#f9e2af"
+		),
+		[MODES.INSERT_VISUAL] = hexToRgb(
+			M.config.overlay.colors.insertVisual or "#c9a0e9"
+		),
+		[MODES.LINKS] = hexToRgb(M.config.overlay.colors.links or "#f8bd96"),
+		[MODES.PASSTHROUGH] = hexToRgb(
+			M.config.overlay.colors.passthrough or "#f28fad"
+		),
+	}
+	return colors[mode]
+		or hexToRgb(M.config.overlay.colors.disabled or "#5a5672")
+end
+
+---Updates the overlay indicator
+---@param mode number
+---@param keys? string|nil
+---@return nil
+function Overlay.update(mode, keys)
+	if not M.config.overlay.enabled or not Overlay.canvas then
+		return
+	end
+
+	local color = Overlay.getModeColor(mode)
+	local modeChar = defaultModeChars[mode] or "?"
+	local fontSize = M.config.overlay.size / 2
+	local padding = 0
+
+	-- Build display text
+	local displayText = modeChar
+	if keys then
+		displayText = string.format("%s [%s]", modeChar, keys)
+	end
+
+	-- Calculate text width (approximate)
+	local charWidth = fontSize * 0.65
+	local textWidth = #displayText * charWidth
+	local newWidth = textWidth + (padding * 2)
+
+	local height = M.config.overlay.size or 30
+
+	if newWidth < height then
+		newWidth = height
+	end
+
+	-- Get current frame
+	local currentFrame = Overlay.canvas:frame()
+	local screen = hs.screen.mainScreen()
+	local screenFrame = screen:fullFrame()
+	local position = M.config.overlay.position or "top-center"
+
+	-- Parse position
+	local parts = {}
+	for part in position:gmatch("[^-]+") do
+		table.insert(parts, part)
+	end
+	local edge = parts[1]
+	local alignment = parts[2]
+
+	-- Calculate new X position based on alignment
+	local newX = currentFrame.x
+	if edge == "top" or edge == "bottom" then
+		if alignment == "center" then
+			newX = screenFrame.x + (screenFrame.w / 2) - (newWidth / 2)
+		elseif alignment == "right" then
+			newX = screenFrame.x + screenFrame.w - newWidth - 10
+		end
+	elseif edge == "left" or edge == "right" then
+		if edge == "right" then
+			newX = screenFrame.x + screenFrame.w - newWidth - 10
+		end
+	end
+
+	-- Update canvas frame
+	Overlay.canvas:frame({
+		x = newX,
+		y = currentFrame.y,
+		w = newWidth,
+		h = height,
+	})
+
+	-- Apply alpha to color
+	color.alpha = 0.2
+	local textColor = Overlay.getModeColor(mode)
+
+	Overlay.canvas:replaceElements({
+		{
+			type = "rectangle",
+			action = "fill",
+			fillColor = color,
+			roundedRectRadii = { xRadius = 8, yRadius = 8 },
+		},
+		{
+			type = "text",
+			text = displayText,
+			textAlignment = "center",
+			textColor = textColor,
+			textSize = fontSize,
+			textFont = ".AppleSystemUIFontBold",
+			frame = {
+				x = 0,
+				y = (height - fontSize) / 2 - 2,
+				w = newWidth,
+				h = fontSize + 4,
+			},
+		},
+	})
+	Overlay.canvas:show()
+end
+
+---Destroys the overlay indicator
+---@return nil
+function Overlay.destroy()
+	if Overlay.canvas then
+		Overlay.canvas:delete()
+		Overlay.canvas = nil
+		log.df("Destroyed overlay indicator")
+	end
+end
+
+--------------------------------------------------------------------------------
 -- Mode Management
 --------------------------------------------------------------------------------
 
@@ -1058,6 +1382,7 @@ function ModeManager.setMode(mode)
 	State.mode = mode
 
 	MenuBar.setTitle(mode)
+	Overlay.update(mode)
 
 	log.df(string.format("Mode changed: %s -> %s", previousMode, mode))
 
@@ -2290,6 +2615,7 @@ function EventHandler.handleVimInput(char, opts)
 	end
 
 	MenuBar.setTitle(State.mode, State.keyCapture)
+	Overlay.update(State.mode, State.keyCapture)
 
 	-- Execute mapping
 	local mapping
@@ -2919,6 +3245,7 @@ function M:start()
 	startLaunchersWatcher()
 	setupPeriodicCleanup()
 	MenuBar.create()
+	Overlay.create()
 
 	local currentApp = Elements.getApp()
 	if
@@ -2954,6 +3281,7 @@ function M:stop()
 	end
 
 	MenuBar.destroy()
+	Overlay.destroy()
 	Marks.clear()
 
 	cleanupOnAppSwitch()

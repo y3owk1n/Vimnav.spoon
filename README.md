@@ -231,6 +231,49 @@ spoon.Vimnav:configure({
 }):start()
 ```
 
+### Indicator
+
+#### Menubar indicator
+
+<https://github.com/user-attachments/assets/671cc359-3500-4baa-baa5-1582d39c8986>
+
+By default, Vimnav shows a small indicator in the menu bar.
+
+```lua
+spoon.Vimnav:configure({
+    menubar = { enabled = false } -- disable the menubar indicator
+})
+```
+
+#### Overlay indicator
+
+Vimnav can also show an overlay indicator in the certain position of the screen.
+
+<https://github.com/user-attachments/assets/a43af6b7-0947-4e2b-bc91-9b8cf969ee28>
+
+```lua
+spoon.Vimnav:configure({
+ menubar = {
+  enabled = false, -- disable the menubar indicator
+ },
+ overlay = {
+  enabled = true, -- enable the overlay indicator
+  position = "top-center", -- pick a position, this is the default
+  size = 25, -- pick a size, this is the default
+  padding = 2, -- pick a padding, this is the default
+  colors = { -- colors for different modes
+   disabled = "#5a5672",
+   normal = "#80b8e8",
+   insert = "#abe9b3",
+   insertNormal = "#f9e2af",
+   insertVisual = "#c9a0e9",
+   links = "#f8bd96",
+   passthrough = "#f28fad",
+  },
+ },
+})
+```
+
 ### Advanced Configuration
 
 #### Array Extension Behavior
@@ -366,54 +409,99 @@ spoon.Vimnav:debug()                     -- Returns state and config
 
 ```lua
 {
-    -- Logging
-    logLevel = "warning",                    -- "debug", "info", "warning", "error"
+ -- Logging
+ logLevel = "warning", -- "debug", "info", "warning", "error"
 
-    -- Link Hints
-    linkHintChars = "abcdefghijklmnopqrstuvwxyz",
+ -- Link Hints
+ linkHintChars = "abcdefghijklmnopqrstuvwxyz",
 
-    -- Timing
-    doublePressDelay = 0.3,                  -- Double-press detection (seconds)
-    focusCheckInterval = 0.1,                -- Focus check frequency (seconds)
+ -- Timing
+ doublePressDelay = 0.3, -- Double-press detection (seconds)
+ focusCheckInterval = 0.1, -- Focus check frequency (seconds)
 
-    -- Scrolling
-    scrollStep = 50,                         -- Basic scroll distance (pixels)
-    scrollStepHalfPage = 500,               -- Half-page scroll (pixels)
-    scrollStepFullPage = 1000000,           -- Full-page scroll (pixels)
-    smoothScroll = true,                     -- Enable smooth scrolling
-    smoothScrollFramerate = 120,             -- Smooth scroll FPS
+ -- Scrolling
+ scrollStep = 50, -- Basic scroll distance (pixels)
+ scrollStepHalfPage = 500, -- Half-page scroll (pixels)
+ scrollStepFullPage = 1e6, -- Full-page scroll (pixels)
+ smoothScroll = true, -- Enable smooth scrolling
+ smoothScrollFramerate = 120, -- Smooth scroll FPS
 
-    -- Performance
-    depth = 20,                              -- Element traversal depth
+ -- Performance
+ depth = 20, -- Element traversal depth
 
-    -- Application Lists
-    excludedApps = {
-        "Terminal", "Alacritty", "iTerm2", "Kitty", "Ghostty"
-    },
-    browsers = {
-        "Safari", "Google Chrome", "Firefox",
-        "Microsoft Edge", "Brave Browser", "Zen"
-    },
-    launchers = {
-        "Spotlight", "Raycast", "Alfred"
-    },
+ -- Application Lists
+ excludedApps = {
+  "Terminal",
+  "Alacritty",
+  "iTerm2",
+  "Kitty",
+  "Ghostty",
+ },
+ browsers = {
+  "Safari",
+  "Google Chrome",
+  "Firefox",
+  "Microsoft Edge",
+  "Brave Browser",
+  "Zen",
+ },
+ launchers = {
+  "Spotlight",
+  "Raycast",
+  "Alfred",
+ },
 
-    -- Accessibility Roles
-    axEditableRoles = {
-        "AXTextField", "AXComboBox", "AXTextArea", "AXSearchField"
-    },
-    axJumpableRoles = {
-        "AXLink", "AXButton", "AXPopUpButton", "AXComboBox",
-        "AXTextField", "AXTextArea", "AXCheckBox", "AXRadioButton",
-        "AXDisclosureTriangle", "AXMenuButton", "AXMenuBarItem", "AXMenuItem", "AXRow"
-    },
+ -- Accessibility Roles
+ axEditableRoles = {
+  "AXTextField",
+  "AXComboBox",
+  "AXTextArea",
+  "AXSearchField",
+ },
+ axJumpableRoles = {
+  "AXLink",
+  "AXButton",
+  "AXPopUpButton",
+  "AXComboBox",
+  "AXTextField",
+  "AXTextArea",
+  "AXCheckBox",
+  "AXRadioButton",
+  "AXDisclosureTriangle",
+  "AXMenuButton",
+  "AXMenuBarItem",
+  "AXMenuItem",
+  "AXRow",
+ },
 
-    -- Keybindings
-    mapping = {
-        normal = { ... },        -- Normal mode mappings
-        insertNormal = { ... },  -- Insert normal mode mappings
-        insertVisual = { ... },  -- Insert visual mode mappings
-    }
+ -- Keybindings
+ mapping = {
+  normal = { ... }, -- Normal mode mappings
+  insertNormal = { ... }, -- Insert normal mode mappings
+  insertVisual = { ... }, -- Insert visual mode mappings
+ },
+
+ -- Menubar indicator
+ menubar = {
+  enabled = true,
+ },
+
+ -- Overlay indicator
+ overlay = {
+  enabled = false,
+  position = "top-center",
+  size = 25,
+  padding = 2,
+  colors = {
+   disabled = "#5a5672",
+   normal = "#80b8e8",
+   insert = "#abe9b3",
+   insertNormal = "#f9e2af",
+   insertVisual = "#c9a0e9",
+   links = "#f8bd96",
+   passthrough = "#f28fad",
+  },
+ },
 }
 ```
 
