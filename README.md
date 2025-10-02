@@ -62,6 +62,12 @@ Press `f` in Safari to see link hints overlay on all clickable elements. Type th
 | `gg`/`G`        | Jump      | Top or bottom of page          |
 | `H`/`L`         | History   | Back/forward (⌘[ / ⌘])         |
 
+### ❌ Passthrough Mode
+
+Press `i` to enter passthrough mode from normal mode. In this mode, every key press is sent to the app.
+
+To back to normal mode, press `Shift-Esc`.
+
 ### 🎯 Link Hints Mode
 
 Press `f` to enter link hints mode. Interactive elements get labeled:
@@ -73,14 +79,15 @@ Press `f` to enter link hints mode. Interactive elements get labeled:
 
 Type the letters (e.g., `AA`) to click that element instantly!
 
-| Key  | Action                | Works In |
-| ---- | --------------------- | -------- |
-| `f`  | Click element         | All apps |
-| `F`  | Open in new tab       | Browsers |
-| `r`  | Right-click element   | All apps |
-| `gi` | Jump to input field   | All apps |
-| `gf` | Move mouse to element | All apps |
-| `yf` | Copy link URL         | Browsers |
+| Key   | Action                | Works In |
+| ----- | --------------------- | -------- |
+| `f`   | Click element         | All apps |
+| `F`   | Open in new tab       | Browsers |
+| `r`   | Right-click element   | All apps |
+| `gi`  | Jump to input field   | All apps |
+| `gf`  | Move mouse to element | All apps |
+| `yf`  | Copy link URL         | Browsers |
+| `Esc` | Exit link             | All apps |
 
 ### ✍️ Text Editing Modes
 
@@ -120,35 +127,36 @@ Navigate and manipulate text without leaving the input field:
 
 **Mode Switching:**
 
-| Key   | Action               | Description               |
-| ----- | -------------------- | ------------------------- |
-| `i`   | Insert mode          | Return to insert mode     |
-| `A`   | Insert at line end   | Jump to end + insert mode |
-| `I`   | Insert at line start | Jump to start + insert    |
-| `v`   | Visual mode          | Enter visual mode         |
-| `V`   | Visual line mode     | Select entire line        |
-| `Esc` | Force unfocus        | Exit field completely     |
+| Key         | Action               | Description               |
+| ----------- | -------------------- | ------------------------- |
+| `i`         | Insert mode          | Return to insert mode     |
+| `A`         | Insert at line end   | Jump to end + insert mode |
+| `I`         | Insert at line start | Jump to start + insert    |
+| `v`         | Visual mode          | Enter visual mode         |
+| `V`         | Visual line mode     | Select entire line        |
+| `Shift-Esc` | Force unfocus        | Exit field completely     |
 
 #### 🎨 Insert Visual Mode (`v` from Insert Normal)
 
 Select text visually with Vim motions:
 
-| Key   | Action                | Description              |
-| ----- | --------------------- | ------------------------ |
-| `h`   | ⇧← extend left        | Extend selection left    |
-| `l`   | ⇧→ extend right       | Extend selection right   |
-| `j`   | ⇧↓ extend down        | Extend selection down    |
-| `k`   | ⇧↑ extend up          | Extend selection up      |
-| `e`   | ⇧⌥→ extend word end   | Extend to word end       |
-| `b`   | ⇧⌥← extend word back  | Extend to word start     |
-| `0`   | ⇧⌘← extend line start | Extend to line start     |
-| `$`   | ⇧⌘→ extend line end   | Extend to line end       |
-| `gg`  | ⇧⌘↑ extend doc start  | Extend to document start |
-| `G`   | ⇧⌘↓ extend doc end    | Extend to document end   |
-| `d`   | Delete selection      | Delete highlighted text  |
-| `c`   | Change selection      | Delete + insert mode     |
-| `y`   | Yank selection        | Copy highlighted text    |
-| `Esc` | Exit visual           | Back to insert normal    |
+| Key         | Action                | Description              |
+| ----------- | --------------------- | ------------------------ |
+| `h`         | ⇧← extend left        | Extend selection left    |
+| `l`         | ⇧→ extend right       | Extend selection right   |
+| `j`         | ⇧↓ extend down        | Extend selection down    |
+| `k`         | ⇧↑ extend up          | Extend selection up      |
+| `e`         | ⇧⌥→ extend word end   | Extend to word end       |
+| `b`         | ⇧⌥← extend word back  | Extend to word start     |
+| `0`         | ⇧⌘← extend line start | Extend to line start     |
+| `$`         | ⇧⌘→ extend line end   | Extend to line end       |
+| `gg`        | ⇧⌘↑ extend doc start  | Extend to document start |
+| `G`         | ⇧⌘↓ extend doc end    | Extend to document end   |
+| `d`         | Delete selection      | Delete highlighted text  |
+| `c`         | Change selection      | Delete + insert mode     |
+| `y`         | Yank selection        | Copy highlighted text    |
+| `Esc`       | Exit visual           | Back to insert normal    |
+| `Shift-Esc` | Force unfocus         | Exit field completely    |
 
 **🔄 Mode Flow:**
 
@@ -457,7 +465,6 @@ spoon.Vimnav:debug()                     -- Returns state and config
  },
 
  -- Timing
- doublePressDelay = 0.3,
  focusCheckInterval = 0.1,
 
  -- Keybindings

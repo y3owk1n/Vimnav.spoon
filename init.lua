@@ -44,7 +44,6 @@ local log
 ---@class Hs.Vimnav.Config
 ---@field logLevel? string Log level to show in the console
 ---@field hints? Hs.Vimnav.Config.Hints Settings for hints
----@field doublePressDelay? number Double press delay in seconds (e.g. 0.3 for 300ms)
 ---@field focusCheckInterval? number Focus check interval in seconds (e.g. 0.5 for 500ms)
 ---@field mapping? Hs.Vimnav.Config.Mapping Mappings to use
 ---@field scroll? Hs.Vimnav.Config.Scroll Scroll settings
@@ -223,7 +222,6 @@ local DEFAULT_CONFIG = {
 		fontSize = 12,
 		depth = 20,
 	},
-	doublePressDelay = 0.3,
 	focusCheckInterval = 0.1,
 	mapping = DEFAULT_MAPPING,
 	scroll = {
@@ -2688,29 +2686,13 @@ function EventHandler.isKey(keyCode, name)
 	return keyCode == hs.keycodes.map[name]
 end
 
-function EventHandler.handleEspaceKey(event, singleCb, doubleCb)
-	local hasDoubleCb = type(doubleCb) == "function"
+function EventHandler.isShiftEspace(event)
+	local flags = event:getFlags()
+	return flags.shift and EventHandler.isKey(event:getKeyCode(), "escape")
+end
 
-	if hasDoubleCb then
-		local delaySinceLastEscape = (
-			hs.timer.absoluteTime() - State.lastEscape
-		) / 1e9
-		State.lastEscape = hs.timer.absoluteTime()
-
-		if delaySinceLastEscape < M.config.doublePressDelay then
-			return doubleCb()
-		end
-
-		if type(singleCb) == "function" then
-			return singleCb()
-		end
-	else
-		if type(singleCb) == "function" then
-			return singleCb()
-		end
-	end
-
-	return false
+function EventHandler.isEspace(event)
+	return EventHandler.isKey(event:getKeyCode(), "escape")
 end
 
 ---Handles disabled mode
@@ -2724,15 +2706,9 @@ end
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.handlePassthroughMode(event)
-	local keyCode = event:getKeyCode()
-
-	if EventHandler.isKey(keyCode, "escape") then
-		local singleCb = function()
-			ModeManager.setModeNormal()
-			return true
-		end
-
-		return EventHandler.handleEspaceKey(event, singleCb, nil)
+	if EventHandler.isShiftEspace(event) then
+		ModeManager.setModeNormal()
+		return true
 	end
 
 	return false
@@ -2742,25 +2718,19 @@ end
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.handleInsertMode(event)
-	local keyCode = event:getKeyCode()
-
-	if EventHandler.isKey(keyCode, "escape") then
-		local doubleCb = function()
-			if Utils.isInBrowser() then
-				Actions.forceUnfocus()
-				hs.timer.doAfter(0.1, function()
-					ModeManager.setModeNormal()
-				end)
-			end
-			return true
+	if EventHandler.isShiftEspace(event) then
+		if Utils.isInBrowser() then
+			Actions.forceUnfocus()
+			hs.timer.doAfter(0.1, function()
+				ModeManager.setModeNormal()
+			end)
 		end
+		return true
+	end
 
-		local singleCb = function()
-			ModeManager.setModeInsertNormal()
-			return true
-		end
-
-		return EventHandler.handleEspaceKey(event, singleCb, doubleCb)
+	if EventHandler.isEspace(event) then
+		ModeManager.setModeInsertNormal()
+		return true
 	end
 
 	return false
@@ -2770,20 +2740,14 @@ end
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.handleInsertNormalMode(event)
-	local keyCode = event:getKeyCode()
-
-	if EventHandler.isKey(keyCode, "escape") then
-		local doubleCb = function()
-			if Utils.isInBrowser() then
-				Actions.forceUnfocus()
-				hs.timer.doAfter(0.1, function()
-					ModeManager.setModeNormal()
-				end)
-			end
-			return true
+	if EventHandler.isShiftEspace(event) then
+		if Utils.isInBrowser() then
+			Actions.forceUnfocus()
+			hs.timer.doAfter(0.1, function()
+				ModeManager.setModeNormal()
+			end)
 		end
-
-		return EventHandler.handleEspaceKey(event, nil, doubleCb)
+		return true
 	end
 
 	return EventHandler.processVimInput(event)
@@ -2793,27 +2757,23 @@ end
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.handleInsertVisualMode(event)
-	local keyCode = event:getKeyCode()
-
-	if EventHandler.isKey(keyCode, "escape") then
-		local doubleCb = function()
-			if Utils.isInBrowser() then
+	if EventHandler.isShiftEspace(event) then
+		if Utils.isInBrowser() then
+			Utils.keyStroke({}, "left")
+			hs.timer.doAfter(0.1, function()
 				Actions.forceUnfocus()
-				hs.timer.doAfter(0.1, function()
-					Utils.keyStroke({}, "left")
-					ModeManager.setModeNormal()
-				end)
-			end
-			return true
+			end)
+			hs.timer.doAfter(0.1, function()
+				ModeManager.setModeNormal()
+			end)
 		end
+		return true
+	end
 
-		local singleCb = function()
-			Utils.keyStroke({}, "right")
-			ModeManager.setModeInsertNormal()
-			return true
-		end
-
-		return EventHandler.handleEspaceKey(event, singleCb, doubleCb)
+	if EventHandler.isEspace(event) then
+		Utils.keyStroke({}, "right")
+		ModeManager.setModeInsertNormal()
+		return true
 	end
 
 	return EventHandler.processVimInput(event)
@@ -2823,15 +2783,9 @@ end
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.handleLinkMode(event)
-	local keyCode = event:getKeyCode()
-
-	if EventHandler.isKey(keyCode, "escape") then
-		local singleCb = function()
-			ModeManager.setModeNormal()
-			return true
-		end
-
-		return EventHandler.handleEspaceKey(event, singleCb, nil)
+	if EventHandler.isEspace(event) then
+		ModeManager.setModeNormal()
+		return true
 	end
 
 	return EventHandler.processVimInput(event)
@@ -2841,17 +2795,10 @@ end
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.handleNormalMode(event)
-	local keyCode = event:getKeyCode()
-
-	if EventHandler.isKey(keyCode, "escape") then
-		local singleCb = function()
-			State.keyCapture = nil
-			MenuBar.setTitle(State.mode)
-
-			return false
-		end
-
-		return EventHandler.handleEspaceKey(event, singleCb, nil)
+	if EventHandler.isEspace(event) then
+		State.keyCapture = nil
+		MenuBar.setTitle(State.mode)
+		return false
 	end
 
 	return EventHandler.processVimInput(event)
