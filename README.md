@@ -191,16 +191,26 @@ Vimnav operates in different modes, shown in the menu bar:
 
 ```lua
 hs.loadSpoon("Vimnav")
-spoon.Vimnav:configure({
- scrollStep = 100,              -- Faster scrolling
- smoothScroll = true,           -- Smooth animations
- linkHintChars = "asdfghjkl",   -- Home row only
- excludedApps = {               -- Don't run in these apps
-  "Terminal",
-  "iTerm2",
-  "VSCode"
- }
-}):start()
+spoon.Vimnav
+ :configure({
+  scroll = {
+   scrollStep = 100, -- Faster scrolling
+   smoothScroll = true, -- Smooth animations
+  },
+
+  hints = {
+   chars = "asdfghjkl", -- Home row only
+  },
+
+  applicationGroups = {
+   exclusions = { -- Don't run in these apps
+    "Terminal",
+    "iTerm2",
+    "VSCode",
+   },
+  },
+ })
+ :start()
 ```
 
 ### ⌨️ Custom Keybindings
@@ -294,7 +304,9 @@ By default, array configs **extend** the defaults:
 ```lua
 -- This ADDS to the default excluded apps
 spoon.Vimnav:configure({
-    excludedApps = { "VSCode", "Emacs" }
+ applicationGroups = {
+  exclusions = { "VSCode", "Emacs" }
+ }
 })
 -- Result: includes defaults + your additions
 ```
@@ -303,7 +315,9 @@ To **replace** instead of extend:
 
 ```lua
 spoon.Vimnav:configure({
-    excludedApps = { "VSCode" }  -- Only exclude VSCode
+ applicationGroups = {
+  exclusions = { "VSCode" }, -- Only exclude VSCode
+ },
 }, { extend = false })
 ```
 
@@ -313,23 +327,25 @@ Control which UI elements are detected:
 
 ```lua
 spoon.Vimnav:configure({
- -- Elements treated as text inputs
- axEditableRoles = {
-  "AXTextField",
-  "AXComboBox",
-  "AXTextArea",
-  "AXSearchField"
- },
+ axRoles = {
+  -- Elements treated as text inputs
+  editable = {
+   "AXTextField",
+   "AXComboBox",
+   "AXTextArea",
+   "AXSearchField",
+  },
 
- -- Elements shown in link hints
- axJumpableRoles = {
-  "AXLink",
-  "AXButton",
-  "AXPopUpButton",
-  "AXCheckBox",
-  "AXRadioButton",
-  "AXMenuItem"
- }
+  -- Elements shown in link hints
+  jumpable = {
+   "AXLink",
+   "AXButton",
+   "AXPopUpButton",
+   "AXCheckBox",
+   "AXRadioButton",
+   "AXMenuItem",
+  },
+ },
 })
 ```
 
@@ -337,10 +353,15 @@ spoon.Vimnav:configure({
 
 ```lua
 spoon.Vimnav:configure({
- depth = 15,                    -- Max element depth (lower = faster)
- focusCheckInterval = 0.2,      -- Focus detection frequency
- smoothScrollFramerate = 60,    -- Lower FPS for less CPU
+ hints = {
+  depth = 15, -- Max element depth (lower = faster)
+ },
+ focusCheckInterval = 0.2, -- Focus detection frequency
+ scroll = {
+  smoothScrollFramerate = 60, -- Lower FPS for less CPU
+ },
 })
+
 ```
 
 ## 🎮 Available Commands
@@ -421,73 +442,75 @@ spoon.Vimnav:debug()                     -- Returns state and config
  logLevel = "warning",
 
  -- Link Hints
- linkHintChars = "abcdefghijklmnopqrstuvwxyz",
- hintFontSize = 12,
+ hints = {
+  chars = "abcdefghijklmnopqrstuvwxyz",
+  fontSize = 12,
+  depth = 20,
+ },
 
  -- Timing
  doublePressDelay = 0.3,
  focusCheckInterval = 0.1,
-
- -- Scrolling
- scrollStep = 50,
- scrollStepHalfPage = 500,
- scrollStepFullPage = 1e6,
- smoothScroll = true,
- smoothScrollFramerate = 120,
-
- -- Performance
- depth = 20,
-
- -- Application Lists
- excludedApps = {
-  "Terminal",
-  "Alacritty",
-  "iTerm2",
-  "Kitty",
-  "Ghostty",
- },
- browsers = {
-  "Safari",
-  "Google Chrome",
-  "Firefox",
-  "Microsoft Edge",
-  "Brave Browser",
-  "Zen",
- },
- launchers = {
-  "Spotlight",
-  "Raycast",
-  "Alfred",
- },
-
- -- Accessibility Roles
- axEditableRoles = {
-  "AXTextField",
-  "AXComboBox",
-  "AXTextArea",
-  "AXSearchField",
- },
- axJumpableRoles = {
-  "AXLink",
-  "AXButton",
-  "AXPopUpButton",
-  "AXComboBox",
-  "AXTextField",
-  "AXTextArea",
-  "AXCheckBox",
-  "AXRadioButton",
-  "AXDisclosureTriangle",
-  "AXMenuButton",
-  "AXMenuBarItem",
-  "AXMenuItem",
-  "AXRow",
- },
 
  -- Keybindings
  mapping = {
   normal = { ... },
   insertNormal = { ... },
   insertVisual = { ... },
+ },
+
+ -- Scrolling
+ scroll = {
+  scrollStep = 50,
+  scrollStepHalfPage = 500,
+  scrollStepFullPage = 1e6,
+  smoothScroll = true,
+  smoothScrollFramerate = 120,
+ },
+
+ -- Accessibility Roles
+ axRoles = {
+  editable = {
+   "AXTextField",
+   "AXComboBox",
+   "AXTextArea",
+   "AXSearchField",
+  },
+  jumpable = {
+   "AXLink",
+   "AXButton",
+   "AXPopUpButton",
+   "AXComboBox",
+   "AXTextField",
+   "AXTextArea",
+   "AXCheckBox",
+   "AXRadioButton",
+   "AXDisclosureTriangle",
+   "AXMenuButton",
+   "AXMenuBarItem",
+   "AXMenuItem",
+   "AXRow",
+  },
+ },
+
+ -- Application Lists
+ applicationGroups = {
+  exclusions = {
+   "Terminal",
+   "Alacritty",
+   "iTerm2",
+   "Kitty",
+   "Ghostty",
+  },
+  browsers = {
+   "Safari",
+   "Google Chrome",
+   "Firefox",
+   "Microsoft Edge",
+   "Brave Browser",
+   "Zen",
+  },
+  launchers = { "Spotlight", "Raycast", "Alfred" },
  },
 
  -- Indicators
@@ -536,20 +559,20 @@ spoon.Vimnav:debug()                     -- Returns state and config
 
 - Reduce element depth: `depth = 10`
 - Increase check interval: `focusCheckInterval = 0.3`
-- Disable smooth scrolling: `smoothScroll = false`
+- Disable smooth scrolling: `scroll.smoothScroll = false`
 - Exclude problematic apps
 
 ### 🎯 Link hints not showing
 
 - App may not expose accessibility elements (common in Electron apps)
 - Try pressing `f` multiple times
-- Adjust `axJumpableRoles` configuration
+- Adjust `axRoles.jumpable` configuration
 - Some web content needs time to load
 
 ### 🚫 Keys not working / conflicts
 
 - Check for conflicts with other Hammerspoon modules
-- Verify app isn't in `excludedApps`
+- Verify app isn't in `applicationGroups.exclusions`
 - Try passthrough mode (`i`) to temporarily bypass
 
 ### 🔍 Launcher detection issues
@@ -557,7 +580,9 @@ spoon.Vimnav:debug()                     -- Returns state and config
 Add problematic launchers to excluded apps:
 
 ```lua
-excludedApps = { "Spotlight", "Raycast", "Alfred" }
+applicationGroups = {
+ exclusions = { "Spotlight", "Raycast", "Alfred" }
+}
 ```
 
 ## ⚠️ Known Limitations
