@@ -192,14 +192,14 @@ Vimnav operates in different modes, shown in the menu bar:
 ```lua
 hs.loadSpoon("Vimnav")
 spoon.Vimnav:configure({
-    scrollStep = 100,              -- Faster scrolling
-    smoothScroll = true,           -- Smooth animations
-    linkHintChars = "asdfghjkl",   -- Home row only
-    excludedApps = {               -- Don't run in these apps
-        "Terminal",
-        "iTerm2",
-        "VSCode"
-    }
+ scrollStep = 100,              -- Faster scrolling
+ smoothScroll = true,           -- Smooth animations
+ linkHintChars = "asdfghjkl",   -- Home row only
+ excludedApps = {               -- Don't run in these apps
+  "Terminal",
+  "iTerm2",
+  "VSCode"
+ }
 }):start()
 ```
 
@@ -209,38 +209,38 @@ Map any key to any command or native keystroke:
 
 ```lua
 spoon.Vimnav:configure({
-    mapping = {
-        normal = {
-            -- Commands
-            ["j"] = "cmdScrollDown",
-            ["k"] = "cmdScrollUp",
-            ["f"] = "cmdGotoLink",
+ mapping = {
+  normal = {
+   -- Commands
+   ["j"] = "cmdScrollDown",
+   ["k"] = "cmdScrollUp",
+   ["f"] = "cmdGotoLink",
 
-            -- Multi-character combos
-            ["gg"] = "cmdScrollToTop",
-            ["gt"] = "cmdGotoInput",
+   -- Multi-character combos
+   ["gg"] = "cmdScrollToTop",
+   ["gt"] = "cmdGotoInput",
 
-            -- Control key combos
-            ["C-f"] = "cmdScrollHalfPageDown",
-            ["C-b"] = "cmdScrollHalfPageUp",
+   -- Control key combos
+   ["C-f"] = "cmdScrollHalfPageDown",
+   ["C-b"] = "cmdScrollHalfPageUp",
 
-            -- Native keystrokes
-            ["t"] = { "cmd", "t" },     -- ⌘T (new tab)
-            ["w"] = { "cmd", "w" },     -- ⌘W (close window)
-        },
-        insertNormal = {
-            -- Customize text editing
-            ["h"] = { {}, "left" },
-            ["l"] = { {}, "right" },
-            ["w"] = { "alt", "right" },
-            ["b"] = { "alt", "left" },
-        },
-        insertVisual = {
-            -- Customize visual selection
-            ["h"] = { { "shift" }, "left" },
-            ["l"] = { { "shift" }, "right" },
-        }
-    }
+   -- Native keystrokes
+   ["t"] = { "cmd", "t" },     -- ⌘T (new tab)
+   ["w"] = { "cmd", "w" },     -- ⌘W (close window)
+  },
+  insertNormal = {
+   -- Customize text editing
+   ["h"] = { {}, "left" },
+   ["l"] = { {}, "right" },
+   ["w"] = { "alt", "right" },
+   ["b"] = { "alt", "left" },
+  },
+  insertVisual = {
+   -- Customize visual selection
+   ["h"] = { { "shift" }, "left" },
+   ["l"] = { { "shift" }, "right" },
+  }
+ }
 }):start()
 ```
 
@@ -254,7 +254,7 @@ Shows current mode in your menu bar (enabled by default):
 
 ```lua
 spoon.Vimnav:configure({
-    menubar = { enabled = false } -- Disable if preferred
+ menubar = { enabled = false } -- Disable if preferred
 })
 ```
 
@@ -266,22 +266,22 @@ Show a floating overlay on your screen:
 
 ```lua
 spoon.Vimnav:configure({
-    menubar = { enabled = false },
-    overlay = {
-        enabled = true,
-        position = "top-center",    -- Position on screen
-        size = 25,                  -- Indicator size
-        padding = 2,                -- Padding
-        colors = {
-            disabled = "#5a5672",
-            normal = "#80b8e8",
-            insert = "#abe9b3",
-            insertNormal = "#f9e2af",
-            insertVisual = "#c9a0e9",
-            links = "#f8bd96",
-            passthrough = "#f28fad",
-        },
-    },
+ menubar = { enabled = false },
+ overlay = {
+  enabled = true,
+  position = "top-center",    -- Position on screen
+  size = 25,                  -- Indicator size
+  padding = 2,                -- Padding
+  colors = {
+   disabled = "#5a5672",
+   normal = "#80b8e8",
+   insert = "#abe9b3",
+   insertNormal = "#f9e2af",
+   insertVisual = "#c9a0e9",
+   links = "#f8bd96",
+   passthrough = "#f28fad",
+  },
+ },
 })
 ```
 
@@ -313,23 +313,23 @@ Control which UI elements are detected:
 
 ```lua
 spoon.Vimnav:configure({
-    -- Elements treated as text inputs
-    axEditableRoles = {
-        "AXTextField",
-        "AXComboBox",
-        "AXTextArea",
-        "AXSearchField"
-    },
+ -- Elements treated as text inputs
+ axEditableRoles = {
+  "AXTextField",
+  "AXComboBox",
+  "AXTextArea",
+  "AXSearchField"
+ },
 
-    -- Elements shown in link hints
-    axJumpableRoles = {
-        "AXLink",
-        "AXButton",
-        "AXPopUpButton",
-        "AXCheckBox",
-        "AXRadioButton",
-        "AXMenuItem"
-    }
+ -- Elements shown in link hints
+ axJumpableRoles = {
+  "AXLink",
+  "AXButton",
+  "AXPopUpButton",
+  "AXCheckBox",
+  "AXRadioButton",
+  "AXMenuItem"
+ }
 })
 ```
 
@@ -337,9 +337,9 @@ spoon.Vimnav:configure({
 
 ```lua
 spoon.Vimnav:configure({
-    depth = 15,                    -- Max element depth (lower = faster)
-    focusCheckInterval = 0.2,      -- Focus detection frequency
-    smoothScrollFramerate = 60,    -- Lower FPS for less CPU
+ depth = 15,                    -- Max element depth (lower = faster)
+ focusCheckInterval = 0.2,      -- Focus detection frequency
+ smoothScrollFramerate = 60,    -- Lower FPS for less CPU
 })
 ```
 
@@ -417,97 +417,98 @@ spoon.Vimnav:debug()                     -- Returns state and config
 
 ```lua
 {
-    -- Logging
-    logLevel = "warning",
+ -- Logging
+ logLevel = "warning",
 
-    -- Link Hints
-    linkHintChars = "abcdefghijklmnopqrstuvwxyz",
+ -- Link Hints
+ linkHintChars = "abcdefghijklmnopqrstuvwxyz",
+ hintFontSize = 12,
 
-    -- Timing
-    doublePressDelay = 0.3,
-    focusCheckInterval = 0.1,
+ -- Timing
+ doublePressDelay = 0.3,
+ focusCheckInterval = 0.1,
 
-    -- Scrolling
-    scrollStep = 50,
-    scrollStepHalfPage = 500,
-    scrollStepFullPage = 1e6,
-    smoothScroll = true,
-    smoothScrollFramerate = 120,
+ -- Scrolling
+ scrollStep = 50,
+ scrollStepHalfPage = 500,
+ scrollStepFullPage = 1e6,
+ smoothScroll = true,
+ smoothScrollFramerate = 120,
 
-    -- Performance
-    depth = 20,
+ -- Performance
+ depth = 20,
 
-    -- Application Lists
-    excludedApps = {
-        "Terminal",
-        "Alacritty",
-        "iTerm2",
-        "Kitty",
-        "Ghostty",
-    },
-    browsers = {
-        "Safari",
-        "Google Chrome",
-        "Firefox",
-        "Microsoft Edge",
-        "Brave Browser",
-        "Zen",
-    },
-    launchers = {
-        "Spotlight",
-        "Raycast",
-        "Alfred",
-    },
+ -- Application Lists
+ excludedApps = {
+  "Terminal",
+  "Alacritty",
+  "iTerm2",
+  "Kitty",
+  "Ghostty",
+ },
+ browsers = {
+  "Safari",
+  "Google Chrome",
+  "Firefox",
+  "Microsoft Edge",
+  "Brave Browser",
+  "Zen",
+ },
+ launchers = {
+  "Spotlight",
+  "Raycast",
+  "Alfred",
+ },
 
-    -- Accessibility Roles
-    axEditableRoles = {
-        "AXTextField",
-        "AXComboBox",
-        "AXTextArea",
-        "AXSearchField",
-    },
-    axJumpableRoles = {
-        "AXLink",
-        "AXButton",
-        "AXPopUpButton",
-        "AXComboBox",
-        "AXTextField",
-        "AXTextArea",
-        "AXCheckBox",
-        "AXRadioButton",
-        "AXDisclosureTriangle",
-        "AXMenuButton",
-        "AXMenuBarItem",
-        "AXMenuItem",
-        "AXRow",
-    },
+ -- Accessibility Roles
+ axEditableRoles = {
+  "AXTextField",
+  "AXComboBox",
+  "AXTextArea",
+  "AXSearchField",
+ },
+ axJumpableRoles = {
+  "AXLink",
+  "AXButton",
+  "AXPopUpButton",
+  "AXComboBox",
+  "AXTextField",
+  "AXTextArea",
+  "AXCheckBox",
+  "AXRadioButton",
+  "AXDisclosureTriangle",
+  "AXMenuButton",
+  "AXMenuBarItem",
+  "AXMenuItem",
+  "AXRow",
+ },
 
-    -- Keybindings
-    mapping = {
-        normal = { ... },
-        insertNormal = { ... },
-        insertVisual = { ... },
-    },
+ -- Keybindings
+ mapping = {
+  normal = { ... },
+  insertNormal = { ... },
+  insertVisual = { ... },
+ },
 
-    -- Indicators
-    menubar = {
-        enabled = true,
-    },
-    overlay = {
-        enabled = false,
-        position = "top-center",
-        size = 25,
-        padding = 2,
-        colors = {
-            disabled = "#5a5672",
-            normal = "#80b8e8",
-            insert = "#abe9b3",
-            insertNormal = "#f9e2af",
-            insertVisual = "#c9a0e9",
-            links = "#f8bd96",
-            passthrough = "#f28fad",
-        },
-    },
+ -- Indicators
+ menubar = {
+  enabled = true,
+ },
+ overlay = {
+  enabled = false,
+  position = "top-center",
+  size = 25,
+  padding = 2,
+  colors = {
+   disabled = "#5a5672",
+   normal = "#80b8e8",
+   insert = "#abe9b3",
+   insertNormal = "#f9e2af",
+   insertVisual = "#c9a0e9",
+   links = "#f8bd96",
+   passthrough = "#f28fad",
+  },
+ },
 }
 ```
 

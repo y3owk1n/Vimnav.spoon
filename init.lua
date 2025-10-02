@@ -44,6 +44,7 @@ local log
 ---@class Hs.Vimnav.Config
 ---@field logLevel? string Log level to show in the console
 ---@field linkHintChars? string Link hint characters
+---@field hintFontSize? number Font size for link hints
 ---@field doublePressDelay? number Double press delay in seconds (e.g. 0.3 for 300ms)
 ---@field focusCheckInterval? number Focus check interval in seconds (e.g. 0.5 for 500ms)
 ---@field mapping? Hs.Vimnav.Config.Mapping Mappings to use
@@ -206,6 +207,7 @@ local DEFAULT_MAPPING = {
 local DEFAULT_CONFIG = {
 	logLevel = "warning",
 	linkHintChars = "abcdefghijklmnopqrstuvwxyz",
+	hintFontSize = 12,
 	doublePressDelay = 0.3,
 	focusCheckInterval = 0.1,
 	mapping = DEFAULT_MAPPING,
@@ -624,7 +626,7 @@ function CanvasCache.getMarkTemplate()
 			type = "text",
 			textAlignment = "center",
 			textColor = { red = 0, green = 0, blue = 0, alpha = 1 },
-			textSize = 10,
+			textSize = M.config.hintFontSize,
 			textFont = ".AppleSystemUIFontHeavy",
 		},
 	}
@@ -1954,7 +1956,7 @@ function Marks.draw()
 			local frame = mark.frame
 			if frame then
 				local padding = 2
-				local fontSize = 10
+				local fontSize = M.config.hintFontSize
 				local textWidth = #markText * (fontSize * 1.1)
 				local textHeight = fontSize * 1.1
 				local containerWidth = textWidth + (padding * 2)
@@ -2059,6 +2061,7 @@ function Marks.draw()
 					{ x = arrowLeft, y = arrowBottom },
 				}
 				text.text = markText
+				text.textSize = fontSize
 				text.frame = {
 					x = rx,
 					y = ry - (arrowHeight / 2) + ((rh - textHeight) / 2), -- Vertically center
