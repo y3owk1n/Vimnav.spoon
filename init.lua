@@ -1637,6 +1637,52 @@ function Actions.setClipboardContents(contents)
 	end
 end
 
+---Download base64 image
+---@param url string
+---@param description string
+---@return nil
+function Actions.downloadBase64Image(url, description)
+	local base64Data = url:match("^data:image/[^;]+;base64,(.+)$")
+	if base64Data then
+		local decodedData = hs.base64.decode(base64Data)
+		---@diagnostic disable-next-line: param-type-mismatch
+		local fileName = description:gsub("%W+", "_") .. ".jpg"
+		local filePath = os.getenv("HOME") .. "/Downloads/" .. fileName
+
+		local file = io.open(filePath, "wb")
+		if file then
+			file:write(decodedData)
+			file:close()
+			hs.alert.show("Image saved: " .. fileName, nil, nil, 2)
+		end
+	end
+end
+
+---Download image via http
+---@param url string
+---@return nil
+function Actions.downloadImageViaHttp(url)
+	hs.http.asyncGet(url, nil, function(status, body, headers)
+		if status == 200 then
+			local contentType = headers["Content-Type"] or ""
+			if contentType:match("^image/") then
+				local fileName = url:match("^.+/(.+)$") or "image.jpg"
+				if not fileName:match("%.%w+$") then
+					fileName = fileName .. ".jpg"
+				end
+
+				local filePath = os.getenv("HOME") .. "/Downloads/" .. fileName
+				local file = io.open(filePath, "wb")
+				if file then
+					file:write(body)
+					file:close()
+					hs.alert.show("Image downloaded: " .. fileName, nil, nil, 2)
+				end
+			end
+		end
+	end)
+end
+
 ---Force unfocus
 ---@return nil
 function Actions.forceUnfocus()
@@ -2392,58 +2438,11 @@ function Commands.downloadImage()
 				local url = downloadUrlAttr.url
 
 				if url and url:match("^data:image/") then
-					-- Handle base64 images
-					local base64Data =
-						url:match("^data:image/[^;]+;base64,(.+)$")
-					if base64Data then
-						local decodedData = hs.base64.decode(base64Data)
-						---@diagnostic disable-next-line: param-type-mismatch
-						local fileName = description:gsub("%W+", "_") .. ".jpg"
-						local filePath = os.getenv("HOME")
-							.. "/Downloads/"
-							.. fileName
-
-						local file = io.open(filePath, "wb")
-						if file then
-							file:write(decodedData)
-							file:close()
-							hs.alert.show(
-								"Image saved: " .. fileName,
-								nil,
-								nil,
-								2
-							)
-						end
-					end
+					---@diagnostic disable-next-line: param-type-mismatch
+					Actions.downloadBase64Image(url, description)
 				else
-					-- Handle regular URLs
-					hs.http.asyncGet(url, nil, function(status, body, headers)
-						if status == 200 then
-							local contentType = headers["Content-Type"] or ""
-							if contentType:match("^image/") then
-								local fileName = url:match("^.+/(.+)$")
-									or "image.jpg"
-								if not fileName:match("%.%w+$") then
-									fileName = fileName .. ".jpg"
-								end
-
-								local filePath = os.getenv("HOME")
-									.. "/Downloads/"
-									.. fileName
-								local file = io.open(filePath, "wb")
-								if file then
-									file:write(body)
-									file:close()
-									hs.alert.show(
-										"Image downloaded: " .. fileName,
-										nil,
-										nil,
-										2
-									)
-								end
-							end
-						end
-					end)
+					---@diagnostic disable-next-line: param-type-mismatch
+					Actions.downloadImageViaHttp(url)
 				end
 			end
 		end
