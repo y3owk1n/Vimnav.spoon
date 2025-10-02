@@ -171,6 +171,9 @@ local DEFAULT_MAPPING = {
 		["yf"] = "cmdCopyLinkUrlToClipboard",
 		["]]"] = "cmdNextPage",
 		["[["] = "cmdPrevPage",
+		["/"] = { "cmd", "f" },
+		["n"] = { "cmd", "g" },
+		["N"] = { { "cmd", "shift" }, "g" },
 	},
 	insertNormal = {
 		["h"] = { {}, "left" },
@@ -189,8 +192,11 @@ local DEFAULT_MAPPING = {
 		["dd"] = "cmdDeleteLine",
 		["cc"] = "cmdChangeLine",
 		["yy"] = "cmdYankLine",
-		["u"] = "cmdUndo",
+		["u"] = { "cmd", "z" },
+		["C-r"] = { { "cmd", "shift" }, "z" },
 		["i"] = "cmdInsertMode",
+		["o"] = "cmdInsertModeNewLineBelow",
+		["O"] = "cmdInsertModeNewLineAbove",
 		["A"] = "cmdInsertModeEnd",
 		["I"] = "cmdInsertModeStart",
 		["v"] = "cmdInsertVisualMode",
@@ -2177,6 +2183,25 @@ function Commands.cmdInsertMode()
 	return ModeManager.setModeInsert()
 end
 
+---Switches to insert mode and make a new line above
+---@return boolean
+function Commands.cmdInsertModeNewLineAbove()
+	Utils.keyStroke({}, "up")
+	Utils.keyStroke("cmd", "right")
+	Utils.keyStroke("ctrl", "o")
+	Utils.keyStroke({}, "down")
+	return ModeManager.setModeInsert()
+end
+
+---Switches to insert mode and make a new line below
+---@return boolean
+function Commands.cmdInsertModeNewLineBelow()
+	Utils.keyStroke("cmd", "right")
+	Utils.keyStroke("ctrl", "o")
+	Utils.keyStroke({}, "down")
+	return ModeManager.setModeInsert()
+end
+
 ---Switches to insert mode and put cursor at the end of the line
 ---@return boolean
 function Commands.cmdInsertModeEnd()
@@ -2565,10 +2590,6 @@ function Commands.cmdYankLine()
 	Utils.keyStroke({}, "right")
 end
 
-function Commands.cmdUndo()
-	Utils.keyStroke("cmd", "z")
-end
-
 function Commands.cmdDeleteHighlighted()
 	Utils.keyStroke({}, "delete")
 end
@@ -2819,7 +2840,7 @@ function EventHandler.processVimInput(event)
 
 	local char = hs.keycodes.map[keyCode]
 
-	if not char:match("[%a%d%[%]%$]") or #char ~= 1 then
+	if not char:match("[%a%d%[%]%$/]") or #char ~= 1 then
 		return false
 	end
 
