@@ -297,7 +297,8 @@ spoon.Vimnav:configure({
   enabled = true,
   position = "top-center",    -- Position on screen
   size = 25,                  -- Indicator size
-  padding = 4,                -- Padding
+  padding = 4,                -- Padding around screen frame
+  textFont = ".AppleSystemUIFontHeavy", -- Text font
   colors = {
    disabled = "#5a5672",
    normal = "#80b8e8",
@@ -311,6 +312,8 @@ spoon.Vimnav:configure({
 })
 ```
 
+You can run `hs.inspect(hs.styledtext.fontNames())` in Hammerspoon console to see all available fonts.
+
 ### 🔧 Advanced Configuration
 
 #### Configure hints style
@@ -322,6 +325,8 @@ You can change them if you want to:
 ```lua
 spoon.Vimnav:configure({
  hints = {
+  fontSize = 12, -- Font size
+  textFont = ".AppleSystemUIFontHeavy", -- Text font
   colors = {
    from = "#FFF585", -- Background gradient from color
    to = "#FFC442", -- Background gradient to color
@@ -446,6 +451,7 @@ spoon.Vimnav:getDefaultConfig()          -- Returns default config
   chars = "abcdefghijklmnopqrstuvwxyz",
   fontSize = 12,
   depth = 20,
+  textFont = ".AppleSystemUIFontHeavy",
   colors = {
    from = "#FFF585",
    to = "#FFC442",
@@ -529,6 +535,7 @@ spoon.Vimnav:getDefaultConfig()          -- Returns default config
   position = "top-center",
   size = 25,
   padding = 4,
+  textFont = ".AppleSystemUIFontHeavy",
   colors = {
    disabled = "#5a5672",
    normal = "#80b8e8",

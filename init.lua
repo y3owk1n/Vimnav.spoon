@@ -64,6 +64,7 @@ local log
 ---@class Hs.Vimnav.Config.Hints
 ---@field chars? string Link hint characters
 ---@field fontSize? number Font size for link hints
+---@field textFont? string Text font for hints
 ---@field depth? number Maximum depth to search for elements
 ---@field colors? Hs.Vimnav.Config.Hints.Colors Colors for link hints
 
@@ -91,6 +92,7 @@ local log
 ---@field size? number Size of overlay indicator in pixels
 ---@field padding? number Padding of overlay indicator in pixels from the screen frame
 ---@field colors? Hs.Vimnav.Config.Overlay.Colors Colors of overlay indicator
+---@field textFont? string Text font for overlay indicator
 
 ---@class Hs.Vimnav.Config.Overlay.Colors
 ---@field disabled? string Color of disabled mode indicator
@@ -251,6 +253,7 @@ local DEFAULT_CONFIG = {
 		chars = "abcdefghijklmnopqrstuvwxyz",
 		fontSize = 12,
 		depth = 20,
+		textFont = ".AppleSystemUIFontHeavy",
 		colors = {
 			from = "#FFF585",
 			to = "#FFC442",
@@ -330,6 +333,7 @@ local DEFAULT_CONFIG = {
 		position = "top-center",
 		size = 25,
 		padding = 4,
+		textFont = ".AppleSystemUIFontHeavy",
 		colors = {
 			disabled = "#5a5672",
 			normal = "#80b8e8",
@@ -688,7 +692,7 @@ function CanvasCache.getMarkTemplate()
 			textAlignment = "center",
 			textColor = textColor,
 			textSize = M.config.hints.fontSize,
-			textFont = ".AppleSystemUIFontHeavy",
+			textFont = M.config.hints.textFont or ".AppleSystemUIFontHeavy",
 		},
 	}
 
@@ -697,8 +701,6 @@ function CanvasCache.getMarkTemplate()
 		CanvasCache.template.background.strokeColor = borderColor
 		CanvasCache.template.background.strokeWidth = borderWidth
 	end
-
-	print(hs.inspect(CanvasCache.template))
 
 	return CanvasCache.template
 end
@@ -1429,7 +1431,7 @@ function Overlay.update(mode, keys)
 			textAlignment = "center",
 			textColor = textColor,
 			textSize = fontSize,
-			textFont = ".AppleSystemUIFontBold",
+			textFont = M.config.overlay.textFont or ".AppleSystemUIFontBold",
 			frame = {
 				x = 0,
 				y = (height - fontSize) / 2 - 2,
