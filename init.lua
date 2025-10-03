@@ -527,6 +527,12 @@ function AsyncTraversal.walkElement(element, opts)
 			coroutine.yield(false) -- Don't stop, just yield
 		end
 
+		-- Skip AXWindows that are not the current window
+		local role = Utils.getAttribute(el, "AXRole")
+		if role == "AXWindow" and el ~= Elements.getAxWindow() then
+			return false
+		end
+
 		-- Get frame once, reuse everywhere
 		local frame = Utils.getAttribute(el, "AXFrame")
 		if not frame then
