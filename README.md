@@ -257,7 +257,7 @@ spoon.Vimnav:configure({
 })
 ```
 
-Mapped commands can be found by running in your hammerspoon console:
+Default mapped bindings can be found by running in your hammerspoon console:
 
 ```lua
 print(hs.inspect(spoon.Vimnav:getDefaultConfig().mapping))
@@ -279,20 +279,20 @@ Hints can be customised by changing the `hints` table:
 
 ```lua
 spoon.Vimnav:configure({
-  hints = {
- chars = "abcdefghijklmnopqrstuvwxyz", -- characters to make hints combination
-    fontSize = 12, -- font size for hints
- depth = 20, -- depth for traversing axelements
- textFont = ".AppleSystemUIFontHeavy", -- font for hints text
-    colors = {
-      from = "#FFF585", -- background gradient color (from)
-      to = "#FFC442", -- background gradient color (to)
-      angle = 45, -- background gradient angle
-      border = "#000000", -- border color
-      borderWidth = 1, -- border width (set to 0 to disable)
-      textColor = "#000000", -- text color for the hint
-    },
+ hints = {
+  chars = "abcdefghijklmnopqrstuvwxyz", -- characters to make hints combination
+  fontSize = 12, -- font size for hints
+  depth = 20, -- depth for traversing axelements
+  textFont = ".AppleSystemUIFontHeavy", -- font for hints text
+  colors = {
+   from = "#FFF585", -- background gradient color (from)
+   to = "#FFC442", -- background gradient color (to)
+   angle = 45, -- background gradient angle
+   border = "#000000", -- border color
+   borderWidth = 1, -- border width (set to 0 to disable)
+   textColor = "#000000", -- text color for the hint
   },
+ },
 })
 ```
 
@@ -314,7 +314,7 @@ spoon.Vimnav:configure({
 
 ### Scrolling configuration
 
-Scrolling can be configured with `scroll`:
+Scrolling behaviour can also be configured as below:
 
 ```lua
 spoon.Vimnav:configure({
