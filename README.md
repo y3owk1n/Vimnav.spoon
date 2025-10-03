@@ -221,7 +221,6 @@ spoon.Vimnav
  :configure({
   leader = {
    key = " ", -- space
-   timeout = 0.5,
   },
 
   scroll = {
@@ -413,12 +412,13 @@ spoon.Vimnav:configure({
  hints = {
   depth = 15, -- Max element depth (lower = faster)
  },
- focusCheckInterval = 0.2, -- Focus detection frequency
+ focus = {
+  checkInterval = 0.2, -- Focus detection frequency
+ },
  scroll = {
   smoothScrollFramerate = 60, -- Lower FPS for less CPU
  },
 })
-
 ```
 
 ## 🎮 Available Commands
@@ -464,7 +464,6 @@ spoon.Vimnav:getDefaultConfig()          -- Returns default config
  -- Leader key
  leader = {
   key = " ", -- space
-  timeout = 0.5,
  },
 
  -- Link Hints
@@ -483,8 +482,10 @@ spoon.Vimnav:getDefaultConfig()          -- Returns default config
   },
  },
 
- -- Timing
- focusCheckInterval = 0.1,
+ -- Focus Manager
+ focus = {
+  checkInterval = 0.1,
+ },
 
  -- Keybindings
  mapping = {
@@ -593,7 +594,7 @@ spoon.Vimnav:getDefaultConfig()          -- Returns default config
 **Try these optimizations:**
 
 - Reduce element depth: `depth = 10`
-- Increase check interval: `focusCheckInterval = 0.3`
+- Increase check interval: `focus.checkInterval = 0.3`
 - Disable smooth scrolling: `scroll.smoothScroll = false`
 - Exclude problematic apps
 
