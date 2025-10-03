@@ -65,6 +65,15 @@ local log
 ---@field chars? string Link hint characters
 ---@field fontSize? number Font size for link hints
 ---@field depth? number Maximum depth to search for elements
+---@field colors? Hs.Vimnav.Config.Hints.Colors Colors for link hints
+
+---@class Hs.Vimnav.Config.Hints.Colors
+---@field from? string BG gradient `from` color for hints
+---@field to? string BG gradient `to` color for hints
+---@field angle? number Angle for gradient
+---@field border? string Border color for hints
+---@field borderWidth? number Border width for hints
+---@field textColor? string Text color for hints
 
 ---@class Hs.Vimnav.Config.Scroll
 ---@field scrollStep? number Scroll step in pixels
@@ -242,6 +251,14 @@ local DEFAULT_CONFIG = {
 		chars = "abcdefghijklmnopqrstuvwxyz",
 		fontSize = 12,
 		depth = 20,
+		colors = {
+			from = "#FFF585",
+			to = "#FFC442",
+			angle = 45,
+			border = "#000000",
+			borderWidth = 1,
+			textColor = "#000000",
+		},
 	},
 	focusCheckInterval = 0.1,
 	mapping = DEFAULT_MAPPING,
@@ -312,7 +329,7 @@ local DEFAULT_CONFIG = {
 		enabled = false,
 		position = "top-center",
 		size = 25,
-		padding = 2,
+		padding = 4,
 		colors = {
 			disabled = "#5a5672",
 			normal = "#80b8e8",
@@ -644,31 +661,44 @@ function CanvasCache.getMarkTemplate()
 		return CanvasCache.template
 	end
 
+	local gradientFrom = Utils.hexToRgb(M.config.hints.colors.from or "#FFF585")
+	local gradientTo = Utils.hexToRgb(M.config.hints.colors.to or "#FFC442")
+	local gradientAngle = M.config.hints.colors.angle or 0
+	local borderColor =
+		Utils.hexToRgb(M.config.hints.colors.border or "#000000")
+	local borderWidth = M.config.hints.colors.borderWidth or 1
+
+	local textColor =
+		Utils.hexToRgb(M.config.hints.colors.textColor or "#000000")
+
 	CanvasCache.template = {
 		background = {
+			action = "fill",
 			type = "segments",
 			fillGradient = "linear",
 			fillGradientColors = {
-				{ red = 1, green = 0.96, blue = 0.52, alpha = 1 },
-				{
-					red = 1,
-					green = 0.77,
-					blue = 0.26,
-					alpha = 1,
-				},
+				gradientFrom,
+				gradientTo,
 			},
-			strokeColor = { red = 0, green = 0, blue = 0, alpha = 1 },
-			strokeWidth = 1,
+			fillGradientAngle = gradientAngle,
 			closed = true,
 		},
 		text = {
 			type = "text",
 			textAlignment = "center",
-			textColor = { red = 0, green = 0, blue = 0, alpha = 1 },
+			textColor = textColor,
 			textSize = M.config.hints.fontSize,
 			textFont = ".AppleSystemUIFontHeavy",
 		},
 	}
+
+	if borderWidth > 0 then
+		CanvasCache.template.background.action = "strokeAndFill"
+		CanvasCache.template.background.strokeColor = borderColor
+		CanvasCache.template.background.strokeWidth = borderWidth
+	end
+
+	print(hs.inspect(CanvasCache.template))
 
 	return CanvasCache.template
 end
@@ -967,6 +997,18 @@ function Utils.isInBrowser()
 				app:name()
 			)
 		or false
+end
+
+---Convert hex to RGB table
+---@param hex string
+---@return table
+function Utils.hexToRgb(hex)
+	hex = hex:gsub("#", "")
+	return {
+		red = tonumber("0x" .. hex:sub(1, 2)) / 255,
+		green = tonumber("0x" .. hex:sub(3, 4)) / 255,
+		blue = tonumber("0x" .. hex:sub(5, 6)) / 255,
+	}
 end
 
 --------------------------------------------------------------------------------
@@ -1273,41 +1315,35 @@ function Overlay.create()
 	log.df("Created overlay indicator at " .. position)
 end
 
----Convert hex to RGB table
----@param hex string
----@return table
-local function hexToRgb(hex)
-	hex = hex:gsub("#", "")
-	return {
-		red = tonumber("0x" .. hex:sub(1, 2)) / 255,
-		green = tonumber("0x" .. hex:sub(3, 4)) / 255,
-		blue = tonumber("0x" .. hex:sub(5, 6)) / 255,
-	}
-end
-
 ---Get color for mode
 ---@param mode number
 ---@return table
 function Overlay.getModeColor(mode)
 	local colors = {
-		[MODES.DISABLED] = hexToRgb(
+		[MODES.DISABLED] = Utils.hexToRgb(
 			M.config.overlay.colors.disabled or "#5a5672"
 		),
-		[MODES.NORMAL] = hexToRgb(M.config.overlay.colors.normal or "#80b8e8"),
-		[MODES.INSERT] = hexToRgb(M.config.overlay.colors.insert or "#abe9b3"),
-		[MODES.INSERT_NORMAL] = hexToRgb(
+		[MODES.NORMAL] = Utils.hexToRgb(
+			M.config.overlay.colors.normal or "#80b8e8"
+		),
+		[MODES.INSERT] = Utils.hexToRgb(
+			M.config.overlay.colors.insert or "#abe9b3"
+		),
+		[MODES.INSERT_NORMAL] = Utils.hexToRgb(
 			M.config.overlay.colors.insertNormal or "#f9e2af"
 		),
-		[MODES.INSERT_VISUAL] = hexToRgb(
+		[MODES.INSERT_VISUAL] = Utils.hexToRgb(
 			M.config.overlay.colors.insertVisual or "#c9a0e9"
 		),
-		[MODES.LINKS] = hexToRgb(M.config.overlay.colors.links or "#f8bd96"),
-		[MODES.PASSTHROUGH] = hexToRgb(
+		[MODES.LINKS] = Utils.hexToRgb(
+			M.config.overlay.colors.links or "#f8bd96"
+		),
+		[MODES.PASSTHROUGH] = Utils.hexToRgb(
 			M.config.overlay.colors.passthrough or "#f28fad"
 		),
 	}
 	return colors[mode]
-		or hexToRgb(M.config.overlay.colors.disabled or "#5a5672")
+		or Utils.hexToRgb(M.config.overlay.colors.disabled or "#5a5672")
 end
 
 ---Updates the overlay indicator
@@ -1322,7 +1358,6 @@ function Overlay.update(mode, keys)
 	local color = Overlay.getModeColor(mode)
 	local modeChar = defaultModeChars[mode] or "?"
 	local fontSize = M.config.overlay.size / 2
-	local padding = 0
 
 	-- Build display text
 	local displayText = modeChar
@@ -1333,7 +1368,7 @@ function Overlay.update(mode, keys)
 	-- Calculate text width (approximate)
 	local charWidth = fontSize * 0.65
 	local textWidth = #displayText * charWidth
-	local newWidth = textWidth + (padding * 2)
+	local newWidth = textWidth
 
 	local height = M.config.overlay.size or 30
 
@@ -2052,20 +2087,19 @@ function Marks.draw()
 			-- Quick coordinate calculation
 			local frame = mark.frame
 			if frame then
-				local padding = 2
 				local fontSize = M.config.hints.fontSize
-				local textWidth = #markText * (fontSize * 1.1)
-				local textHeight = fontSize * 1.1
-				local containerWidth = textWidth + (padding * 2)
-				local containerHeight = textHeight + (padding * 2)
+				local textWidth = #markText * fontSize
+				local textHeight = fontSize * 1.2
+				local containerWidth = textWidth
+				local containerHeight = textHeight
 
-				local arrowHeight = 3
-				local arrowWidth = 6
-				local cornerRadius = 2
+				local arrowWidth = containerWidth / 5
+				local arrowHeight = arrowWidth / 2
+				local cornerRadius = fontSize / 6
 
 				local bgRect = hs.geometry.rect(
 					frame.x + (frame.w / 2) - (containerWidth / 2),
-					frame.y + (frame.h / 3 * 2) + arrowHeight,
+					frame.y + (frame.h / 2) + arrowHeight,
 					containerWidth,
 					containerHeight
 				)
@@ -2161,7 +2195,7 @@ function Marks.draw()
 				text.textSize = fontSize
 				text.frame = {
 					x = rx,
-					y = ry - (arrowHeight / 2) + ((rh - textHeight) / 2), -- Vertically center
+					y = ry,
 					w = rw,
 					h = textHeight,
 				}
