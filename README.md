@@ -19,9 +19,14 @@ Stop reaching for your mouse. Navigate Safari, Mail, Finder, or any macOS app wi
 - 🌐 Works across **all native macOS apps** (Safari, Mail, Finder, System Settings)
 - 🎨 **Visual link hints** — click anything without touching your mouse
 - ⚡ **Smart mode switching** — auto-enters insert mode in text fields
-- ✍️ **Full modal text editing** — Normal and Visual modes inside text field (Only for those mappable shortcuts)
+- ✍️ \*Modal text editing\*\* — Normal and Visual modes inside text field (Only for those mappable shortcuts)
 - 🚀 **Performance optimized** — async traversal, spatial indexing, memory pooling
 - 🎛️ **Highly customizable** — keybindings, launchers, excluded apps
+
+> [!NOTE]
+> Modal text editing is best effort to imitate vim keybinding with simple shortcuts available in macOS.
+> It's better than nothing but I have no intention to build a full accessibility detection, unless someone is interested
+> to help out.
 
 ## 🚀 Quick Start
 
@@ -292,7 +297,7 @@ spoon.Vimnav:configure({
   enabled = true,
   position = "top-center",    -- Position on screen
   size = 25,                  -- Indicator size
-  padding = 2,                -- Padding
+  padding = 4,                -- Padding
   colors = {
    disabled = "#5a5672",
    normal = "#80b8e8",
@@ -307,6 +312,27 @@ spoon.Vimnav:configure({
 ```
 
 ### 🔧 Advanced Configuration
+
+#### Configure hints style
+
+By default, the hints are shown like vimium's design. Gradient yellow with black border.
+
+You can change them if you want to:
+
+```lua
+spoon.Vimnav:configure({
+ hints = {
+  colors = {
+   from = "#FFF585", -- Background gradient from color
+   to = "#FFC442", -- Background gradient to color
+   angle = 45, -- Background gradient angle
+   border = "#000000", -- Border color
+   borderWidth = 1, -- Border width (0 for no border)
+   textColor = "#000000", -- Text color
+  },
+ },
+})
+```
 
 #### Array Extension Behavior
 
@@ -420,6 +446,14 @@ spoon.Vimnav:getDefaultConfig()          -- Returns default config
   chars = "abcdefghijklmnopqrstuvwxyz",
   fontSize = 12,
   depth = 20,
+  colors = {
+   from = "#FFF585",
+   to = "#FFC442",
+   angle = 45,
+   border = "#000000",
+   borderWidth = 1,
+   textColor = "#000000",
+  },
  },
 
  -- Timing
@@ -494,7 +528,7 @@ spoon.Vimnav:getDefaultConfig()          -- Returns default config
   enabled = false,
   position = "top-center",
   size = 25,
-  padding = 2,
+  padding = 4,
   colors = {
    disabled = "#5a5672",
    normal = "#80b8e8",
