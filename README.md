@@ -35,8 +35,8 @@ Stop reaching for your mouse. Navigate Safari, Mail, Finder, or any macOS app wi
 
 1. **Install Hammerspoon** → [Download here](https://www.hammerspoon.org/)
 2. **Enable Accessibility** → System Settings → Privacy & Security → Accessibility
-3. **Download Vimnav** → Place `Vimnav.spoon` in `~/.hammerspoon/Spoons/`
-4. **Configure** → Add to `~/.hammerspoon/init.lua`:
+3. **Download Vimnav** → [Download here](https://github.com/y3owk1n/vimnav.spoon/releases/latest) or `git clone` this repo, and place `Vimnav.spoon` in `~/.hammerspoon/Spoons/`
+4. **Configure** → Add the following snippet to `~/.hammerspoon/init.lua`:
 
 ```lua
 hs.loadSpoon("Vimnav")
