@@ -10,6 +10,9 @@
 
 ![vimnav-demo](https://github.com/user-attachments/assets/b32374e0-5446-46f8-99d2-bfae1bc90799)
 
+> [!NOTE]
+> This is a personal project maintained on a best-effort basis. PRs are more likely to be reviewed than feature requests or issues, unless I am facing the same problem.
+
 ## ✨ Why Vimnav?
 
 Stop reaching for your mouse. Navigate Safari, Mail, Finder, or any macOS app with the same muscle memory you use in Vim.
@@ -19,7 +22,7 @@ Stop reaching for your mouse. Navigate Safari, Mail, Finder, or any macOS app wi
 - 🌐 Works across **all native macOS apps** (Safari, Mail, Finder, System Settings)
 - 🎨 **Visual link hints** — click anything without touching your mouse
 - ⚡ **Smart mode switching** — auto-enters insert mode in text fields
-- ✍️ \*Modal text editing\*\* — Normal and Visual modes inside text field (Only for those mappable shortcuts)
+- ✍️ **Modal text editing** — Normal and Visual modes inside text field (Only for those mappable shortcuts)
 - 🚀 **Performance optimized** — async traversal, spatial indexing, memory pooling
 - 🎛️ **Highly customizable** — keybindings, launchers, excluded apps
 - 🔌 **Supports leader key** — use `<leader>` in any variant of normal mode
@@ -639,8 +642,6 @@ Vimnav is built for speed:
 ## 🤝 Contributing
 
 Contributions are welcome!
-
-> **Note:** This is a personal project maintained on a best-effort basis. PRs are more likely to be reviewed than feature requests.
 
 **How to contribute:**
 
