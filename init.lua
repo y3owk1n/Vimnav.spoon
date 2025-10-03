@@ -51,6 +51,11 @@ local log
 ---@field applicationGroups? Hs.Vimnav.Config.ApplicationGroups App groups to work with vimnav
 ---@field menubar? Hs.Vimnav.Config.Menubar Configure menubar indicator
 ---@field overlay? Hs.Vimnav.Config.Overlay Configure overlay indicator
+---@field leader? Hs.Vimnav.Config.Leader Configure leader key
+
+---@class Hs.Vimnav.Config.Leader
+---@field key? string Leader key
+---@field timeout? number Leader key timeout
 
 ---@class Hs.Vimnav.Config.ApplicationGroups
 ---@field exclusions? string[] Apps to exclude from Vimnav (e.g. Terminal)
@@ -123,6 +128,10 @@ local log
 ---@field focusCachedResult boolean Focus cached result
 ---@field focusLastElement table|string|nil Focus last element
 ---@field maxElements number Maximum elements to search for (derived from config)
+---@field leaderPressed boolean Leader key was pressed
+---@field leaderTimestamp number Timestamp when leader was pressed
+---@field leaderTimer table|nil Timer for leader timeout
+---@field leaderCapture string Captured keys after leader
 
 ---@class Hs.Vimnav.State.MappingPrefixes
 ---@field normal table<string, boolean> Normal mode mappings
@@ -176,18 +185,18 @@ local DEFAULT_MAPPING = {
 		-- hints click
 		["f"] = "gotoLink",
 		["r"] = "rightClick",
-		["F"] = "gotoLinkNewTab",
-		["di"] = "downloadImage",
 		["gi"] = "gotoInput",
-		["yf"] = "copyLinkUrlToClipboard",
 		["gf"] = "moveMouseToLink",
+		["<leader>f"] = "gotoLinkNewTab", -- browser only
+		["<leader>di"] = "downloadImage", -- browser only
+		["<leader>yf"] = "copyLinkUrlToClipboard", -- browser only
 		-- move mouse
 		["zz"] = "moveMouseToCenter",
 		-- copy page url
-		["yy"] = "copyPageUrlToClipboard",
+		["<leader>yy"] = "copyPageUrlToClipboard", -- browser only
 		-- next/prev page
-		["]]"] = "gotoNextPage",
-		["[["] = "gotoPrevPage",
+		["<leader>]"] = "gotoNextPage", -- browser only
+		["<leader>["] = "gotoPrevPage", -- browser only
 		-- searches
 		["/"] = { "cmd", "f" },
 		["n"] = { "cmd", "g" },
@@ -249,6 +258,10 @@ local DEFAULT_MAPPING = {
 ---@type Hs.Vimnav.Config
 local DEFAULT_CONFIG = {
 	logLevel = "warning",
+	leader = {
+		key = " ", -- space
+		timeout = 0.5,
+	},
 	hints = {
 		chars = "abcdefghijklmnopqrstuvwxyz",
 		fontSize = 12,
@@ -366,15 +379,15 @@ local defaultState = {
 	focusCachedResult = false,
 	focusLastElement = nil,
 	maxElements = 0,
+	leaderPressed = false,
+	leaderTimestamp = 0,
+	leaderTimer = nil,
+	leaderCapture = "",
 }
 
 ---@type Hs.Vimnav.State
 ---@diagnostic disable-next-line: missing-fields
 State = {}
-
-local function resetState()
-	State = defaultState
-end
 
 -- Element cache with weak references for garbage collection
 local elementCache = setmetatable({}, { __mode = "k" })
@@ -879,6 +892,24 @@ function Utils.getCachedElement(key, factory)
 	return element
 end
 
+--- Reset the full state to default
+function Utils.resetFullState()
+	State = defaultState
+end
+
+---Resets the leader state
+---@return nil
+function Utils.resetLeaderState()
+	State.leaderPressed = false
+	State.leaderTimestamp = 0
+	State.leaderCapture = ""
+	if State.leaderTimer then
+		State.leaderTimer:stop()
+		State.leaderTimer = nil
+	end
+	log.df("Reset leader state")
+end
+
 ---Clears the element cache
 ---@return nil
 function Utils.clearCache()
@@ -952,39 +983,48 @@ function Utils.fetchMappingPrefixes()
 	State.mappingPrefixes.insertNormal = {}
 	State.mappingPrefixes.insertVisual = {}
 
-	for k, v in pairs(M.config.mapping.normal) do
-		if v == "noop" then
-			goto continue
+	local leaderKey = M.config.leader.key or " "
+
+	local function addLeaderPrefixes(mapping, prefixTable)
+		for k, v in pairs(mapping) do
+			if v == "noop" then
+				goto continue
+			end
+
+			-- Handle leader key mappings
+			if k:sub(1, 8) == "<leader>" then
+				-- Mark leader key as prefix
+				prefixTable[leaderKey] = true
+
+				-- Extract the part after <leader>
+				local afterLeader = k:sub(9)
+				if #afterLeader > 1 then
+					-- Add all prefixes for multi-char sequences
+					-- e.g., for "<leader>ba", add "<leader>b" as prefix
+					for i = 1, #afterLeader - 1 do
+						local prefix = "<leader>" .. afterLeader:sub(1, i)
+						prefixTable[prefix] = true
+					end
+				end
+			elseif #k == 2 then
+				prefixTable[string.sub(k, 1, 1)] = true
+			elseif #k == 3 then
+				prefixTable[string.sub(k, 1, 1)] = true
+				prefixTable[string.sub(k, 1, 2)] = true
+			end
+			::continue::
 		end
-		if #k == 2 then
-			State.mappingPrefixes.normal[string.sub(k, 1, 1)] = true
-		end
-		::continue::
 	end
 
-	for k, v in pairs(M.config.mapping.insertNormal) do
-		if v == "noop" then
-			goto continue
-		end
-		if #k == 2 then
-			State.mappingPrefixes.insertNormal[string.sub(k, 1, 1)] = true
-		end
-		if #k == 3 then
-			State.mappingPrefixes.insertNormal[string.sub(k, 1, 1)] = true
-			State.mappingPrefixes.insertNormal[string.sub(k, 1, 2)] = true
-		end
-		::continue::
-	end
-
-	for k, _ in pairs(M.config.mapping.insertVisual) do
-		if v == "noop" then
-			goto continue
-		end
-		if #k == 2 then
-			State.mappingPrefixes.insertVisual[string.sub(k, 1, 1)] = true
-		end
-		::continue::
-	end
+	addLeaderPrefixes(M.config.mapping.normal, State.mappingPrefixes.normal)
+	addLeaderPrefixes(
+		M.config.mapping.insertNormal,
+		State.mappingPrefixes.insertNormal
+	)
+	addLeaderPrefixes(
+		M.config.mapping.insertVisual,
+		State.mappingPrefixes.insertVisual
+	)
 
 	log.df("Fetched mapping prefixes")
 end
@@ -2693,21 +2733,69 @@ function EventHandler.handleVimInput(char, opts)
 				Marks.click(markText:lower())
 				ModeManager.setModeNormal()
 				State.keyCapture = nil
+				Utils.resetLeaderState()
 				return
 			end
 		end
 	end
 
+	-- Check if this is the leader key being pressed
+	local leaderKey = M.config.leader.key
+	if char == leaderKey and not State.leaderPressed then
+		State.leaderPressed = true
+		State.leaderTimestamp = hs.timer.secondsSinceEpoch()
+		State.leaderCapture = ""
+		State.keyCapture = "<leader>"
+
+		-- Set timeout timer
+		if State.leaderTimer then
+			State.leaderTimer:stop()
+		end
+		State.leaderTimer = hs.timer.doAfter(M.config.leader.timeout, function()
+			log.df("Leader timeout")
+			Utils.resetLeaderState()
+			State.keyCapture = nil
+			MenuBar.setTitle(State.mode)
+			Overlay.update(State.mode)
+		end)
+
+		MenuBar.setTitle(State.mode, State.keyCapture)
+		Overlay.update(State.mode, State.keyCapture)
+		log.df("Leader key pressed")
+		return
+	end
+
 	-- Build key combination
 	local keyCombo = ""
-	if modifiers and modifiers.ctrl then
-		keyCombo = "C-"
-	end
-	keyCombo = keyCombo .. char
 
-	if State.keyCapture then
-		State.keyCapture = State.keyCapture .. keyCombo
+	-- Handle leader key sequences (including multi-char)
+	if State.leaderPressed then
+		State.leaderCapture = State.leaderCapture .. char
+		keyCombo = "<leader>" .. State.leaderCapture
+
+		-- Restart the timeout timer on each keypress
+		if State.leaderTimer then
+			State.leaderTimer:stop()
+		end
+		State.leaderTimer = hs.timer.doAfter(M.config.leader.timeout, function()
+			log.df("Leader timeout")
+			Utils.resetLeaderState()
+			State.keyCapture = nil
+			MenuBar.setTitle(State.mode)
+			Overlay.update(State.mode)
+		end)
 	else
+		if modifiers and modifiers.ctrl then
+			keyCombo = "C-"
+		end
+		keyCombo = keyCombo .. char
+
+		if State.keyCapture then
+			State.keyCapture = State.keyCapture .. keyCombo
+		end
+	end
+
+	if not State.keyCapture or State.leaderPressed then
 		State.keyCapture = keyCombo
 	end
 
@@ -2734,6 +2822,7 @@ function EventHandler.handleVimInput(char, opts)
 	end
 
 	if mapping then
+		-- Found a complete mapping, execute it
 		if type(mapping) == "string" then
 			if mapping == "noop" then
 				log.df("No mapping")
@@ -2750,10 +2839,14 @@ function EventHandler.handleVimInput(char, opts)
 		elseif type(mapping) == "function" then
 			mapping()
 		end
+		Utils.resetLeaderState()
 		State.keyCapture = nil
 	elseif prefixes and prefixes[State.keyCapture] then
 		log.df("Found prefix: " .. State.keyCapture)
+		-- Continue waiting for more keys
 	else
+		-- No mapping or prefix found, reset
+		Utils.resetLeaderState()
 		State.keyCapture = nil
 	end
 end
@@ -2876,6 +2969,7 @@ end
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.handleNormalMode(event)
 	if EventHandler.isEspace(event) then
+		Utils.resetLeaderState()
 		State.keyCapture = nil
 		MenuBar.setTitle(State.mode)
 		return false
@@ -2899,8 +2993,26 @@ function EventHandler.processVimInput(event)
 
 	local char = hs.keycodes.map[keyCode]
 
-	if not char:match("[%a%d%[%]%$/]") or #char ~= 1 then
+	-- Get the actual typed character (accounting for shift)
+	local typedChar = flags.shift and event:getCharacters() or char
+
+	-- Convert "space" keycode to actual space character
+	if char == "space" then
+		typedChar = " "
+	end
+
+	-- Basic validation - allow letters, numbers, common symbols, and space
+	if not typedChar or typedChar == "" or #typedChar > 1 then
 		return false
+	end
+
+	-- Check if this is the leader key being pressed
+	local leaderKey = M.config.leader.key or " "
+	if typedChar == leaderKey and not State.leaderPressed then
+		EventHandler.handleVimInput(leaderKey, {
+			modifiers = flags,
+		})
+		return true
 	end
 
 	if flags.shift then
@@ -2994,6 +3106,9 @@ local function cleanupOnAppSwitch()
 
 	-- Reset link capture state
 	State.linkCapture = ""
+
+	-- Reset leader state
+	Utils.resetLeaderState()
 
 	-- Reset focus state
 	State.focusCachedResult = false
@@ -3290,7 +3405,7 @@ function M:start()
 		self:configure({})
 	end
 
-	resetState()
+	Utils.resetFullState()
 
 	Utils.fetchMappingPrefixes()
 	Utils.generateCombinations()

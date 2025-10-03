@@ -22,6 +22,7 @@ Stop reaching for your mouse. Navigate Safari, Mail, Finder, or any macOS app wi
 - ✍️ \*Modal text editing\*\* — Normal and Visual modes inside text field (Only for those mappable shortcuts)
 - 🚀 **Performance optimized** — async traversal, spatial indexing, memory pooling
 - 🎛️ **Highly customizable** — keybindings, launchers, excluded apps
+- 🔌 **Supports leader key** — use `<leader>` in any variant of normal mode
 
 > [!NOTE]
 > Modal text editing is best effort to imitate vim keybinding with simple shortcuts available in macOS.
@@ -87,15 +88,15 @@ Press `f` to enter link hints mode. Interactive elements get labeled:
 
 Type the letters (e.g., `AA`) to click that element instantly!
 
-| Key   | Action                | Works In |
-| ----- | --------------------- | -------- |
-| `f`   | Click element         | All apps |
-| `F`   | Open in new tab       | Browsers |
-| `r`   | Right-click element   | All apps |
-| `gi`  | Jump to input field   | All apps |
-| `gf`  | Move mouse to element | All apps |
-| `yf`  | Copy link URL         | Browsers |
-| `Esc` | Exit link             | All apps |
+| Key          | Action                | Works In |
+| ------------ | --------------------- | -------- |
+| `f`          | Click element         | All apps |
+| `<leader>f`  | Open in new tab       | Browsers |
+| `r`          | Right-click element   | All apps |
+| `gi`         | Jump to input field   | All apps |
+| `gf`         | Move mouse to element | All apps |
+| `<leader>yf` | Copy link URL         | Browsers |
+| `Esc`        | Exit link             | All apps |
 
 ### ✍️ Text Editing Modes
 
@@ -181,14 +182,16 @@ Insert → [Esc] → Insert Normal → [v/V] → Insert Visual
 
 Enhanced functionality in Safari, Chrome, Firefox, Edge, Brave, and Zen:
 
-| Key         | Action                    |
-| ----------- | ------------------------- |
-| `yy`        | Copy current page URL     |
-| `yf`        | Copy link URL (after `f`) |
-| `F`         | Open link in new tab      |
-| `di`        | Download image            |
-| `]]`/`[[`   | Next/previous page        |
-| `Shift-Esc` | Force unfocus from forms  |
+By default, browser features are mapped to `<leader>` key. You can change this in the configuration.
+
+| Key                     | Action                    |
+| ----------------------- | ------------------------- |
+| `<leader>yy`            | Copy current page URL     |
+| `<leader>yf`            | Copy link URL (after `f`) |
+| `<leader>f`             | Open link in new tab      |
+| `<leader>di`            | Download image            |
+| `<leader>]`/`<leader>[` | Next/previous page        |
+| `Shift-Esc`             | Force unfocus from forms  |
 
 ### 🎭 Modes Overview
 
@@ -212,6 +215,11 @@ Vimnav operates in different modes, shown in the menu bar:
 hs.loadSpoon("Vimnav")
 spoon.Vimnav
  :configure({
+  leader = {
+   key = " ", -- space
+   timeout = 0.5,
+  },
+
   scroll = {
    scrollStep = 100, -- Faster scrolling
    smoothScroll = true, -- Smooth animations
@@ -264,6 +272,9 @@ spoon.Vimnav
 
     -- Disable mapping and pass through to the app
     ["/"] = "noop",
+
+    -- Use <leader> key
+    ["<leader>g"] = "anyCommandYouLike",
    },
   },
  })
@@ -445,6 +456,12 @@ spoon.Vimnav:getDefaultConfig()          -- Returns default config
 {
  -- Logging
  logLevel = "warning",
+
+ -- Leader key
+ leader = {
+  key = " ", -- space
+  timeout = 0.5,
+ },
 
  -- Link Hints
  hints = {
