@@ -1367,16 +1367,9 @@ function Overlay.update(mode, keys)
 		displayText = string.format("%s [%s]", modeChar, keys)
 	end
 
-	-- Calculate text width (approximate)
-	local charWidth = fontSize * 0.65
-	local textWidth = #displayText * charWidth
-	local newWidth = textWidth
-
+	local textWidth = #displayText * fontSize
 	local height = M.config.overlay.size or 30
-
-	if newWidth < height then
-		newWidth = height
-	end
+	local newWidth = textWidth < height and height or textWidth
 
 	-- Get current frame
 	local currentFrame = Overlay.canvas:frame()
