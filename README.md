@@ -91,6 +91,7 @@ Type the letters (e.g., `AA`) to click that element instantly!
 | Key          | Action                | Works In |
 | ------------ | --------------------- | -------- |
 | `f`          | Click element         | All apps |
+| `F`          | Double Click element  | All apps |
 | `<leader>f`  | Open in new tab       | Browsers |
 | `r`          | Right-click element   | All apps |
 | `gi`         | Jump to input field   | All apps |
