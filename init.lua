@@ -44,7 +44,7 @@ local log
 ---@class Hs.Vimnav.Config
 ---@field logLevel? string Log level to show in the console
 ---@field hints? Hs.Vimnav.Config.Hints Settings for hints
----@field focusCheckInterval? number Focus check interval in seconds (e.g. 0.5 for 500ms)
+---@field focus? Hs.Vimnav.Config.Focus Focus settings
 ---@field mapping? Hs.Vimnav.Config.Mapping Mappings to use
 ---@field scroll? Hs.Vimnav.Config.Scroll Scroll settings
 ---@field axRoles? Hs.Vimnav.Config.AxRoles Roles to use for AXUIElement
@@ -53,9 +53,11 @@ local log
 ---@field overlay? Hs.Vimnav.Config.Overlay Configure overlay indicator
 ---@field leader? Hs.Vimnav.Config.Leader Configure leader key
 
+---@class Hs.Vimnav.Config.Focus
+---@field checkInterval? number Focus check interval in seconds (e.g. 0.5 for 500ms)
+
 ---@class Hs.Vimnav.Config.Leader
 ---@field key? string Leader key
----@field timeout? number Leader key timeout
 
 ---@class Hs.Vimnav.Config.ApplicationGroups
 ---@field exclusions? string[] Apps to exclude from Vimnav (e.g. Terminal)
@@ -129,8 +131,6 @@ local log
 ---@field focusLastElement table|string|nil Focus last element
 ---@field maxElements number Maximum elements to search for (derived from config)
 ---@field leaderPressed boolean Leader key was pressed
----@field leaderTimestamp number Timestamp when leader was pressed
----@field leaderTimer table|nil Timer for leader timeout
 ---@field leaderCapture string Captured keys after leader
 
 ---@class Hs.Vimnav.State.MappingPrefixes
@@ -262,7 +262,6 @@ local DEFAULT_CONFIG = {
 	logLevel = "warning",
 	leader = {
 		key = " ", -- space
-		timeout = 0.5,
 	},
 	hints = {
 		chars = "abcdefghijklmnopqrstuvwxyz",
@@ -278,7 +277,9 @@ local DEFAULT_CONFIG = {
 			textColor = "#000000",
 		},
 	},
-	focusCheckInterval = 0.1,
+	focus = {
+		checkInterval = 0.1,
+	},
 	mapping = DEFAULT_MAPPING,
 	scroll = {
 		scrollStep = 50,
@@ -382,8 +383,6 @@ local defaultState = {
 	focusLastElement = nil,
 	maxElements = 0,
 	leaderPressed = false,
-	leaderTimestamp = 0,
-	leaderTimer = nil,
 	leaderCapture = "",
 }
 
@@ -905,16 +904,23 @@ function Utils.resetFullState()
 	State = defaultState
 end
 
+---Reset the linkcapture state
+---@return nil
+function Utils.resetLinkCaptureState()
+	State.linkCapture = ""
+end
+
+---Reset the keycapture state
+---@return nil
+function Utils.resetKeyCaptureState()
+	State.keyCapture = nil
+end
+
 ---Resets the leader state
 ---@return nil
 function Utils.resetLeaderState()
 	State.leaderPressed = false
-	State.leaderTimestamp = 0
 	State.leaderCapture = ""
-	if State.leaderTimer then
-		State.leaderTimer:stop()
-		State.leaderTimer = nil
-	end
 	log.df("Reset leader state")
 end
 
@@ -1602,7 +1608,7 @@ function ModeManager.setModeLink()
 		return false
 	end
 
-	State.linkCapture = ""
+	Utils.resetLinkCaptureState()
 	Marks.clear()
 
 	return true
@@ -2041,7 +2047,7 @@ function Marks.clear()
 		State.canvas = nil
 	end
 	State.marks = {}
-	State.linkCapture = ""
+	Utils.resetLinkCaptureState()
 	MarkPool.releaseAll()
 	log.df("Cleared marks")
 end
@@ -2809,7 +2815,7 @@ function EventHandler.handleVimInput(char, opts)
 			if markText == State.linkCapture then
 				Marks.click(markText:lower())
 				ModeManager.setModeNormal()
-				State.keyCapture = nil
+				Utils.resetKeyCaptureState()
 				Utils.resetLeaderState()
 				return
 			end
@@ -2820,21 +2826,8 @@ function EventHandler.handleVimInput(char, opts)
 	local leaderKey = M.config.leader.key
 	if char == leaderKey and not State.leaderPressed then
 		State.leaderPressed = true
-		State.leaderTimestamp = hs.timer.secondsSinceEpoch()
 		State.leaderCapture = ""
 		State.keyCapture = "<leader>"
-
-		-- Set timeout timer
-		if State.leaderTimer then
-			State.leaderTimer:stop()
-		end
-		State.leaderTimer = hs.timer.doAfter(M.config.leader.timeout, function()
-			log.df("Leader timeout")
-			Utils.resetLeaderState()
-			State.keyCapture = nil
-			MenuBar.setTitle(State.mode)
-			Overlay.update(State.mode)
-		end)
 
 		MenuBar.setTitle(State.mode, State.keyCapture)
 		Overlay.update(State.mode, State.keyCapture)
@@ -2849,18 +2842,6 @@ function EventHandler.handleVimInput(char, opts)
 	if State.leaderPressed then
 		State.leaderCapture = State.leaderCapture .. char
 		keyCombo = "<leader>" .. State.leaderCapture
-
-		-- Restart the timeout timer on each keypress
-		if State.leaderTimer then
-			State.leaderTimer:stop()
-		end
-		State.leaderTimer = hs.timer.doAfter(M.config.leader.timeout, function()
-			log.df("Leader timeout")
-			Utils.resetLeaderState()
-			State.keyCapture = nil
-			MenuBar.setTitle(State.mode)
-			Overlay.update(State.mode)
-		end)
 	else
 		if modifiers and modifiers.ctrl then
 			keyCombo = "C-"
@@ -2917,14 +2898,14 @@ function EventHandler.handleVimInput(char, opts)
 			mapping()
 		end
 		Utils.resetLeaderState()
-		State.keyCapture = nil
+		Utils.resetKeyCaptureState()
 	elseif prefixes and prefixes[State.keyCapture] then
 		log.df("Found prefix: " .. State.keyCapture)
 		-- Continue waiting for more keys
 	else
 		-- No mapping or prefix found, reset
 		Utils.resetLeaderState()
-		State.keyCapture = nil
+		Utils.resetKeyCaptureState()
 	end
 end
 
@@ -3000,6 +2981,16 @@ function EventHandler.handleInsertNormalMode(event)
 		return true
 	end
 
+	if EventHandler.isEspace(event) then
+		if State.leaderPressed then
+			Utils.resetLeaderState()
+			Utils.resetKeyCaptureState()
+			MenuBar.setTitle(State.mode)
+			Overlay.update(State.mode)
+			return true
+		end
+	end
+
 	return EventHandler.processVimInput(event)
 end
 
@@ -3021,9 +3012,17 @@ function EventHandler.handleInsertVisualMode(event)
 	end
 
 	if EventHandler.isEspace(event) then
-		Utils.keyStroke({}, "right")
-		ModeManager.setModeInsertNormal()
-		return true
+		if State.leaderPressed then
+			Utils.resetLeaderState()
+			Utils.resetKeyCaptureState()
+			MenuBar.setTitle(State.mode)
+			Overlay.update(State.mode)
+			return true
+		else
+			Utils.keyStroke({}, "right")
+			ModeManager.setModeInsertNormal()
+			return true
+		end
 	end
 
 	return EventHandler.processVimInput(event)
@@ -3047,8 +3046,9 @@ end
 function EventHandler.handleNormalMode(event)
 	if EventHandler.isEspace(event) then
 		Utils.resetLeaderState()
-		State.keyCapture = nil
+		Utils.resetKeyCaptureState()
 		MenuBar.setTitle(State.mode)
+		Overlay.update(State.mode)
 		return false
 	end
 
@@ -3182,10 +3182,13 @@ local function cleanupOnAppSwitch()
 	Marks.clear()
 
 	-- Reset link capture state
-	State.linkCapture = ""
+	Utils.resetLinkCaptureState()
 
 	-- Reset leader state
 	Utils.resetLeaderState()
+
+	-- Reset key capture state
+	Utils.resetKeyCaptureState()
 
 	-- Reset focus state
 	State.focusCachedResult = false
@@ -3263,7 +3266,7 @@ local function startFocusPolling()
 	end
 
 	focusCheckTimer = hs.timer
-		.new(M.config.focusCheckInterval or 0.1, function()
+		.new(M.config.focus.checkInterval or 0.1, function()
 			pcall(updateFocusState)
 		end)
 		:start()
