@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.1](https://github.com/y3owk1n/Vimnav.spoon/compare/v1.1.0...v1.1.1) (2025-10-03)
+
+
+### Bug Fixes
+
+* add `x` key mapping for delete a char in insertNormal mode ([#47](https://github.com/y3owk1n/Vimnav.spoon/issues/47)) ([697903f](https://github.com/y3owk1n/Vimnav.spoon/commit/697903f9e54d729b4f3c95e176096d850ca45a52))
+* only process focused axwindow ([#45](https://github.com/y3owk1n/Vimnav.spoon/issues/45)) ([e50cc7d](https://github.com/y3owk1n/Vimnav.spoon/commit/e50cc7db2a64e50ed7c793cfb990fa57210f4a61))
+* remove leaderkey timeout ([#48](https://github.com/y3owk1n/Vimnav.spoon/issues/48)) ([110d87b](https://github.com/y3owk1n/Vimnav.spoon/commit/110d87bc63eb7ea4a7f8147d8e715e4050a44174))
+
 ## [1.1.0](https://github.com/y3owk1n/Vimnav.spoon/compare/v1.0.0...v1.1.0) (2025-10-03)
 
 
