@@ -221,6 +221,7 @@ local DEFAULT_MAPPING = {
 		["yiw"] = "yankWord",
 		["dd"] = "deleteLine",
 		["cc"] = "changeLine",
+		["x"] = { {}, "delete" },
 		-- yank and paste
 		["yy"] = "yankLine",
 		["p"] = { "cmd", "v" },
