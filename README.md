@@ -1,6 +1,6 @@
 # ⌨️ Vimnav.spoon
 
-> **Vim navigation for your entire Mac.** Navigate any macOS application with Vim-like keybindings using Hammerspoon. Think Vimium, but system-wide.
+> **System-wide Vim navigation for macOS.** Use Vim keybindings in any application with Hammerspoon—think Vimium, but everywhere.
 
 <p align="left">
   <img src="https://img.shields.io/badge/platform-macOS-lightgrey" alt="Platform: macOS">
@@ -10,507 +10,339 @@
 
 ![vimnav-demo](https://github.com/user-attachments/assets/b32374e0-5446-46f8-99d2-bfae1bc90799)
 
+## Why Vimnav?
+
+Navigate Safari, Mail, Finder, or any macOS app with the same Vim keybindings you already know. No more reaching for your mouse.
+
+**Key Features:**
+
+- Works across all native macOS apps
+- Visual link hints for mouse-free clicking
+- Vim-style modal editing in text fields
+- Smart mode switching (auto-enters insert mode in inputs)
+- Performance optimized with async processing
+- Highly customizable keybindings and behavior
+
 > [!NOTE]
 > This is a personal project maintained on a best-effort basis. PRs are more likely to be reviewed than feature requests or issues, unless I am facing the same problem.
 
-## ✨ Why Vimnav?
+## Quick Start
 
-Stop reaching for your mouse. Navigate Safari, Mail, Finder, or any macOS app with the same muscle memory you use in Vim.
+### Prerequisites
 
-**🎯 Key Features:**
-
-- 🌐 Works across **all native macOS apps** (Safari, Mail, Finder, System Settings)
-- 🎨 **Visual link hints** — click anything without touching your mouse
-- ⚡ **Smart mode switching** — auto-enters insert mode in text fields
-- ✍️ **Modal text editing** — Normal and Visual modes inside text field (Only for those mappable shortcuts)
-- 🚀 **Performance optimized** — async traversal, spatial indexing, memory pooling
-- 🎛️ **Highly customizable** — keybindings, launchers, excluded apps
-- 🔌 **Supports leader key** — use `<leader>` in any variant of normal mode
-
-> [!NOTE]
-> Modal text editing is best effort to imitate vim keybinding with simple shortcuts available in macOS.
-> It's better than nothing but I have no intention to build a full accessibility detection, unless someone is interested
-> to help out.
-
-## 🚀 Quick Start
+- macOS
+- [Hammerspoon](https://www.hammerspoon.org/) installed
+- Accessibility permissions enabled (System Settings → Privacy & Security → Accessibility)
 
 ### Installation
 
-1. **Install Hammerspoon** → [Download here](https://www.hammerspoon.org/)
-2. **Enable Accessibility** → System Settings → Privacy & Security → Accessibility
-3. **Download Vimnav** → [Download here](https://github.com/y3owk1n/vimnav.spoon/releases/latest) or `git clone` this repo, and place `Vimnav.spoon` in `~/.hammerspoon/Spoons/`
-4. **Configure** → Add the following snippet to `~/.hammerspoon/init.lua`:
+1. **Download** the [latest release](https://github.com/y3owk1n/vimnav.spoon/releases/latest) or clone this repo
+2. **Place** `Vimnav.spoon` in `~/.hammerspoon/Spoons/`
+3. **Add to** `~/.hammerspoon/init.lua`:
+
+    ```lua
+    hs.loadSpoon("Vimnav")
+    spoon.Vimnav:start()
+    ```
+
+4. **Reload** Hammerspoon
+
+### First Steps
+
+Try these basics to get started:
+
+- Press `f` in Safari to see link hints on clickable elements
+- Type the hint letters to click
+- Use `j`/`k` to scroll down/up
+- Press `Esc` in a text field to enter Insert Normal mode for Vim-style editing
+
+## How It Works
+
+Vimnav uses **modal editing** like Vim. Different modes handle different tasks, and you can see the current mode in your menu bar (or on-screen overlay).
+
+### Understanding Modes
+
+#### **Normal Mode (N)** - The default state
+
+- Active when no text field is focused and not excluded
+- All navigation and link hint commands available
+- Press `i` to enter Passthrough mode (sends all keys to app)
+- Press `f` to show link hints
+- Focus any text field to auto-switch to Insert mode
+
+#### **Insert Mode (I)** - Text input
+
+- Auto-activated when you focus a text field (Best effort with accessibility detection)
+- Keys behave normally (typing works as expected without lag)
+- Press `Esc` once to enter Insert Normal mode
+- Press `Shift-Esc` to force unfocus and return to Normal mode
+
+#### **Insert Normal Mode (IN)** - Vim editing in text fields
+
+- Activated by pressing `Esc` from Insert mode
+- Allows Vim-style navigation and editing without leaving the text field
+- Press `i`, `a`, `o`, `O`, `A`, or `I` to return to Insert mode
+- Press `v` or `V` to enter Insert Visual mode
+- Press `Shift-Esc` to force unfocus and return to Normal mode
+
+#### **Insert Visual Mode (IV)** - Visual selection in text fields
+
+- Activated by pressing `v` or `V` from Insert Normal mode
+- Extend selections with Vim motions, then `y`/`d`/`c` to act on them
+- Press `Esc` once to return to Insert Normal mode
+- Press `Shift-Esc` to force unfocus and return to Normal mode
+
+#### **Links Mode (L)** - Interactive element selection
+
+- Activated by pressing `f` (or `F`, `r`, etc.) from Normal mode
+- Shows labeled hints on all clickable elements
+- Type the hint letters to interact with that element
+- Press `Esc` to cancel and return to Normal mode
+
+#### **Passthrough Mode (P)** - Vimnav disabled temporarily
+
+- Activated by pressing `i` from Normal mode
+- All keys are sent directly to the application
+- Useful when Vimnav conflicts with app shortcuts
+- If this happens often, recommend to just add it to the exclusion list
+- Press `Shift-Esc` to return to Normal mode
+
+#### **Disabled Mode (X)** - Vimnav inactive
+
+- Automatically activated in excluded apps (Terminal, iTerm2, etc.)
+- Vimnav does nothing in this mode
+
+### Key Insight: `Esc` vs `Shift-Esc`
+
+This is crucial to understand:
+
+- **`Esc`** = Navigate between Insert modes (Insert ↔ Insert Normal ↔ Insert Visual)
+- **`Shift-Esc`** = Force unfocus from text field and return to Normal mode
+
+When in a text field:
+
+- `Esc` keeps you in the field but gives you Vim navigation
+- `Shift-Esc` exits the field completely
+
+## Core Features
+
+### Navigation (Normal Mode)
+
+Basic movement:
+
+- `h`/`j`/`k`/`l` - Scroll left/down/up/right
+- `C-d`/`C-u` - Half page down/up
+- `gg`/`G` - Jump to top/bottom
+- `H`/`L` - Browser back/forward
+
+Search:
+
+- `/` - Search in page
+- `n`/`N` - Next/previous result (To use this, you will need to press `tab` key after done searching in `/`)
+
+### Hints
+
+Click anything without your mouse by using hints:
+
+- `f` - Click element
+- `F` - Double-click element (useful in Finder.app)
+- `r` - Right-click element
+- `gi` - Input fields
+- `gf` - Move mouse to element
+- `Esc` - Cancel
+
+**Browser-specific** (with `<leader>` prefix):
+
+- `<leader>f` - Open link in new tab
+- `<leader>yf` - Copy link URL
+- `<leader>di` - Download image
+- `<leader>yy` - Copy current page URL
+- `<leader>]`/`[` - Next/previous page
+
+### Text Editing
+
+When focused in a text field, press `Esc` to unlock Vim-style editing:
+
+**Insert Normal Mode:**
+
+Movement:
+
+- `h`/`j`/`k`/`l` - Character/line navigation
+- `e`/`b` - Word end/beginning
+- `0`/`$` - Line start/end
+- `gg`/`G` - Document start/end
+
+Text operations:
+
+- `diw`/`ciw`/`yiw` - Delete/change/yank word (Not exactly true textobject, the `i` key is more for muscle memory only)
+- `dd`/`cc`/`yy` - Delete/change/yank line
+- `u`/`C-r` - Undo/redo
+- `p` - Paste
+
+Mode switching:
+
+- `i` - Return to Insert mode
+- `o`/`O` - Insert new line below/above
+- `A`/`I` - Insert at line end/start
+- `v`/`V` - Enter Visual/Visual Line mode
+
+**Insert Visual Mode:**
+
+- `h`/`j`/`k`/`l` - Extend selection
+- `e`/`b` - Extend by word
+- `0`/`$` - Extend to line start/end
+- `d`/`c`/`y` - Delete/change/yank selection
+
+> [!NOTE]
+> Modal text editing mimics Vim using macOS shortcuts. It won't be as complete as Vim, but it's much better than nothing.
+
+### Passthrough Mode
+
+Press `i` in Normal mode to send all keys to the application. Press `Shift-Esc` to return to Normal mode.
+
+## Configuration
+
+The defaults are sane enough and you shouldn't need to configure anything to use it. The below are just example.
 
 ```lua
 hs.loadSpoon("Vimnav")
-spoon.Vimnav:start()
-```
-
-5. **Reload** Hammerspoon
-
-### 🎓 First Steps
-
-Press `f` in Safari to see link hints overlay on all clickable elements. Type the letters shown to click!
-
-**Try these basics:**
-
-- `j`/`k` → scroll down/up
-- `gg`/`G` → jump to top/bottom
-- `f` → show clickable elements
-- `gi` → jump to first input field
-- Click in a text field, press `Esc` to enter Insert Normal mode
-
-## 📖 Features
-
-### 🧭 Core Navigation
-
-| Key             | Action    | Description                                               |
-| --------------- | --------- | --------------------------------------------------------- |
-| `h`/`j`/`k`/`l` | Scroll    | Vim-style directional movement                            |
-| `C-d`/`C-u`     | Half page | Fast vertical scrolling                                   |
-| `gg`/`G`        | Jump      | Top or bottom of page                                     |
-| `H`/`L`         | History   | Back/forward (⌘[ / ⌘])                                    |
-| `/`             | Search    | Search in page                                            |
-| `n`             | Next      | Search next (need to do a `tab` press if right after `/`) |
-| `N`             | Prev      | Search previous                                           |
-
-### ❌ Passthrough Mode
-
-Press `i` to enter passthrough mode from normal mode. In this mode, every key press is sent to the app.
-
-To back to normal mode, press `Shift-Esc`.
-
-### 🎯 Link Hints Mode
-
-Press `f` to enter link hints mode. Interactive elements get labeled:
-
-```
-[AA] Sign In    [AB] Register    [AC] Learn More
-[AD] Products   [AE] Pricing     [AF] Contact
-```
-
-Type the letters (e.g., `AA`) to click that element instantly!
-
-| Key          | Action                | Works In |
-| ------------ | --------------------- | -------- |
-| `f`          | Click element         | All apps |
-| `F`          | Double Click element  | All apps |
-| `<leader>f`  | Open in new tab       | Browsers |
-| `r`          | Right-click element   | All apps |
-| `gi`         | Jump to input field   | All apps |
-| `gf`         | Move mouse to element | All apps |
-| `<leader>yf` | Copy link URL         | Browsers |
-| `Esc`        | Exit link             | All apps |
-
-### ✍️ Text Editing Modes
-
-When you focus a text field, Vimnav automatically enters **Insert mode**. Press `Esc` to unlock Vim-like editing!
-
-#### 📝 Insert Normal Mode (`Esc` from Insert)
-
-Navigate and manipulate text without leaving the input field:
-
-**Movement:**
-
-| Key  | Action            | Description            |
-| ---- | ----------------- | ---------------------- |
-| `h`  | ← cursor left     | Move left              |
-| `l`  | → cursor right    | Move right             |
-| `j`  | ↓ cursor down     | Move down              |
-| `k`  | ↑ cursor up       | Move up                |
-| `e`  | ⌥→ word end       | Jump to end of word    |
-| `b`  | ⌥← word back      | Jump to start of word  |
-| `0`  | ⌘← line start     | Jump to line start     |
-| `$`  | ⌘→ line end       | Jump to line end       |
-| `gg` | ⌘↑ document start | Jump to document start |
-| `G`  | ⌘↓ document end   | Jump to document end   |
-
-**Editing:**
-
-| Key   | Action            | Description               |
-| ----- | ----------------- | ------------------------- |
-| `diw` | Delete inner word | Delete word under cursor  |
-| `ciw` | Change inner word | Delete word + insert mode |
-| `yiw` | Yank inner word   | Copy word                 |
-| `dd`  | Delete line       | Delete current line       |
-| `cc`  | Change line       | Delete line + insert mode |
-| `yy`  | Yank line         | Copy current line         |
-| `u`   | Undo              | Undo last change (⌘Z)     |
-| `C-r` | Redo              | Redo last change (⌘⇧Z)    |
-| `p`   | Paste             | Paste from clipboard (⌘V) |
-
-**Mode Switching:**
-
-| Key         | Action                | Description                  |
-| ----------- | --------------------- | ---------------------------- |
-| `i`         | Insert mode           | Return to insert mode        |
-| `o`         | Insert new line below | New line below + insert mode |
-| `O`         | Insert new line above | New line above + insert mode |
-| `A`         | Insert at line end    | Jump to end + insert mode    |
-| `I`         | Insert at line start  | Jump to start + insert       |
-| `v`         | Visual mode           | Enter visual mode            |
-| `V`         | Visual line mode      | Select entire line           |
-| `Shift-Esc` | Force unfocus         | Exit field completely        |
-
-#### 🎨 Insert Visual Mode (`v` from Insert Normal)
-
-Select text visually with Vim motions:
-
-| Key         | Action                | Description              |
-| ----------- | --------------------- | ------------------------ |
-| `h`         | ⇧← extend left        | Extend selection left    |
-| `l`         | ⇧→ extend right       | Extend selection right   |
-| `j`         | ⇧↓ extend down        | Extend selection down    |
-| `k`         | ⇧↑ extend up          | Extend selection up      |
-| `e`         | ⇧⌥→ extend word end   | Extend to word end       |
-| `b`         | ⇧⌥← extend word back  | Extend to word start     |
-| `0`         | ⇧⌘← extend line start | Extend to line start     |
-| `$`         | ⇧⌘→ extend line end   | Extend to line end       |
-| `gg`        | ⇧⌘↑ extend doc start  | Extend to document start |
-| `G`         | ⇧⌘↓ extend doc end    | Extend to document end   |
-| `d`         | Delete selection      | Delete highlighted text  |
-| `c`         | Change selection      | Delete + insert mode     |
-| `y`         | Yank selection        | Copy highlighted text    |
-| `Esc`       | Exit visual           | Back to insert normal    |
-| `Shift-Esc` | Force unfocus         | Exit field completely    |
-
-**🔄 Mode Flow:**
-
-```
-Insert → [Esc] → Insert Normal → [v/V] → Insert Visual
-                      ↑                          ↓
-                      └────────[Esc]─────────────┘
-```
-
-### 🌐 Browser-Specific Features
-
-Enhanced functionality in Safari, Chrome, Firefox, Edge, Brave, and Zen:
-
-By default, browser features are mapped to `<leader>` key. You can change this in the configuration.
-
-| Key                     | Action                    |
-| ----------------------- | ------------------------- |
-| `<leader>yy`            | Copy current page URL     |
-| `<leader>yf`            | Copy link URL (after `f`) |
-| `<leader>f`             | Open link in new tab      |
-| `<leader>di`            | Download image            |
-| `<leader>]`/`<leader>[` | Next/previous page        |
-| `Shift-Esc`             | Force unfocus from forms  |
-
-### 🎭 Modes Overview
-
-Vimnav operates in different modes, shown in the menu bar:
-
-| Icon   | Mode          | When                              |
-| ------ | ------------- | --------------------------------- |
-| **N**  | Normal        | Default navigation mode           |
-| **I**  | Insert        | Auto-activated in text fields     |
-| **IN** | Insert Normal | Vim navigation within text fields |
-| **IV** | Insert Visual | Vim visual selection in fields    |
-| **P**  | Passthrough   | Manual activation (press `i`)     |
-| **L**  | Links         | Showing link hints                |
-| **X**  | Disabled      | In excluded apps                  |
-
-## ⚙️ Configuration
-
-### 🎛️ Basic Setup
-
-```lua
-hs.loadSpoon("Vimnav")
-spoon.Vimnav
- :configure({
+spoon.Vimnav:configure({
   leader = {
-   key = " ", -- space
+    key = " ", -- space as leader
   },
-
   scroll = {
-   scrollStep = 100, -- Faster scrolling
-   smoothScroll = true, -- Smooth animations
+    scrollStep = 100,
+    smoothScroll = true,
   },
-
   hints = {
-   chars = "asdfghjkl", -- Home row only
+    chars = "asdfghjkl", -- home row only
   },
-
   applicationGroups = {
-   exclusions = { -- Don't run in these apps
-    "Terminal",
-    "iTerm2",
-    "VSCode",
-   },
+    exclusions = {
+      "Terminal",
+      "iTerm2",
+      "VSCode",
+    },
   },
- })
- :start()
+}):start()
 ```
 
-### ⌨️ Custom Keybindings
+### Custom Keybindings
 
-Map any key to any command or native keystroke or any function or disable it:
-
-```lua
-spoon.Vimnav
- :configure({
-  mapping = {
-   normal = {
-    -- Commands
-    ["j"] = "scrollDown",
-
-    -- Multi-character combos
-    ["gg"] = "scrollToTop",
-
-    -- Control key combos
-    ["C-f"] = "scrollHalfPageDown",
-
-    -- Native keystrokes
-    ["t"] = { "cmd", "t" }, -- ⌘T (new tab)
-
-    -- Map to other keystrokes
-    ["h"] = { "shift", "4" }, -- map to `$` key
-
-    -- Custom function
-    ["Q"] = function()
-     -- this is just an example, you can do anything
-     hs.alert.show("Hello from Vimnav!")
-    end,
-
-    -- Disable mapping and pass through to the app
-    ["/"] = "noop",
-
-    -- Use <leader> key
-    ["<leader>g"] = "anyCommandYouLike",
-   },
-  },
- })
- :start()
-```
-
-### 📊 Visual Indicators
-
-#### 📍 Menubar Indicator
-
-<https://github.com/user-attachments/assets/671cc359-3500-4baa-baa5-1582d39c8986>
-
-Shows current mode in your menu bar (enabled by default):
+Map keys to commands, native keystrokes, or custom functions:
 
 ```lua
 spoon.Vimnav:configure({
- menubar = { enabled = false } -- Disable if preferred
+  mapping = {
+    normal = {
+      -- Map to built-in commands
+      ["j"] = "scrollDown",
+      ["gg"] = "scrollToTop",
+
+      -- Map to native keystrokes
+      ["t"] = { "cmd", "t" }, -- ⌘T for new tab
+
+      -- Map to custom functions
+      ["Q"] = function()
+        hs.alert.show("Custom action!")
+      end,
+
+      -- Disable a mapping
+      ["/"] = "noop",
+
+      -- Use leader key
+      ["<leader>g"] = "anyCommand",
+    },
+  },
 })
 ```
 
-#### 🎯 Overlay Indicator
+Mapped commands can be found by running in your hammerspoon console:
 
-Show a floating overlay on your screen:
+```lua
+print(hs.inspect(spoon.Vimnav:getDefaultConfig().mapping))
+```
 
-<https://github.com/user-attachments/assets/a43af6b7-0947-4e2b-bc91-9b8cf969ee28>
+The default leader key is `space`. To change it, set `leader.key` to the desired character.
 
 ```lua
 spoon.Vimnav:configure({
- menubar = { enabled = false },
- overlay = {
-  enabled = true,
-  position = "top-center",    -- Position on screen
-  size = 25,                  -- Indicator size
-  padding = 4,                -- Padding around screen frame
-  textFont = ".AppleSystemUIFontHeavy", -- Text font
-  colors = {
-   disabled = "#5a5672",
-   normal = "#80b8e8",
-   insert = "#abe9b3",
-   insertNormal = "#f9e2af",
-   insertVisual = "#c9a0e9",
-   links = "#f8bd96",
-   passthrough = "#f28fad",
+  leader = {
+    key = " ", -- space as leader
   },
- },
+})
+```
+
+### Hints customisation
+
+Hints can be customised by changing the `hints` table:
+
+```lua
+spoon.Vimnav:configure({
+  hints = {
+ chars = "abcdefghijklmnopqrstuvwxyz", -- characters to make hints combination
+    fontSize = 12, -- font size for hints
+ depth = 20, -- depth for traversing axelements
+ textFont = ".AppleSystemUIFontHeavy", -- font for hints text
+    colors = {
+      from = "#FFF585", -- background gradient color (from)
+      to = "#FFC442", -- background gradient color (to)
+      angle = 45, -- background gradient angle
+      border = "#000000", -- border color
+      borderWidth = 1, -- border width (set to 0 to disable)
+      textColor = "#000000", -- text color for the hint
+    },
+  },
 })
 ```
 
 You can run `hs.inspect(hs.styledtext.fontNames())` in Hammerspoon console to see all available fonts.
 
-### 🔧 Advanced Configuration
+### Focus watcher
 
-#### Configure hints style
+The focus watcher will watch for focus changes and update the mode accordingly. It will also update the mode when the focused element is editable.
 
-By default, the hints are shown like vimium's design. Gradient yellow with black border.
-
-You can change them if you want to:
+The default `0.1` interval makes the focus react as fast as possible, but it can be configured with `focus.checkInterval`:
 
 ```lua
 spoon.Vimnav:configure({
- hints = {
-  fontSize = 12, -- Font size
-  textFont = ".AppleSystemUIFontHeavy", -- Text font
-  colors = {
-   from = "#FFF585", -- Background gradient from color
-   to = "#FFC442", -- Background gradient to color
-   angle = 45, -- Background gradient angle
-   border = "#000000", -- Border color
-   borderWidth = 1, -- Border width (0 for no border)
-   textColor = "#000000", -- Text color
+  focus = {
+    checkInterval = 0.1, -- focus check interval in seconds
   },
- },
 })
 ```
 
-#### Array Extension Behavior
+### Scrolling configuration
 
-By default, array configs **extend** the defaults:
+Scrolling can be configured with `scroll`:
 
 ```lua
--- This ADDS to the default excluded apps
 spoon.Vimnav:configure({
- applicationGroups = {
-  exclusions = { "VSCode", "Emacs" }
- }
+  scroll = {
+    scrollStep = 50, -- scroll step in pixels
+    scrollStepHalfPage = 500, -- scroll step in pixels for half page
+    scrollStepFullPage = 1e6, -- scroll step in pixels for full page
+    smoothScroll = true, -- enable/disable smooth scrolling
+    smoothScrollFramerate = 120, -- smooth scroll framerate in frames per second
+  },
 })
--- Result: includes defaults + your additions
 ```
 
-To **replace** instead of extend:
-
-```lua
-spoon.Vimnav:configure({
- applicationGroups = {
-  exclusions = { "VSCode" }, -- Only exclude VSCode
- },
-}, { extend = false })
-```
-
-#### 🎯 Accessibility Roles
+### Accessibility Roles
 
 Control which UI elements are detected:
 
 ```lua
 spoon.Vimnav:configure({
  axRoles = {
-  -- Elements treated as text inputs
+  -- AXRoles that should be consider as `insert` mode
   editable = {
    "AXTextField",
    "AXComboBox",
    "AXTextArea",
    "AXSearchField",
   },
-
-  -- Elements shown in link hints
-  jumpable = {
-   "AXLink",
-   "AXButton",
-   "AXPopUpButton",
-   "AXCheckBox",
-   "AXRadioButton",
-   "AXMenuItem",
-  },
- },
-})
-```
-
-#### ⚡ Performance Tuning
-
-```lua
-spoon.Vimnav:configure({
- hints = {
-  depth = 15, -- Max element depth (lower = faster)
- },
- focus = {
-  checkInterval = 0.2, -- Focus detection frequency
- },
- scroll = {
-  smoothScrollFramerate = 60, -- Lower FPS for less CPU
- },
-})
-```
-
-## 🎮 Available Commands
-
-There are lots of commands available, but you can also use any key combination you want.
-
-Check out the source code for all available commands and their usage or use this function to get all the defaults.
-
-```lua
-print(hs.inspect(spoon.Vimnav:getDefaultConfig()))
-```
-
-## 🔧 API Reference
-
-### Methods
-
-```lua
--- Lifecycle
-spoon.Vimnav:init()                      -- Initialize
-spoon.Vimnav:configure(config, opts)     -- Set configuration
-spoon.Vimnav:start()                     -- Start Vimnav
-spoon.Vimnav:stop()                      -- Stop Vimnav
-spoon.Vimnav:restart()                   -- Restart Vimnav
-
--- Status
-spoon.Vimnav:isRunning()                 -- Returns boolean
-
--- Utility
-spoon.Vimnav:debug()                     -- Returns state and config
-spoon.Vimnav:getDefaultConfig()          -- Returns default config
-```
-
-### Configuration Options
-
-<details>
-<summary><b>📋 Full Configuration Reference</b></summary>
-
-```lua
-{
- -- Logging
- logLevel = "warning",
-
- -- Leader key
- leader = {
-  key = " ", -- space
- },
-
- -- Link Hints
- hints = {
-  chars = "abcdefghijklmnopqrstuvwxyz",
-  fontSize = 12,
-  depth = 20,
-  textFont = ".AppleSystemUIFontHeavy",
-  colors = {
-   from = "#FFF585",
-   to = "#FFC442",
-   angle = 45,
-   border = "#000000",
-   borderWidth = 1,
-   textColor = "#000000",
-  },
- },
-
- -- Focus Manager
- focus = {
-  checkInterval = 0.1,
- },
-
- -- Keybindings
- mapping = {
-  normal = { ... },
-  insertNormal = { ... },
-  insertVisual = { ... },
- },
-
- -- Scrolling
- scroll = {
-  scrollStep = 50,
-  scrollStepHalfPage = 500,
-  scrollStepFullPage = 1e6,
-  smoothScroll = true,
-  smoothScrollFramerate = 120,
- },
-
- -- Accessibility Roles
- axRoles = {
-  editable = {
-   "AXTextField",
-   "AXComboBox",
-   "AXTextArea",
-   "AXSearchField",
-  },
+  -- AXRoles that can be used for jumping links
   jumpable = {
    "AXLink",
    "AXButton",
@@ -527,8 +359,15 @@ spoon.Vimnav:getDefaultConfig()          -- Returns default config
    "AXRow",
   },
  },
+})
+```
 
- -- Application Lists
+### Application Groups
+
+Exclude apps from Vimnav, and they will all be in `disabled` mode when switched to:
+
+```lua
+spoon.Vimnav:configure({
  applicationGroups = {
   exclusions = {
    "Terminal",
@@ -537,6 +376,29 @@ spoon.Vimnav:getDefaultConfig()          -- Returns default config
    "Kitty",
    "Ghostty",
   },
+ },
+})
+```
+
+Launchers are also excluded by default, but you can add more. They are detected by `hs.window.filter` with best effort. Only tested with `Spotlight` and it's working fine.
+
+```lua
+spoon.Vimnav:configure({
+ applicationGroups = {
+  launchers = {
+   "Spotlight",
+   "Raycast",
+   "Alfred",
+  },
+ },
+})
+```
+
+List of browsers to tell Vimnav that they are browser and can do some browser specific actions:
+
+```lua
+spoon.Vimnav:configure({
+ applicationGroups = {
   browsers = {
    "Safari",
    "Google Chrome",
@@ -545,15 +407,30 @@ spoon.Vimnav:getDefaultConfig()          -- Returns default config
    "Brave Browser",
    "Zen",
   },
-  launchers = { "Spotlight", "Raycast", "Alfred" },
  },
+})
+```
 
- -- Indicators
- menubar = {
-  enabled = true,
- },
+### Visual Indicators
+
+**Menu Bar** (enabled by default):
+
+```lua
+spoon.Vimnav:configure({
+  menubar = { enabled = true } -- disable if preferred
+})
+```
+
+<https://github.com/user-attachments/assets/671cc359-3500-4baa-baa5-1582d39c8986>
+
+**On-Screen Overlay:**
+
+<https://github.com/user-attachments/assets/a43af6b7-0947-4e2b-bc91-9b8cf969ee28>
+
+```lua
+spoon.Vimnav:configure({
  overlay = {
-  enabled = false,
+  enabled = true,
   position = "top-center",
   size = 25,
   padding = 4,
@@ -568,100 +445,100 @@ spoon.Vimnav:getDefaultConfig()          -- Returns default config
    passthrough = "#f28fad",
   },
  },
-}
+})
 ```
 
-</details>
+### Logging
 
-## 🐛 Troubleshooting
+Vimnav uses [Hammerspoon's built-in logger](https://www.hammerspoon.org/docs/hs.logger.html) to log messages.
 
-### ❌ Vimnav isn't working
-
-**Check these first:**
-
-1. ✅ **Accessibility permissions** enabled (System Settings → Privacy & Security)
-2. ✅ **Installation path** correct (`~/.hammerspoon/Spoons/Vimnav.spoon`)
-3. ✅ **Hammerspoon console** shows no errors
-
-### ⌨️ Text editing commands not working
-
-- Ensure you're in Insert Normal mode (press `Esc` once in a text field)
-- Verify the text field is focused
-- Some apps have limited accessibility API support
-
-### 🐌 Performance issues
-
-**Try these optimizations:**
-
-- Reduce element depth: `depth = 10`
-- Increase check interval: `focus.checkInterval = 0.3`
-- Disable smooth scrolling: `scroll.smoothScroll = false`
-- Exclude problematic apps
-
-### 🎯 Link hints not showing
-
-- App may not expose accessibility elements (common in Electron apps)
-- Try pressing `f` multiple times
-- Adjust `axRoles.jumpable` configuration
-- Some web content needs time to load
-
-### 🚫 Keys not working / conflicts
-
-- Check for conflicts with other Hammerspoon modules
-- Verify app isn't in `applicationGroups.exclusions`
-- Try passthrough mode (`i`) to temporarily bypass
-
-### 🔍 Launcher detection issues
-
-Add problematic launchers to excluded apps:
+You can configure the log level by setting `logLevel` in the config:
 
 ```lua
-applicationGroups = {
- exclusions = { "Spotlight", "Raycast", "Alfred" }
-}
+spoon.Vimnav:configure({
+ logLevel = "warning", -- one of 'nothing', 'error', 'warning', 'info', 'debug', or 'verbose'
+})
 ```
 
-## ⚠️ Known Limitations
+### Full Configuration Reference
 
-- **Electron apps** — Limited or no support due to poor accessibility
-- **Web extensions** — May conflict with browser Vim extensions
-- **Modal dialogs** — Some system dialogs block accessibility APIs
-- **Complex editing** — Vim macros and registers not supported
+See all available options:
 
-## ⚡ Performance & Architecture
+```lua
+print(hs.inspect(spoon.Vimnav:getDefaultConfig()))
+```
 
-Vimnav is built for speed:
+## API Reference
 
-- 🔄 **Async coroutines** — Non-blocking element traversal
-- 📍 **Spatial indexing** — Only processes visible elements
-- 🎱 **Object pooling** — Minimizes GC pressure
-- 💾 **Smart caching** — Accessibility queries cached intelligently
-- 📦 **Batch processing** — Elements processed in optimized chunks
+```lua
+-- Initialize the module, you don't need to call this if you're using the spoon
+spoon.Vimnav:init()
 
-**Performance:** Link hints typically appear in <100ms on most pages.
+-- Configure the module
+---@class Hs.Vimnav.Config.SetOpts
+---@field extend? boolean Whether to extend the config or replace it, true = extend, false = replace
 
-## 🤝 Contributing
+---@param userConfig Hs.Vimnav.Config
+---@param opts? Hs.Vimnav.Config.SetOpts
+spoon.Vimnav:configure(userConfig, opts)
 
-Contributions are welcome!
+-- Starts the module
+spoon.Vimnav:start()
 
-**How to contribute:**
+-- Stops the module
+spoon.Vimnav:stop()
 
-1. 🍴 Fork the repository
-2. 🌿 Create a feature branch
-3. ✨ Make your changes with clear commits
-4. 🧪 Test thoroughly on multiple apps
-5. 📬 Submit a PR with a clear description
+-- Restarts the module
+spoon.Vimnav:restart()
 
-## 🙏 Credits
+-- Returns current running state
+spoon.Vimnav:isRunning()
 
-Vimnav is based on [Vifari](https://github.com/dzirtusss/vifari) by dzirtuss, extensively rewritten for system-wide support, performance optimization, and enhanced features including full modal text editing.
+-- Returns state and current config information
+spoon.Vimnav:debug()
 
-## 📄 License
+-- Returns default config
+spoon.Vimnav:getDefaultConfig()
+```
 
-MIT License — See [LICENSE](LICENSE) file for details.
+## Known Limitations
 
-<p align="center">
-  <b>Made with ⌨️  by developers who never touch their mouse</b>
-  <br><br>
-  ⭐ Star this repo if you find it useful!
-</p>
+- **Electron apps** - Limited support due to poor accessibility APIs
+- **Web extensions** - May conflict with browser Vim extensions
+- **Modal dialogs** - Some system dialogs block accessibility
+- **Complex editing** - Vim macros and registers not supported
+
+## Performance
+
+Vimnav is optimized for speed:
+
+- Async coroutines for non-blocking traversal
+- Spatial indexing for viewport culling
+- Object pooling to minimize GC pressure
+- Smart caching of accessibility queries
+
+Link hints typically appear in under 100ms on most pages.
+
+## Contributing
+
+Contributions welcome! To contribute:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with clear commits
+4. Test thoroughly across multiple apps
+5. Submit a PR with a clear description
+
+## Credits
+
+Based on [Vifari](https://github.com/dzirtusss/vifari) by dzirtuss, extensively rewritten for system-wide support, performance optimization, and modal text editing.
+
+## License
+
+MIT License - See [LICENSE](LICENSE) file.
+
+---
+
+**Made by developers who never touch their mouse**
+
+⭐ Star this repo if you find it useful!
