@@ -184,6 +184,7 @@ local DEFAULT_MAPPING = {
 		["L"] = { "cmd", "]" },
 		-- hints click
 		["f"] = "gotoLink",
+		["F"] = "doubleLeftClick",
 		["r"] = "rightClick",
 		["gi"] = "gotoInput",
 		["gf"] = "moveMouseToLink",
@@ -1053,6 +1054,50 @@ function Utils.hexToRgb(hex)
 	}
 end
 
+---Double click at a point
+---@param point table
+function Utils.doubleClickAtPoint(point)
+	-- first click
+	local click1_down = hs.eventtap.event.newMouseEvent(
+		hs.eventtap.event.types.leftMouseDown,
+		point
+	)
+	local click1_up = hs.eventtap.event.newMouseEvent(
+		hs.eventtap.event.types.leftMouseUp,
+		point
+	)
+
+	click1_down:setProperty(
+		hs.eventtap.event.properties.mouseEventClickState,
+		1
+	)
+	click1_up:setProperty(hs.eventtap.event.properties.mouseEventClickState, 1)
+
+	click1_down:post()
+	click1_up:post()
+
+	-- second click
+	local click2_down = hs.eventtap.event.newMouseEvent(
+		hs.eventtap.event.types.leftMouseDown,
+		point
+	)
+	local click2_up = hs.eventtap.event.newMouseEvent(
+		hs.eventtap.event.types.leftMouseUp,
+		point
+	)
+
+	click2_down:setProperty(
+		hs.eventtap.event.properties.mouseEventClickState,
+		2
+	)
+	click2_up:setProperty(hs.eventtap.event.properties.mouseEventClickState, 2)
+
+	hs.timer.usleep(10000) -- setting it to 10ms... maybe vary based on diff macos settings on double click?
+
+	click2_down:post()
+	click2_up:post()
+end
+
 --------------------------------------------------------------------------------
 -- Element Access
 --------------------------------------------------------------------------------
@@ -1768,6 +1813,7 @@ end
 
 ---@class Hs.Vimnav.Actions.TryClickOpts
 ---@field type? string "left"|"right"
+---@field doubleClick? boolean
 
 ---Tries to click on a frame
 ---@param frame table
@@ -1776,14 +1822,19 @@ end
 function Actions.tryClick(frame, opts)
 	opts = opts or {}
 	local type = opts.type or "left"
+	local doubleClick = opts.doubleClick or false
 
 	local clickX, clickY = frame.x + frame.w / 2, frame.y + frame.h / 2
 	local originalPos = hs.mouse.absolutePosition()
-	hs.mouse.absolutePosition({ x = clickX, y = clickY })
+	-- hs.mouse.absolutePosition({ x = clickX, y = clickY })
 	if type == "left" then
-		hs.eventtap.leftClick({ x = clickX, y = clickY })
+		if doubleClick then
+			Utils.doubleClickAtPoint({ x = clickX, y = clickY })
+		else
+			hs.eventtap.leftClick({ x = clickX, y = clickY }, 0)
+		end
 	elseif type == "right" then
-		hs.eventtap.rightClick({ x = clickX, y = clickY })
+		hs.eventtap.rightClick({ x = clickX, y = clickY }, 0)
 	end
 	hs.timer.doAfter(0.1, function()
 		hs.mouse.absolutePosition(originalPos)
@@ -2425,6 +2476,25 @@ function Commands.gotoInput()
 	end
 	hs.timer.doAfter(0, function()
 		Marks.show({ elementType = "input" })
+	end)
+end
+
+---Double left click
+---@return nil
+function Commands.doubleLeftClick()
+	local ok = ModeManager.setModeLink()
+
+	if not ok then
+		return
+	end
+
+	State.onClickCallback = function(mark)
+		local frame = mark.frame
+
+		Actions.tryClick(frame, { doubleClick = true })
+	end
+	hs.timer.doAfter(0, function()
+		Marks.show({ elementType = "link" })
 	end)
 end
 
