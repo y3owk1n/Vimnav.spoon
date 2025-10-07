@@ -34,6 +34,7 @@ local RoleMaps = {}
 local MarkPool = {}
 local CanvasCache = {}
 local EventHandler = {}
+local Whichkey = {}
 
 local log
 
@@ -52,6 +53,24 @@ local log
 ---@field menubar? Hs.Vimnav.Config.Menubar Configure menubar indicator
 ---@field overlay? Hs.Vimnav.Config.Overlay Configure overlay indicator
 ---@field leader? Hs.Vimnav.Config.Leader Configure leader key
+---@field whichkey? Hs.Vimnav.Config.Whichkey Configure which-key popup
+
+---@class Hs.Vimnav.Config.Whichkey
+---@field enabled? boolean Enable which-key popup
+---@field delay? number Delay in seconds before which-key popup shows
+---@field fontSize? number Font size for which-key popup
+---@field textFont? string Text font for which-key popup
+---@field minRowsPerCol? number Minimum rows per column for which-key popup
+---@field colors? Hs.Vimnav.Config.Whichkey.Colors Colors for which-key popup
+
+---@class Hs.Vimnav.Config.Whichkey.Colors
+---@field background? string Background color for which-key popup
+---@field backgroundAlpha? number Background alpha for which-key popup
+---@field border? string Border color for which-key popup
+---@field borderWidth? number Border width for which-key popup
+---@field description? string Color of description text for which-key popup
+---@field key? string Color of key text for which-key popup
+---@field separator? string Color of separator text for which-key popup
 
 ---@class Hs.Vimnav.Config.Focus
 ---@field checkInterval? number Focus check interval in seconds (e.g. 0.5 for 500ms)
@@ -115,6 +134,10 @@ local log
 ---@field insertNormal? table<string, string|table|function|"noop"> Insert normal mode mappings
 ---@field insertVisual? table<string, string|table|function|"noop"> Insert visual mode mappings
 
+---@class Hs.Vimnav.Config.Mapping.Keyset
+---@field description string Description of the keyset
+---@field action string|table|function|"noop"
+
 ---@class Hs.Vimnav.State
 ---@field mode number Vimnav mode
 ---@field keyCapture string|nil Multi character input
@@ -132,6 +155,9 @@ local log
 ---@field maxElements number Maximum elements to search for (derived from config)
 ---@field leaderPressed boolean Leader key was pressed
 ---@field leaderCapture string Captured keys after leader
+---@field whichkeyTimer table|nil Which-key popup timer
+---@field whichkeyCanvas table|nil Which-key popup canvas
+---@field showingHelp boolean Whether the help popup is currently showing
 
 ---@class Hs.Vimnav.State.MappingPrefixes
 ---@field normal table<string, boolean> Normal mode mappings
@@ -168,92 +194,302 @@ local defaultModeChars = {
 
 local DEFAULT_MAPPING = {
 	normal = {
+		["?"] = {
+			description = "Show help",
+			action = "showHelp",
+		},
 		-- modes
-		["i"] = "enterPassthroughMode",
+		["i"] = {
+			description = "Enter passthrough mode",
+			action = "enterPassthroughMode",
+		},
 		-- scrolls
-		["h"] = "scrollLeft",
-		["j"] = "scrollDown",
-		["k"] = "scrollUp",
-		["l"] = "scrollRight",
-		["C-d"] = "scrollHalfPageDown",
-		["C-u"] = "scrollHalfPageUp",
-		["G"] = "scrollToBottom",
-		["gg"] = "scrollToTop",
+		["h"] = {
+			description = "Scroll left",
+			action = "scrollLeft",
+		},
+		["j"] = {
+			description = "Scroll down",
+			action = "scrollDown",
+		},
+		["k"] = {
+			description = "Scroll up",
+			action = "scrollUp",
+		},
+		["l"] = {
+			description = "Scroll right",
+			action = "scrollRight",
+		},
+		["C-d"] = {
+			description = "Scroll half page down",
+			action = "scrollHalfPageDown",
+		},
+		["C-u"] = {
+			description = "Scroll half page up",
+			action = "scrollHalfPageUp",
+		},
+		["G"] = {
+			description = "Scroll to bottom",
+			action = "scrollToBottom",
+		},
+		["gg"] = {
+			description = "Scroll to top",
+			action = "scrollToTop",
+		},
 		-- go back/forward
-		["H"] = { "cmd", "[" },
-		["L"] = { "cmd", "]" },
+		["H"] = {
+			description = "Go back",
+			action = { "cmd", "[" },
+		},
+		["L"] = {
+			description = "Go forward",
+			action = { "cmd", "]" },
+		},
 		-- hints click
-		["f"] = "gotoLink",
-		["F"] = "doubleLeftClick",
-		["r"] = "rightClick",
-		["gi"] = "gotoInput",
-		["gf"] = "moveMouseToLink",
-		["<leader>f"] = "gotoLinkNewTab", -- browser only
-		["<leader>di"] = "downloadImage", -- browser only
-		["<leader>yf"] = "copyLinkUrlToClipboard", -- browser only
+		["f"] = {
+			description = "Go to link",
+			action = "gotoLink",
+		},
+		["F"] = {
+			description = "Double left click",
+			action = "doubleLeftClick",
+		},
+		["r"] = {
+			description = "Right click",
+			action = "rightClick",
+		},
+		["gi"] = {
+			description = "Go to input",
+			action = "gotoInput",
+		},
+		["gf"] = {
+			description = "Move mouse to link",
+			action = "moveMouseToLink",
+		},
+		["<leader>f"] = {
+			description = "Go to link in new tab",
+			action = "gotoLinkNewTab",
+		}, -- browser only
+		["<leader>di"] = {
+			description = "Download image",
+			action = "downloadImage",
+		}, -- browser only
+		["<leader>yf"] = {
+			description = "Copy link URL to clipboard",
+			action = "copyLinkUrlToClipboard",
+		}, -- browser only
 		-- move mouse
-		["zz"] = "moveMouseToCenter",
+		["zz"] = {
+			description = "Move mouse to center",
+			action = "moveMouseToCenter",
+		},
 		-- copy page url
-		["<leader>yy"] = "copyPageUrlToClipboard", -- browser only
+		["<leader>yy"] = {
+			description = "Copy page URL to clipboard",
+			action = "copyPageUrlToClipboard",
+		}, -- browser only
 		-- next/prev page
-		["<leader>]"] = "gotoNextPage", -- browser only
-		["<leader>["] = "gotoPrevPage", -- browser only
+		["<leader>]"] = {
+			description = "Go to next page",
+			action = "gotoNextPage",
+		}, -- browser only
+		["<leader>["] = {
+			description = "Go to previous page",
+			action = "gotoPrevPage",
+		}, -- browser only
 		-- searches
-		["/"] = { "cmd", "f" },
-		["n"] = { "cmd", "g" },
-		["N"] = { { "cmd", "shift" }, "g" },
+		["/"] = {
+			description = "Search text",
+			action = { "cmd", "f" },
+		},
+		["n"] = {
+			description = "Search forward",
+			action = { "cmd", "g" },
+		},
+		["N"] = {
+			description = "Search backward",
+			action = { { "cmd", "shift" }, "g" },
+		},
 	},
 	insertNormal = {
+		["?"] = {
+			description = "Show help",
+			action = "showHelp",
+		},
 		-- movements
-		["h"] = { {}, "left" },
-		["j"] = { {}, "down" },
-		["k"] = { {}, "up" },
-		["l"] = { {}, "right" },
-		["e"] = { "alt", "right" },
-		["b"] = { "alt", "left" },
-		["0"] = { "cmd", "left" },
-		["$"] = { "cmd", "right" },
-		["gg"] = { "cmd", "up" },
-		["G"] = { "cmd", "down" },
+		["h"] = {
+			description = "Move left",
+			action = { {}, "left" },
+		},
+		["j"] = {
+			description = "Move down",
+			action = { {}, "down" },
+		},
+		["k"] = {
+			description = "Move up",
+			action = { {}, "up" },
+		},
+		["l"] = {
+			description = "Move right",
+			action = { {}, "right" },
+		},
+		["e"] = {
+			description = "Move to end of word",
+			action = { "alt", "right" },
+		},
+		["b"] = {
+			description = "Move to beginning of word",
+			action = { "alt", "left" },
+		},
+		["0"] = {
+			description = "Move to beginning of line",
+			action = { "cmd", "left" },
+		},
+		["$"] = {
+			description = "Move to end of line",
+			action = { "cmd", "right" },
+		},
+		["gg"] = {
+			description = "Move to top of page",
+			action = { "cmd", "up" },
+		},
+		["G"] = {
+			description = "Move to bottom of page",
+			action = { "cmd", "down" },
+		},
 		-- edits
-		["diw"] = "deleteWord",
-		["ciw"] = "changeWord",
-		["yiw"] = "yankWord",
-		["dd"] = "deleteLine",
-		["cc"] = "changeLine",
-		["x"] = { {}, "delete" },
+		["diw"] = {
+			description = "Delete word",
+			action = "deleteWord",
+		},
+		["ciw"] = {
+			description = "Change word",
+			action = "changeWord",
+		},
+		["yiw"] = {
+			description = "Yank word",
+			action = "yankWord",
+		},
+		["dd"] = {
+			description = "Delete line",
+			action = "deleteLine",
+		},
+		["cc"] = {
+			description = "Change line",
+			action = "changeLine",
+		},
+		["x"] = {
+			description = "Delete character",
+			action = { {}, "delete" },
+		},
 		-- yank and paste
-		["yy"] = "yankLine",
-		["p"] = { "cmd", "v" },
+		["yy"] = {
+			description = "Yank line",
+			action = "yankLine",
+		},
+		["p"] = {
+			description = "Paste",
+			action = { "cmd", "v" },
+		},
 		-- undo/redo
-		["u"] = { "cmd", "z" },
-		["C-r"] = { { "cmd", "shift" }, "z" },
+		["u"] = {
+			description = "Undo",
+			action = { "cmd", "z" },
+		},
+		["C-r"] = {
+			description = "Redo",
+			action = { { "cmd", "shift" }, "z" },
+		},
 		-- modes
-		["i"] = "enterInsertMode",
-		["o"] = "enterInsertModeNewLineBelow",
-		["O"] = "enterInsertModeNewLineAbove",
-		["A"] = "enterInsertModeEndOfLine",
-		["I"] = "enterInsertModeStartLine",
-		["v"] = "enterInsertVisualMode",
-		["V"] = "enterInsertVisualLineMode",
+		["i"] = {
+			description = "Enter insert mode",
+			action = "enterInsertMode",
+		},
+		["o"] = {
+			description = "Enter insert mode new line below",
+			action = "enterInsertModeNewLineBelow",
+		},
+		["O"] = {
+			description = "Enter insert mode new line above",
+			action = "enterInsertModeNewLineAbove",
+		},
+		["A"] = {
+			description = "Enter insert mode end of line",
+			action = "enterInsertModeEndOfLine",
+		},
+		["I"] = {
+			description = "Enter insert mode start of line",
+			action = "enterInsertModeStartLine",
+		},
+		["v"] = {
+			description = "Enter insert visual mode",
+			action = "enterInsertVisualMode",
+		},
+		["V"] = {
+			description = "Enter insert visual line mode",
+			action = "enterInsertVisualLineMode",
+		},
 	},
 	insertVisual = {
+		["?"] = {
+			description = "Show help",
+			action = "showHelp",
+		},
 		-- movements
-		["h"] = { { "shift" }, "left" },
-		["j"] = { { "shift" }, "down" },
-		["k"] = { { "shift" }, "up" },
-		["l"] = { { "shift" }, "right" },
-		["e"] = { { "shift", "alt" }, "right" },
-		["b"] = { { "shift", "alt" }, "left" },
-		["0"] = { { "shift", "cmd" }, "left" },
-		["$"] = { { "shift", "cmd" }, "right" },
-		["gg"] = { { "shift", "cmd" }, "up" },
-		["G"] = { { "shift", "cmd" }, "down" },
+		["h"] = {
+			description = "Move left",
+			action = { { "shift" }, "left" },
+		},
+		["j"] = {
+			description = "Move down",
+			action = { { "shift" }, "down" },
+		},
+		["k"] = {
+			description = "Move up",
+			action = { { "shift" }, "up" },
+		},
+		["l"] = {
+			description = "Move right",
+			action = { { "shift" }, "right" },
+		},
+		["e"] = {
+			description = "Move to end of word",
+			action = { { "shift", "alt" }, "right" },
+		},
+		["b"] = {
+			description = "Move to beginning of word",
+			action = { { "shift", "alt" }, "left" },
+		},
+		["0"] = {
+			description = "Move to beginning of line",
+			action = { { "shift", "cmd" }, "left" },
+		},
+		["$"] = {
+			description = "Move to end of line",
+			action = { { "shift", "cmd" }, "right" },
+		},
+		["gg"] = {
+			description = "Move to top of page",
+			action = { { "shift", "cmd" }, "up" },
+		},
+		["G"] = {
+			description = "Move to bottom of page",
+			action = { { "shift", "cmd" }, "down" },
+		},
 		-- edits
-		["d"] = "deleteHighlighted",
-		["c"] = "changeHighlighted",
+		["d"] = {
+			description = "Delete highlighted",
+			action = "deleteHighlighted",
+		},
+		["c"] = {
+			description = "Change highlighted",
+			action = "changeHighlighted",
+		},
 		-- yank
-		["y"] = "yankHighlighted",
+		["y"] = {
+			description = "Yank highlighted",
+			action = "yankHighlighted",
+		},
 	},
 }
 
@@ -360,6 +596,21 @@ local DEFAULT_CONFIG = {
 			passthrough = "#f28fad",
 		},
 	},
+	whichkey = {
+		enabled = false,
+		delay = 0.25, -- seconds
+		fontSize = 14,
+		textFont = ".AppleSystemUIFontHeavy",
+		minRowsPerCol = 8,
+		colors = {
+			background = "#1e1e2e",
+			backgroundAlpha = 0.8,
+			border = "#1e1e2e",
+			key = "#f9e2af",
+			separator = "#6c7086",
+			description = "#cdd6f4",
+		},
+	},
 }
 
 --------------------------------------------------------------------------------
@@ -384,6 +635,9 @@ local defaultState = {
 	maxElements = 0,
 	leaderPressed = false,
 	leaderCapture = "",
+	whichKeyTimer = nil,
+	whichKeyCanvas = nil,
+	showingHelp = false,
 }
 
 ---@type Hs.Vimnav.State
@@ -1545,6 +1799,290 @@ function Overlay.destroy()
 end
 
 --------------------------------------------------------------------------------
+-- Whichkey
+--------------------------------------------------------------------------------
+
+---Get available mappings for current prefix
+---@param prefix string Current key capture
+---@param mapping table Mode mapping table
+---@return table Available mappings
+function Whichkey.getAvailableMappings(prefix, mapping)
+	local available = {}
+	local prefixLen = #prefix
+
+	for key, command in pairs(mapping) do
+		if command.action ~= "noop" then
+			-- If prefix is empty, show all top-level keys
+			if prefixLen == 0 then
+				-- Extract first character or full key if it's a special combo
+				local displayKey
+				if key:match("^C%-") then
+					displayKey = key:match("^(C%-.)")
+				else
+					displayKey = key
+				end
+
+				if displayKey and not available[displayKey] then
+					-- For root level, show the first matching command for each prefix
+					available[displayKey] = {
+						key = displayKey,
+						fullKey = key,
+						command = command.action,
+						description = command.description,
+					}
+				end
+			-- Check if this key starts with our prefix and is longer
+			elseif key:sub(1, prefixLen) == prefix and #key > prefixLen then
+				local remaining = key:sub(prefixLen + 1)
+
+				local displayKey
+
+				-- Handle special keys like C- prefix
+				if remaining:match("^C%-") then
+					displayKey = remaining:match("^(C%-.)") or remaining
+				else
+					-- Get first character or full remaining if short
+					displayKey = remaining:match("^.") or remaining
+				end
+
+				if displayKey and not available[displayKey] then
+					available[displayKey] = {
+						key = displayKey,
+						fullKey = key,
+						command = command.action,
+						description = command.description,
+					}
+				end
+			end
+		end
+	end
+
+	return available
+end
+
+---Show which-key popup
+---@param prefix string Current key capture
+---@return nil
+function Whichkey.show(prefix)
+	if not M.config.whichkey.enabled then
+		return
+	end
+
+	Whichkey.hide()
+
+	local mapping
+	if ModeManager.isMode(MODES.NORMAL) then
+		mapping = M.config.mapping.normal
+	elseif ModeManager.isMode(MODES.INSERT_NORMAL) then
+		mapping = M.config.mapping.insertNormal
+	elseif ModeManager.isMode(MODES.INSERT_VISUAL) then
+		mapping = M.config.mapping.insertVisual
+	else
+		return
+	end
+
+	local available = Whichkey.getAvailableMappings(prefix, mapping)
+
+	-- Convert to sorted array
+	local items = {}
+	for _, v in pairs(available) do
+		table.insert(items, v)
+	end
+
+	table.sort(items, function(a, b)
+		return a.key < b.key
+	end)
+
+	if #items == 0 then
+		return
+	end
+
+	-- Calculate popup dimensions
+	local fontSize = M.config.whichkey.fontSize or 14
+	local textFont = M.config.whichkey.textFont or ".AppleSystemUIFontHeavy"
+	local padding = 10
+	local lineHeight = fontSize + 6
+	local keyWidth = 80
+	local separatorWidth = 30
+	local descWidth = 300
+	local colSpacing = 20 -- gap between columns
+	local colWidth = keyWidth + separatorWidth + descWidth
+
+	-- Get screen dimensions
+	local screen = hs.screen.mainScreen()
+	local screenFrame = screen:fullFrame()
+	local usableWidth = screenFrame.w * 0.90 -- 90 % of screen
+	local maxCols =
+		math.max(1, math.floor(usableWidth / (colWidth + colSpacing)))
+
+	local totalItems = #items
+	local minRowsPerCol = M.config.whichkey.minRowsPerCol or 8
+	local cols2 = math.min(maxCols, math.ceil(totalItems / minRowsPerCol))
+	local rowsPerCol = math.ceil(totalItems / cols2)
+
+	local columns = {}
+	for col = 1, maxCols do
+		local start = (col - 1) * rowsPerCol + 1
+		local finish = math.min(col * rowsPerCol, totalItems)
+		if start > finish then
+			break
+		end
+		columns[col] = { table.unpack(items, start, finish) }
+	end
+	local actualCols = cols2
+
+	local popupWidth = actualCols * colWidth
+		+ (actualCols - 1) * colSpacing
+		+ 2 * padding
+	local popupHeight = rowsPerCol * lineHeight + fontSize + 6 + 2 * padding + 6 -- title + slack
+	local popupX = screenFrame.x + (screenFrame.w - popupWidth) / 2
+	local popupY = screenFrame.y + screenFrame.h - popupHeight - 50
+
+	-- Position at bottom center
+	local popupFrame = {
+		x = popupX,
+		y = popupY,
+		w = popupWidth,
+		h = popupHeight,
+	}
+
+	-- Create canvas
+	State.whichkeyCanvas = hs.canvas.new(popupFrame)
+	State.whichkeyCanvas:level("overlay")
+	State.whichkeyCanvas:behavior("canJoinAllSpaces")
+
+	-- Build canvas elements
+	local elements = {}
+
+	-- Background
+	local bgColor =
+		Utils.hexToRgb(M.config.whichkey.colors.background or "#1e1e2e")
+	bgColor.alpha = M.config.whichkey.colors.backgroundAlpha or 0.8
+	local borderColor =
+		Utils.hexToRgb(M.config.whichkey.colors.border or "#1e1e2e")
+
+	table.insert(elements, {
+		type = "rectangle",
+		action = "strokeAndFill",
+		fillColor = bgColor,
+		strokeColor = borderColor,
+		strokeWidth = 2,
+		roundedRectRadii = { xRadius = 8, yRadius = 8 },
+	})
+
+	-- Title
+	local keyColor = Utils.hexToRgb(M.config.whichkey.colors.key or "#f9e2af")
+	local titleText = prefix == "" and "All Keys" or "Which Key: " .. prefix
+	table.insert(elements, {
+		type = "text",
+		text = titleText,
+		textColor = keyColor,
+		textSize = fontSize,
+		textFont = textFont,
+		frame = {
+			x = padding,
+			y = padding,
+			w = popupWidth - padding * 2,
+			h = fontSize + 4,
+		},
+	})
+
+	-- Items
+	local separatorColor =
+		Utils.hexToRgb(M.config.whichkey.colors.separator or "#6c7086")
+	local descColor =
+		Utils.hexToRgb(M.config.whichkey.colors.description or "#cdd6f4")
+
+	for colIdx, col in ipairs(columns) do
+		local colX = padding + (colIdx - 1) * (colWidth + colSpacing)
+		for rowIdx, item in ipairs(col) do
+			local yOffset = padding + fontSize + 6 + (rowIdx - 1) * lineHeight
+
+			-- Key
+			table.insert(elements, {
+				type = "text",
+				text = item.key,
+				textColor = keyColor,
+				textSize = fontSize,
+				textFont = textFont,
+				frame = {
+					x = colX,
+					y = yOffset,
+					w = keyWidth,
+					h = lineHeight,
+				},
+			})
+
+			-- Separator
+			table.insert(elements, {
+				type = "text",
+				text = "→",
+				textColor = separatorColor,
+				textSize = fontSize,
+				textFont = textFont,
+				frame = {
+					x = colX + keyWidth,
+					y = yOffset,
+					w = separatorWidth,
+					h = lineHeight,
+				},
+			})
+
+			-- Description
+			table.insert(elements, {
+				type = "text",
+				text = item.description,
+				textColor = descColor,
+				textSize = fontSize,
+				textFont = textFont,
+				frame = {
+					x = colX + keyWidth + separatorWidth,
+					y = yOffset,
+					w = descWidth,
+					h = lineHeight,
+				},
+			})
+		end
+	end
+
+	State.whichkeyCanvas:replaceElements(elements)
+	State.whichkeyCanvas:show()
+
+	log.df("Which-key popup shown for prefix: " .. prefix)
+end
+
+---Hide which-key popup
+---@return nil
+function Whichkey.hide()
+	if State.whichkeyCanvas then
+		State.whichkeyCanvas:delete()
+		State.whichkeyCanvas = nil
+		log.df("Which-key popup hidden")
+	end
+
+	if State.whichkeyTimer then
+		State.whichkeyTimer:stop()
+		State.whichkeyTimer = nil
+	end
+end
+
+---Schedule which-key popup to show after delay
+---@param prefix string Current key capture
+---@return nil
+function Whichkey.scheduleShow(prefix)
+	if not M.config.whichkey.enabled then
+		return
+	end
+
+	Whichkey.hide()
+
+	local delay = M.config.whichkey.delay or 0.5
+	State.whichkeyTimer = hs.timer.doAfter(delay, function()
+		Whichkey.show(prefix)
+	end)
+end
+
+--------------------------------------------------------------------------------
 -- Mode Management
 --------------------------------------------------------------------------------
 
@@ -2377,6 +2915,11 @@ function Commands.scrollToBottom()
 	Actions.smoothScroll({ y = -M.config.scroll.scrollStepFullPage })
 end
 
+function Commands.showHelp()
+	State.showingHelp = true
+	Whichkey.show("")
+end
+
 ---Switches to passthrough mode
 ---@return boolean
 function Commands.enterPassthroughMode()
@@ -2817,6 +3360,7 @@ function EventHandler.handleVimInput(char, opts)
 				ModeManager.setModeNormal()
 				Utils.resetKeyCaptureState()
 				Utils.resetLeaderState()
+				Whichkey.hide()
 				return
 			end
 		end
@@ -2829,6 +3373,7 @@ function EventHandler.handleVimInput(char, opts)
 		State.leaderCapture = ""
 		State.keyCapture = "<leader>"
 
+		Whichkey.scheduleShow(State.keyCapture)
 		MenuBar.setTitle(State.mode, State.keyCapture)
 		Overlay.update(State.mode, State.keyCapture)
 		log.df("Leader key pressed")
@@ -2857,6 +3402,10 @@ function EventHandler.handleVimInput(char, opts)
 		State.keyCapture = keyCombo
 	end
 
+	if State.keyCapture and #State.keyCapture > 0 then
+		Whichkey.scheduleShow(State.keyCapture)
+	end
+
 	MenuBar.setTitle(State.mode, State.keyCapture)
 	Overlay.update(State.mode, State.keyCapture)
 
@@ -2879,26 +3428,34 @@ function EventHandler.handleVimInput(char, opts)
 		prefixes = State.mappingPrefixes.insertVisual
 	end
 
-	if mapping then
+	if mapping and type(mapping) == "table" then
+		local action = mapping.action
 		-- Found a complete mapping, execute it
-		if type(mapping) == "string" then
-			if mapping == "noop" then
+		if type(action) == "string" then
+			if action == "noop" then
 				log.df("No mapping")
 			else
-				local cmd = Commands[mapping]
+				local cmd = Commands[action]
 				if cmd then
 					cmd()
 				else
 					log.wf("Unknown command: " .. mapping)
 				end
 			end
-		elseif type(mapping) == "table" then
-			Utils.keyStroke(mapping[1], mapping[2])
-		elseif type(mapping) == "function" then
-			mapping()
+		elseif type(action) == "table" then
+			Utils.keyStroke(action[1], action[2])
+		elseif type(action) == "function" then
+			action()
 		end
+
 		Utils.resetLeaderState()
 		Utils.resetKeyCaptureState()
+
+		if State.showingHelp then
+			State.showingHelp = false -- keep the popup on screen
+		else
+			Whichkey.hide()
+		end
 	elseif prefixes and prefixes[State.keyCapture] then
 		log.df("Found prefix: " .. State.keyCapture)
 		-- Continue waiting for more keys
@@ -2906,6 +3463,7 @@ function EventHandler.handleVimInput(char, opts)
 		-- No mapping or prefix found, reset
 		Utils.resetLeaderState()
 		Utils.resetKeyCaptureState()
+		Whichkey.hide()
 	end
 end
 
@@ -2985,6 +3543,7 @@ function EventHandler.handleInsertNormalMode(event)
 		if State.leaderPressed then
 			Utils.resetLeaderState()
 			Utils.resetKeyCaptureState()
+			Whichkey.hide()
 			MenuBar.setTitle(State.mode)
 			Overlay.update(State.mode)
 			return true
@@ -3015,6 +3574,7 @@ function EventHandler.handleInsertVisualMode(event)
 		if State.leaderPressed then
 			Utils.resetLeaderState()
 			Utils.resetKeyCaptureState()
+			Whichkey.hide()
 			MenuBar.setTitle(State.mode)
 			Overlay.update(State.mode)
 			return true
@@ -3047,6 +3607,7 @@ function EventHandler.handleNormalMode(event)
 	if EventHandler.isEspace(event) then
 		Utils.resetLeaderState()
 		Utils.resetKeyCaptureState()
+		Whichkey.hide()
 		MenuBar.setTitle(State.mode)
 		Overlay.update(State.mode)
 		return false
@@ -3189,6 +3750,9 @@ local function cleanupOnAppSwitch()
 
 	-- Reset key capture state
 	Utils.resetKeyCaptureState()
+
+	-- Reset whichkey state
+	Whichkey.hide()
 
 	-- Reset focus state
 	State.focusCachedResult = false

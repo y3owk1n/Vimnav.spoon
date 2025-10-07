@@ -22,6 +22,7 @@ Navigate Safari, Mail, Finder, or any macOS app with the same Vim keybindings yo
 - Smart mode switching (auto-enters insert mode in inputs)
 - Performance optimized with async processing
 - Highly customizable keybindings and behavior
+- Simple which-key support
 
 > [!NOTE]
 > This is a personal project maintained on a best-effort basis. PRs are more likely to be reviewed than feature requests or issues, unless I am facing the same problem.
@@ -140,6 +141,10 @@ Search:
 - `/` - Search in page
 - `n`/`N` - Next/previous result (To use this, you will need to press `tab` key after done searching in `/`)
 
+### Help (Which key)
+
+- `?` - Show help in which-key popup in any `normal` variant mode
+
 ### Hints
 
 Click anything without your mouse by using hints:
@@ -233,27 +238,41 @@ Map keys to commands, native keystrokes, or custom functions:
 
 ```lua
 spoon.Vimnav:configure({
-  mapping = {
-    normal = {
-      -- Map to built-in commands
-      ["j"] = "scrollDown",
-      ["gg"] = "scrollToTop",
+ mapping = {
+  normal = {
+   -- Map to built-in commands
+   ["j"] = {
+    description = "Scroll down",
+    action = "scrollDown",
+   },
 
-      -- Map to native keystrokes
-      ["t"] = { "cmd", "t" }, -- ⌘T for new tab
+   -- Map to native keystrokes
+   ["t"] = {
+    description = "New Tab",
+    action = { "cmd", "t" },
+   },
 
-      -- Map to custom functions
-      ["Q"] = function()
-        hs.alert.show("Custom action!")
-      end,
+   -- Map to custom functions
+   ["Q"] = {
+    description = "Custom action",
+    action = function()
+     hs.alert.show("Custom action!")
+    end,
+   },
 
-      -- Disable a mapping
-      ["/"] = "noop",
+   -- Disable a mapping
+   ["/"] = {
+    description = "Noop",
+    action = "noop",
+   },
 
-      -- Use leader key
-      ["<leader>g"] = "anyCommand",
-    },
+   -- Use leader key
+   ["<leader>g"] = {
+    description = "Anything",
+    action = "anythingAsAbove",
+   },
   },
+ },
 })
 ```
 
@@ -443,6 +462,34 @@ spoon.Vimnav:configure({
    insertVisual = "#c9a0e9",
    links = "#f8bd96",
    passthrough = "#f28fad",
+  },
+ },
+})
+```
+
+### Which-Key
+
+Which-key popup can be enabled by setting `enabled` to `true` in the config:
+
+![which-key](https://github.com/user-attachments/assets/753f640f-6ba2-4223-a025-5dea5a9dbae7)
+
+![which-key-prefix](https://github.com/user-attachments/assets/134afc1e-fa6b-41a6-87f4-f21a7f6af853)
+
+```lua
+spoon.Vimnav:configure({
+ whichkey = {
+  enabled = false, -- enable which-key popup if true
+  delay = 0.25, -- delay to show which-key popup in seconds
+  fontSize = 14, -- font size for which-key popup
+  textFont = ".AppleSystemUIFontHeavy", -- font for which-key popup
+  minRowsPerCol = 8, -- minimum rows per column for which-key popup to move to next column
+  colors = {
+   background = "#1e1e2e",
+   backgroundAlpha = 0.8,
+   border = "#1e1e2e",
+   key = "#f9e2af",
+   separator = "#6c7086",
+   description = "#cdd6f4",
   },
  },
 })
