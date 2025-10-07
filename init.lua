@@ -1902,10 +1902,18 @@ function Whichkey.show(prefix)
 	local fontSize = M.config.whichkey.fontSize or 14
 	local textFont = M.config.whichkey.textFont or ".AppleSystemUIFontHeavy"
 	local padding = 10
-	local lineHeight = fontSize + 6
-	local keyWidth = 80
+	local lineHeight = fontSize * 1.3
+
+	local maxKeyLen = 0
+	local maxDescLen = 0
+	for _, it in ipairs(items) do
+		maxKeyLen = math.max(maxKeyLen, utf8.len(it.key))
+		maxDescLen = math.max(maxDescLen, utf8.len(it.description))
+	end
+
+	local keyWidth = maxKeyLen * fontSize
 	local separatorWidth = 30
-	local descWidth = 300
+	local descWidth = maxDescLen * fontSize
 	local colSpacing = 20 -- gap between columns
 	local colWidth = keyWidth + separatorWidth + descWidth
 
