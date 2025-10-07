@@ -1850,7 +1850,8 @@ function Whichkey.getAvailableMappings(prefix, mapping)
 						key = displayKey,
 						fullKey = key,
 						command = command.action,
-						description = command.description,
+						description = #remaining > 1 and "+more"
+							or command.description,
 					}
 				end
 			end
