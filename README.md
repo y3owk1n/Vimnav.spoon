@@ -141,6 +141,10 @@ Search:
 - `/` - Search in page
 - `n`/`N` - Next/previous result (To use this, you will need to press `tab` key after done searching in `/`)
 
+Bypasses:
+
+- `<leader>space` - Bypass spacebar (so that we can still play/pause, quicklook, etc. that relies on space)
+
 ### Help (Which key)
 
 - `?` - Show help in which-key popup in any `normal` variant mode
@@ -234,6 +238,13 @@ spoon.Vimnav:configure({
 
 ### Custom Keybindings
 
+> [!NOTE]
+> Actions with table (e.g. `{ "cmd", "t" }`) are should be the native key strokes, not the one that in `config.mapping`.
+> Using table as action will go through a custom `Utils.keyStroke` function that will send a special userData to the eventloop
+> and ask it to ignore keys from here.
+>
+> TLDR: Actions with table will send directly to the application and will not be intercepted by Vimnav.
+
 Map keys to commands, native keystrokes, or custom functions:
 
 ```lua
@@ -246,10 +257,16 @@ spoon.Vimnav:configure({
     action = "scrollDown",
    },
 
-   -- Map to native keystrokes
+   -- Map to native os keystrokes
    ["t"] = {
     description = "New Tab",
     action = { "cmd", "t" },
+   },
+
+   -- ❌ Will not work!
+   ["T"] = {
+    description = "New Tab alias to `t` (This will not work)",
+    action = { {}, "t" }, -- you'll have to use `cmd+t` instead
    },
 
    -- Map to custom functions
