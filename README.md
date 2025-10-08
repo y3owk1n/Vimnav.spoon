@@ -134,7 +134,12 @@ Basic movement:
 - `h`/`j`/`k`/`l` - Scroll left/down/up/right
 - `C-d`/`C-u` - Half page down/up
 - `gg`/`G` - Jump to top/bottom
-- `H`/`L` - Browser back/forward
+- `<leader>h`/`<leader>l` - Back/forward (history, directories, etc.)
+
+Basic navigation (arrows)
+
+- `H`/`J`/`K`/`L` - left/down/up/right (useful for finder.app to move up down left right)
+- `C-n`/`C-p` - up/down (alias for `J`/`K`.. muscle memory in neovim)
 
 Search:
 
