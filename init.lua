@@ -236,12 +236,37 @@ local DEFAULT_MAPPING = {
 			description = "Scroll to top",
 			action = "scrollToTop",
 		},
-		-- go back/forward
+		-- navigation (arrows)
 		["H"] = {
+			description = "Left Arrow",
+			action = { {}, "left" },
+		},
+		["L"] = {
+			description = "Right Arrow",
+			action = { {}, "right" },
+		},
+		["J"] = {
+			description = "Down Arrow",
+			action = { {}, "down" },
+		},
+		["K"] = {
+			description = "Up Arrow",
+			action = { {}, "up" },
+		},
+		["C-n"] = {
+			description = "Down Arrow",
+			action = { {}, "down" },
+		},
+		["C-p"] = {
+			description = "Up Arrow",
+			action = { {}, "up" },
+		},
+		-- go back/forward
+		["<leader>h"] = {
 			description = "Go back",
 			action = { "cmd", "[" },
 		},
-		["L"] = {
+		["<leader>l"] = {
 			description = "Go forward",
 			action = { "cmd", "]" },
 		},
