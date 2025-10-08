@@ -297,6 +297,10 @@ local DEFAULT_MAPPING = {
 			description = "Go to previous page",
 			action = "gotoPrevPage",
 		}, -- browser only
+		["<leader> "] = {
+			description = "Bypass spacebar",
+			action = { {}, "space" },
+		},
 		-- searches
 		["/"] = {
 			description = "Search text",
@@ -1119,6 +1123,11 @@ function Utils.tblContains(tbl, val)
 	return false
 end
 
+local eventSourceIgnoreSignature = 0xDEADBEEFDEADBEEF -- 64-bit value
+
+---Custom keyStroke function
+---This is a modified version that will send a special userData to the eventloop
+---and ask it to ignore keys from here
 ---@param mods "cmd"|"ctrl"|"alt"|"shift"|"fn"|("cmd"|"ctrl"|"alt"|"shift"|"fn")[]
 ---@param key string
 ---@param delay? number
@@ -1128,7 +1137,24 @@ function Utils.keyStroke(mods, key, delay, application)
 	if type(mods) == "string" then
 		mods = { mods }
 	end
-	hs.eventtap.keyStroke(mods, key, delay or 0, application)
+
+	local dn = hs.eventtap.event.newKeyEvent(mods, key, true)
+	local up = hs.eventtap.event.newKeyEvent(mods, key, false)
+
+	dn:setProperty(
+		hs.eventtap.event.properties.eventSourceUserData,
+		eventSourceIgnoreSignature
+	)
+	up:setProperty(
+		hs.eventtap.event.properties.eventSourceUserData,
+		eventSourceIgnoreSignature
+	)
+
+	dn:post(application)
+	if delay and delay > 0 then
+		hs.timer.usleep(delay * 1e6)
+	end
+	up:post(application)
 end
 
 ---Gets an element from the cache
@@ -3392,6 +3418,11 @@ function EventHandler.handleVimInput(char, opts)
 	-- Build key combination
 	local keyCombo = ""
 
+	-- make "space" into " "
+	if char == "space" then
+		char = " "
+	end
+
 	-- Handle leader key sequences (including multi-char)
 	if State.leaderPressed then
 		State.leaderCapture = State.leaderCapture .. char
@@ -3707,6 +3738,15 @@ end
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.process(event)
+	-- Ignore synthetic events from Utils.keyStroke
+	if
+		event:getProperty(hs.eventtap.event.properties.eventSourceUserData)
+		== eventSourceIgnoreSignature
+	then
+		log.df("SYNTHETIC EVENT DETECTED – SKIPPING")
+		return false
+	end
+
 	if ModeManager.isMode(MODES.DISABLED) then
 		return EventHandler.handleDisabledMode(event)
 	end
