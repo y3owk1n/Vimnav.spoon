@@ -4162,7 +4162,7 @@ function M:stop()
 		return self
 	end
 
-	print("-- Stopping Vimnav...")
+	log.i("Stopping Vimnav")
 
 	cleanupWatchers()
 
