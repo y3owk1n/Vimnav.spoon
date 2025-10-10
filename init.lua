@@ -3888,6 +3888,10 @@ function EventHandler.processVimInput(event)
 			modeMapping = M.config.mapping.insertVisual
 		end
 
+		if ModeManager.isMode(MODES.VISUAL) then
+			modeMapping = M.config.mapping.visual
+		end
+
 		if modeMapping then
 			for _key, _ in pairs(modeMapping) do
 				if _key:sub(1, 2) == "C-" then
