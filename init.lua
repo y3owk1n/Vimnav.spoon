@@ -128,9 +128,11 @@ local log
 ---@field insertVisual? string Color of insert visual mode indicator
 ---@field links? string Color of links mode indicator
 ---@field passthrough? string Color of passthrough mode indicator
+---@field visual? string Color of visual mode indicator
 
 ---@class Hs.Vimnav.Config.Mapping
 ---@field normal? table<string, string|table|function|"noop"> Normal mode mappings
+---@field visual? table<string, string|table|function|"noop"> Visual mode mappings
 ---@field insertNormal? table<string, string|table|function|"noop"> Insert normal mode mappings
 ---@field insertVisual? table<string, string|table|function|"noop"> Insert visual mode mappings
 
@@ -161,6 +163,7 @@ local log
 
 ---@class Hs.Vimnav.State.MappingPrefixes
 ---@field normal table<string, boolean> Normal mode mappings
+---@field visual table<string, boolean> Visual mode mappings
 ---@field insertNormal table<string, boolean> Insert normal mode mappings
 ---@field insertVisual table<string, boolean> Insert visual mode mappings
 
@@ -180,6 +183,7 @@ local MODES = {
 	INSERT_VISUAL = 5,
 	LINKS = 6,
 	PASSTHROUGH = 7,
+	VISUAL = 8,
 }
 
 local defaultModeChars = {
@@ -190,6 +194,7 @@ local defaultModeChars = {
 	[MODES.LINKS] = "L",
 	[MODES.NORMAL] = "N",
 	[MODES.PASSTHROUGH] = "P",
+	[MODES.VISUAL] = "V",
 }
 
 local DEFAULT_MAPPING = {
@@ -202,6 +207,10 @@ local DEFAULT_MAPPING = {
 		["i"] = {
 			description = "Enter passthrough mode",
 			action = "enterPassthroughMode",
+		},
+		["v"] = {
+			description = "Enter visual mode",
+			action = "enterVisualMode",
 		},
 		-- scrolls
 		["h"] = {
@@ -520,6 +529,50 @@ local DEFAULT_MAPPING = {
 			action = "yankHighlighted",
 		},
 	},
+	visual = {
+		["?"] = {
+			description = "Show help",
+			action = "showHelp",
+		},
+		-- movements
+		["h"] = {
+			description = "Move left",
+			action = { { "shift" }, "left" },
+		},
+		["j"] = {
+			description = "Move down",
+			action = { { "shift" }, "down" },
+		},
+		["k"] = {
+			description = "Move up",
+			action = { { "shift" }, "up" },
+		},
+		["l"] = {
+			description = "Move right",
+			action = { { "shift" }, "right" },
+		},
+		["e"] = {
+			description = "Move to end of word",
+			action = { { "shift", "alt" }, "right" },
+		},
+		["b"] = {
+			description = "Move to beginning of word",
+			action = { { "shift", "alt" }, "left" },
+		},
+		["gg"] = {
+			description = "Move to top of page",
+			action = { { "shift", "cmd" }, "up" },
+		},
+		["G"] = {
+			description = "Move to bottom of page",
+			action = { { "shift", "cmd" }, "down" },
+		},
+		-- yank
+		["y"] = {
+			description = "Yank highlighted",
+			action = "yankHighlighted",
+		},
+	},
 }
 
 ---@type Hs.Vimnav.Config
@@ -623,6 +676,7 @@ local DEFAULT_CONFIG = {
 			insertVisual = "#c9a0e9",
 			links = "#f8bd96",
 			passthrough = "#f28fad",
+			visual = "#c9a0e9",
 		},
 	},
 	whichkey = {
@@ -1299,6 +1353,7 @@ end
 function Utils.fetchMappingPrefixes()
 	State.mappingPrefixes = {}
 	State.mappingPrefixes.normal = {}
+	State.mappingPrefixes.visual = {}
 	State.mappingPrefixes.insertNormal = {}
 	State.mappingPrefixes.insertVisual = {}
 
@@ -1344,6 +1399,7 @@ function Utils.fetchMappingPrefixes()
 		M.config.mapping.insertVisual,
 		State.mappingPrefixes.insertVisual
 	)
+	addLeaderPrefixes(M.config.mapping.visual, State.mappingPrefixes.visual)
 
 	log.df("Fetched mapping prefixes")
 end
@@ -1734,6 +1790,9 @@ function Overlay.getModeColor(mode)
 		[MODES.INSERT] = Utils.hexToRgb(
 			M.config.overlay.colors.insert or "#abe9b3"
 		),
+		[MODES.VISUAL] = Utils.hexToRgb(
+			M.config.overlay.colors.visual or "#c9a0e9"
+		),
 		[MODES.INSERT_NORMAL] = Utils.hexToRgb(
 			M.config.overlay.colors.insertNormal or "#f9e2af"
 		),
@@ -1925,6 +1984,8 @@ function Whichkey.show(prefix)
 	local mapping
 	if ModeManager.isMode(MODES.NORMAL) then
 		mapping = M.config.mapping.normal
+	elseif ModeManager.isMode(MODES.VISUAL) then
+		mapping = M.config.mapping.visual
 	elseif ModeManager.isMode(MODES.INSERT_NORMAL) then
 		mapping = M.config.mapping.insertNormal
 	elseif ModeManager.isMode(MODES.INSERT_VISUAL) then
@@ -2254,6 +2315,21 @@ function ModeManager.setModeInsertVisual()
 	return true
 end
 
+---Set mode to visual
+---@return boolean
+function ModeManager.setModeVisual()
+	local ok = ModeManager.setMode(MODES.VISUAL)
+
+	if not ok then
+		return false
+	end
+
+	Utils.resetLinkCaptureState()
+	Marks.clear()
+
+	return true
+end
+
 ---Set mode to normal
 ---@return boolean
 function ModeManager.setModeNormal()
@@ -2419,6 +2495,54 @@ function Actions.forceUnfocus()
 		-- Reset focus state
 		State.focusCachedResult = false
 		State.focusLastElement = nil
+	end
+end
+
+---Force deselect text highlights
+---@return nil
+function Actions.forceDeselectTextHighlights()
+	local focused = Elements.getAxFocusedElement()
+
+	if not focused then
+		return
+	end
+
+	local attrs = focused:attributeNames() or {}
+	local supportsMarkers =
+		hs.fnutils.contains(attrs, "AXSelectedTextMarkerRange")
+
+	if supportsMarkers then
+		local startMarker = focused:attributeValue("AXStartTextMarker")
+		if not startMarker then
+			log.df("No AXStartTextMarker found; cannot clear")
+			return
+		end
+
+		local emptyRange, err =
+			hs.axuielement.axtextmarker.newRange(startMarker, startMarker)
+		if not emptyRange then
+			log.ef("Error creating empty range: %s", err)
+			return
+		end
+
+		local ok, setErr =
+			focused:setAttributeValue("AXSelectedTextMarkerRange", emptyRange)
+		if ok then
+			log.df("Text deselected via AX markers.")
+			return
+		else
+			log.ef("Could not set AXSelectedTextMarkerRange: %s", setErr)
+		end
+	end
+
+	-- Fallack with click
+	local frame = focused:attributeValue("AXFrame")
+	if frame then
+		local center = { x = frame.x + frame.w / 2, y = frame.y + frame.h / 2 }
+		hs.eventtap.leftClick(center)
+		log.df("Text deselected via simulated click.")
+	else
+		log.ef("No frame available for click fallback.")
 	end
 end
 
@@ -3031,6 +3155,12 @@ function Commands.enterInsertVisualMode()
 	return ModeManager.setModeInsertVisual()
 end
 
+---Switches to visual mode
+---@return boolean
+function Commands.enterVisualMode()
+	return ModeManager.setModeVisual()
+end
+
 ---Switches to insert visual mode with line selection
 ---@return boolean
 function Commands.enterInsertVisualLineMode()
@@ -3493,6 +3623,11 @@ function EventHandler.handleVimInput(char, opts)
 		prefixes = State.mappingPrefixes.insertVisual
 	end
 
+	if ModeManager.isMode(MODES.VISUAL) then
+		mapping = M.config.mapping.visual[State.keyCapture]
+		prefixes = State.mappingPrefixes.visual
+	end
+
 	if mapping and type(mapping) == "table" then
 		local action = mapping.action
 		-- Found a complete mapping, execute it
@@ -3675,6 +3810,21 @@ function EventHandler.handleNormalMode(event)
 		Whichkey.hide()
 		MenuBar.setTitle(State.mode)
 		Overlay.update(State.mode)
+		Actions.forceDeselectTextHighlights()
+		return false
+	end
+
+	return EventHandler.processVimInput(event)
+end
+
+---Handles visual mode
+---@param event table
+---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
+function EventHandler.handleVisualMode(event)
+	if EventHandler.isEspace(event) then
+		Actions.forceDeselectTextHighlights()
+		ModeManager.setModeNormal()
+		Whichkey.hide()
 		return false
 	end
 
@@ -3798,6 +3948,10 @@ function EventHandler.process(event)
 
 	if ModeManager.isMode(MODES.NORMAL) then
 		return EventHandler.handleNormalMode(event)
+	end
+
+	if ModeManager.isMode(MODES.VISUAL) then
+		return EventHandler.handleVisualMode(event)
 	end
 
 	return false

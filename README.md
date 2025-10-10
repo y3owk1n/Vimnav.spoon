@@ -17,6 +17,7 @@ Navigate Safari, Mail, Finder, or any macOS app with the same Vim keybindings yo
 **Key Features:**
 
 - Works across all native macOS apps
+- Visua mode for apps that support `cmd+f` to select text
 - Visual link hints for mouse-free clicking
 - Vim-style modal editing in text fields
 - Smart mode switching (auto-enters insert mode in inputs)
@@ -77,6 +78,13 @@ Vimnav uses **modal editing** like Vim. Different modes handle different tasks, 
 - Keys behave normally (typing works as expected without lag)
 - Press `Esc` once to enter Insert Normal mode
 - Press `Shift-Esc` to force unfocus and return to Normal mode
+
+#### **Visual Mode (V)** - Select text
+
+- Select text with `cmd+f` or `/` in normal mode
+- Activated by pressing `v` or `V` from Normal mode
+- Use any mappings to extend the selection
+- Press `Esc` once to return to Normal mode
 
 #### **Insert Normal Mode (IN)** - Vim editing in text fields
 
@@ -196,6 +204,7 @@ Text operations:
 Mode switching:
 
 - `i` - Return to Insert mode
+- `v` - Enter Visual mode
 - `o`/`O` - Insert new line below/above
 - `A`/`I` - Insert at line end/start
 - `v`/`V` - Enter Visual/Visual Line mode
@@ -206,6 +215,12 @@ Mode switching:
 - `e`/`b` - Extend by word
 - `0`/`$` - Extend to line start/end
 - `d`/`c`/`y` - Delete/change/yank selection
+
+**Visual Mode:**
+
+- `h`/`j`/`k`/`l` - Extend selection
+- `e`/`b` - Extend by word
+- `y` - Delete/change/yank selection
 
 > [!NOTE]
 > Modal text editing mimics Vim using macOS shortcuts. It won't be as complete as Vim, but it's much better than nothing.
@@ -255,7 +270,7 @@ Map keys to commands, native keystrokes, or custom functions:
 ```lua
 spoon.Vimnav:configure({
  mapping = {
-  normal = {
+  normal = { -- one of "normal", "insertNormal", "insertVisual", "visual"
    -- Map to built-in commands
    ["j"] = {
     description = "Scroll down",
@@ -484,6 +499,7 @@ spoon.Vimnav:configure({
    insertVisual = "#c9a0e9",
    links = "#f8bd96",
    passthrough = "#f28fad",
+   visual = "#c9a0e9",
   },
  },
 })
@@ -576,6 +592,8 @@ spoon.Vimnav:getDefaultConfig()
 - **Web extensions** - May conflict with browser Vim extensions
 - **Modal dialogs** - Some system dialogs block accessibility
 - **Complex editing** - Vim macros and registers not supported
+- **Visual selection** - Needs to start a selection either with mouse or `cmd+f`
+- **Textobjects** - Not supported (Don't feel to implement complex accessibility buffer yet)
 
 ## Performance
 
