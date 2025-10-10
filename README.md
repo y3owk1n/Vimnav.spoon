@@ -151,8 +151,8 @@ Basic navigation (arrows)
 
 Search:
 
-- `/` - Search in page
-- `n`/`N` - Next/previous result (To use this, you will need to press `tab` key after done searching in `/`)
+- `/` - Search in page (To use this properly with visual modes, recommended to press `escape` after you put your search keywords, make sure it exits the find bar... and then you can use `n`/`N` to navigate or enter visual mode)
+- `n`/`N` - Next/previous result
 
 Bypasses:
 
