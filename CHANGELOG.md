@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.2.0](https://github.com/y3owk1n/Vimnav.spoon/compare/v1.1.1...v1.2.0) (2025-10-10)
+
+
+### Features
+
+* add arrow keys remap and move `back`/`forward` to `<leader>` ([#56](https://github.com/y3owk1n/Vimnav.spoon/issues/56)) ([4a2d062](https://github.com/y3owk1n/Vimnav.spoon/commit/4a2d0624cc9c8a654d367a679536b663ed9589b2))
+* add electron and chromium support for enhanced accessibility ([#62](https://github.com/y3owk1n/Vimnav.spoon/issues/62)) ([3f8cd60](https://github.com/y3owk1n/Vimnav.spoon/commit/3f8cd60da1f850dd2cc6c46a8d211bb6fd30aeb9))
+* add which-key help with refactoring keymaps with description ([#51](https://github.com/y3owk1n/Vimnav.spoon/issues/51)) ([7299140](https://github.com/y3owk1n/Vimnav.spoon/commit/72991401abd57513dc181200d076f3a7e3bbb27e))
+* support simple visual mode for text selection ([#58](https://github.com/y3owk1n/Vimnav.spoon/issues/58)) ([635ebab](https://github.com/y3owk1n/Vimnav.spoon/commit/635ebab98a7799915464f2b130396a10ce84e287))
+
+
+### Bug Fixes
+
+* also call enableEnhanced* before watcher starts ([#64](https://github.com/y3owk1n/Vimnav.spoon/issues/64)) ([b9eba88](https://github.com/y3owk1n/Vimnav.spoon/commit/b9eba88098582c4d501edb07bf874f193d26ad89))
+* avoid clearing cache on focus timer ([#63](https://github.com/y3owk1n/Vimnav.spoon/issues/63)) ([92827fe](https://github.com/y3owk1n/Vimnav.spoon/commit/92827fe6f1e2c2858b315cde1e2dc2d099457324))
+* dynamic width for key and description ([#54](https://github.com/y3owk1n/Vimnav.spoon/issues/54)) ([73916cc](https://github.com/y3owk1n/Vimnav.spoon/commit/73916cc802941d6430ed661f7e21b88a904b51bc))
+* handle ctrl key for visual mode too ([#60](https://github.com/y3owk1n/Vimnav.spoon/issues/60)) ([d7da762](https://github.com/y3owk1n/Vimnav.spoon/commit/d7da7626c9705fec6298d90e344f7e19f749f4fa))
+* prevent `Utils.keyStroke` to re-enter eventloop ([#55](https://github.com/y3owk1n/Vimnav.spoon/issues/55)) ([be97c15](https://github.com/y3owk1n/Vimnav.spoon/commit/be97c15fcf8ab133f3ef7b92499979b5298f6d8a))
+* use `+more` as group description in whichkey ([#53](https://github.com/y3owk1n/Vimnav.spoon/issues/53)) ([f491362](https://github.com/y3owk1n/Vimnav.spoon/commit/f49136215b481840a371742280b6712766782c0b))
+
 ## [1.1.1](https://github.com/y3owk1n/Vimnav.spoon/compare/v1.1.0...v1.1.1) (2025-10-03)
 
 
