@@ -54,6 +54,13 @@ local log
 ---@field overlay? Hs.Vimnav.Config.Overlay Configure overlay indicator
 ---@field leader? Hs.Vimnav.Config.Leader Configure leader key
 ---@field whichkey? Hs.Vimnav.Config.Whichkey Configure which-key popup
+---@field enhancedAccessibility? Hs.Vimnav.Config.EnhancedAccessibility Configure enhanced accessibility
+
+---@class Hs.Vimnav.Config.EnhancedAccessibility
+---@field enableForChromium? boolean Enable enhanced accessibility for Chromium (This sets AXEnhancedUserInterface = true)
+---@field chromiumApps? string[] Apps to enable enhanced accessibility for Chromium
+---@field enableForElectron? boolean Enable enhanced accessibility for Electron (This sets AXManualAccessibility = true (preferred))
+---@field electronApps? string[] Apps to enable enhanced accessibility for Electron
 
 ---@class Hs.Vimnav.Config.Whichkey
 ---@field enabled? boolean Enable which-key popup
@@ -694,6 +701,20 @@ local DEFAULT_CONFIG = {
 			description = "#cdd6f4",
 		},
 	},
+	enhancedAccessibility = {
+		enableForChromium = false,
+		chromiumApps = { "Google Chrome", "Brave Browser", "Microsoft Edge" },
+		enableForElectron = false,
+		electronApps = {
+			"Code",
+			"Visual Studio Code",
+			"Slack",
+			"Notion",
+			"Discord",
+			"Figma",
+			"Obsidian",
+		},
+	},
 }
 
 --------------------------------------------------------------------------------
@@ -956,7 +977,7 @@ function RoleMaps.init()
 		AXLayoutItem = true,
 		AXStaticText = true, -- Usually not interactive
 	}
-	log.df("Initialized role maps")
+	log.df("[RoleMaps.init] Initialized role maps")
 end
 
 ---Checks if the role is jumpable
@@ -1274,7 +1295,7 @@ end
 function Utils.resetLeaderState()
 	State.leaderPressed = false
 	State.leaderCapture = ""
-	log.df("Reset leader state")
+	log.df("[Utils.resetLeaderState] Reset leader state")
 end
 
 ---Resets the focus state
@@ -1282,7 +1303,7 @@ end
 function Utils.resetFocusState()
 	State.focusCachedResult = false
 	State.focusLastElement = nil
-	log.df("Reset focus state")
+	log.df("[Utils.resetFocusState] Reset focus state")
 end
 
 ---Clears the element cache
@@ -1323,14 +1344,16 @@ end
 ---@return nil
 function Utils.generateCombinations()
 	if #State.allCombinations > 0 then
-		log.df("Already generated combinations")
+		log.df("[Utils.generateCombinations] Already generated combinations")
 		return
 	end -- Already generated
 
 	local chars = M.config.hints.chars
 
 	if not chars then
-		log.ef("No link hint characters configured")
+		log.ef(
+			"[Utils.generateCombinations] No link hint characters configured"
+		)
 		return
 	end
 
@@ -1347,7 +1370,11 @@ function Utils.generateCombinations()
 			end
 		end
 	end
-	log.df("Generated " .. #State.allCombinations .. " combinations")
+	log.df(
+		"[Utils.generateCombinations] Generated "
+			.. #State.allCombinations
+			.. " combinations"
+	)
 end
 
 ---Fetches all mapping prefixes
@@ -1403,7 +1430,7 @@ function Utils.fetchMappingPrefixes()
 	)
 	addLeaderPrefixes(M.config.mapping.visual, State.mappingPrefixes.visual)
 
-	log.df("Fetched mapping prefixes")
+	log.df("[Utils.fetchMappingPrefixes] Fetched mapping prefixes")
 end
 
 ---Checks if the application is in the browser list
@@ -1416,6 +1443,146 @@ function Utils.isInBrowser()
 				app:name()
 			)
 		or false
+end
+
+local electronCache = {}
+
+---@return boolean
+function Utils.isElectronApp()
+	local app = Elements.getApp()
+	if not app then
+		return false
+	end
+
+	local pid = app:pid()
+	local name = app:name() or ""
+	local bundleID = app:bundleID() or ""
+	local path = app:path() or ""
+
+	log.df(
+		"[Utils.isElectronApp] Checking app: name=%s, bundleID=%s, pid=%d, path=%s",
+		name,
+		bundleID,
+		pid,
+		path
+	)
+
+	-- Cached result
+	if electronCache[pid] ~= nil then
+		log.df(
+			"[Utils.isElectronApp] Cache hit for pid=%d → %s",
+			pid,
+			tostring(electronCache[pid])
+		)
+		return electronCache[pid]
+	end
+
+	-- Quick early checks
+	if bundleID:match("electron") or path:match("Electron") then
+		log.df(
+			"[Utils.isElectronApp] Quick match via bundleID/path for %s",
+			name
+		)
+		electronCache[pid] = true
+		return true
+	end
+
+	if
+		Utils.tblContains(
+			M.config.enhancedAccessibility.electronApps or {},
+			name
+		)
+	then
+		log.df(
+			"[Utils.isElectronApp] Matched known Electron app name: %s",
+			name
+		)
+		electronCache[pid] = true
+		return true
+	end
+
+	-- Framework path check
+	local frameworksPath = path .. "/Contents/Frameworks"
+	local attr = hs.fs.attributes(frameworksPath)
+	if not attr then
+		log.df(
+			"[Utils.isElectronApp] No attributes found for %s (app may be sandboxed or path invalid)",
+			frameworksPath
+		)
+		electronCache[pid] = false
+		return false
+	elseif attr.mode ~= "directory" then
+		log.df(
+			"[Utils.isElectronApp] %s exists but is not a directory (mode=%s)",
+			frameworksPath,
+			tostring(attr.mode)
+		)
+		electronCache[pid] = false
+		return false
+	end
+
+	log.df(
+		"[Utils.isElectronApp] Frameworks directory verified: %s",
+		frameworksPath
+	)
+
+	-- Try directory iteration
+	local ok, iterOrErr = pcall(hs.fs.dir, frameworksPath)
+	if not ok then
+		log.ef(
+			"[Utils.isElectronApp] hs.fs.dir failed for %s: %s",
+			frameworksPath,
+			tostring(iterOrErr)
+		)
+		electronCache[pid] = false
+		return false
+	end
+
+	if type(iterOrErr) ~= "function" then
+		log.ef(
+			"[Utils.isElectronApp] hs.fs.dir did not return iterator for %s (got %s)",
+			frameworksPath,
+			type(iterOrErr)
+		)
+		electronCache[pid] = false
+		return false
+	end
+
+	log.df("[Utils.isElectronApp] Iterating %s ...", frameworksPath)
+
+	local success, result = pcall(function()
+		for file in iterOrErr do
+			log.df(
+				"[Utils.isElectronApp] Found file in frameworks: %s",
+				tostring(file)
+			)
+			if file and (file:match("Electron") or file:match("Chromium")) then
+				log.df(
+					"[Utils.isElectronApp] Electron-like framework found: %s",
+					file
+				)
+				return true
+			end
+		end
+		return false
+	end)
+
+	if not success then
+		log.df(
+			"[Utils.isElectronApp] Failed to iterate over %s (error or sandboxed)",
+			frameworksPath
+		)
+		electronCache[pid] = false
+		return false
+	end
+
+	electronCache[pid] = result or false
+	log.df(
+		"[Utils.isElectronApp] Final result for %s: %s",
+		name,
+		tostring(electronCache[pid])
+	)
+	return electronCache[pid]
 end
 
 ---Convert hex to RGB table
@@ -1593,6 +1760,99 @@ function Elements.findAxRole(rootElement, role)
 	return nil
 end
 
+---Enable enhanced accessibility for Chromium.
+---@return boolean
+function Elements.enableEnhancedUIForChrome()
+	if not M.config.enhancedAccessibility.enableForChromium then
+		log.df(
+			"[Elements.enableEnhancedUIForChrome] Chromium enhanced accessibility is disabled"
+		)
+		return false
+	end
+
+	local app = Elements.getApp()
+	if not app then
+		return false
+	end
+
+	local appName = app:name()
+
+	if
+		Utils.tblContains(
+			M.config.enhancedAccessibility.chromiumApps or {},
+			appName
+		)
+	then
+		local axApp = Elements.getAxApp()
+		if axApp then
+			local success = pcall(function()
+				axApp:setAttributeValue("AXEnhancedUserInterface", true)
+			end)
+			if success then
+				log.df(
+					"[Elements.enableEnhancedUIForChrome] Enabled AXEnhancedUserInterface for %s",
+					appName
+				)
+				return true
+			end
+		end
+	end
+
+	log.df(
+		"[Element.enableEnhancedUIForChrome] Not chrome app, abort enabling AXEnhancedUserInterface"
+	)
+	return false
+end
+
+---Enables accessibility for Electron apps.
+---@return boolean
+function Elements.enableAccessibilityForElectron()
+	if not M.config.enhancedAccessibility.enableForElectron then
+		log.df(
+			"[Elements.enableAccessibilityForElectron] Electron enhanced accessibility is disabled"
+		)
+		return false
+	end
+
+	if not Utils.isElectronApp() then
+		log.df(
+			"[Elements.enableAccessibilityForElectron] Electron is not running"
+		)
+		return false
+	end
+
+	local axApp = Elements.getAxApp()
+	if not axApp then
+		return false
+	end
+
+	-- Try AXManualAccessibility first (preferred for Electron)
+	local success = pcall(function()
+		axApp:setAttributeValue("AXManualAccessibility", true)
+	end)
+
+	if success then
+		log.df(
+			"[Elements.enableAccessibilityForElectron] Enabled AXManualAccessibility for Electron app"
+		)
+		return true
+	end
+
+	-- Fallback to AXEnhancedUserInterface (has side effects)
+	success = pcall(function()
+		axApp:setAttributeValue("AXEnhancedUserInterface", true)
+	end)
+
+	if success then
+		log.wf(
+			"[Elements.enableAccessibilityForElectron] Enabled AXEnhancedUserInterface (may affect window positioning)"
+		)
+		return true
+	end
+
+	return false
+end
+
 --------------------------------------------------------------------------------
 -- Menu Bar
 --------------------------------------------------------------------------------
@@ -1609,7 +1869,7 @@ function MenuBar.create()
 	end
 	MenuBar.item = hs.menubar.new()
 	MenuBar.item:setTitle(defaultModeChars[MODES.NORMAL])
-	log.df("Created menu bar item")
+	log.df("[MenuBar.create] Created menu bar item")
 end
 
 ---Set the menubar title
@@ -1637,7 +1897,7 @@ function MenuBar.destroy()
 	if MenuBar.item then
 		MenuBar.item:delete()
 		MenuBar.item = nil
-		log.df("Destroyed menu bar item")
+		log.df("[MenuBar.destroy] Destroyed menu bar item")
 	end
 end
 
@@ -1775,7 +2035,7 @@ function Overlay.create()
 	Overlay.canvas:level("overlay")
 	Overlay.canvas:behavior("canJoinAllSpaces")
 
-	log.df("Created overlay indicator at " .. position)
+	log.df("[Overlay.create] Created overlay indicator at " .. position)
 end
 
 ---Get color for mode
@@ -1906,7 +2166,7 @@ function Overlay.destroy()
 	if Overlay.canvas then
 		Overlay.canvas:delete()
 		Overlay.canvas = nil
-		log.df("Destroyed overlay indicator")
+		log.df("[Overlay.destroy] Destroyed overlay indicator")
 	end
 end
 
@@ -2171,7 +2431,7 @@ function Whichkey.show(prefix)
 	State.whichkeyCanvas:replaceElements(elements)
 	State.whichkeyCanvas:show()
 
-	log.df("Which-key popup shown for prefix: " .. prefix)
+	log.df("[Whichkey.show] Which-key popup shown for prefix: " .. prefix)
 end
 
 ---Hide which-key popup
@@ -2180,7 +2440,7 @@ function Whichkey.hide()
 	if State.whichkeyCanvas then
 		State.whichkeyCanvas:delete()
 		State.whichkeyCanvas = nil
-		log.df("Which-key popup hidden")
+		log.df("[Whichkey.hide] Which-key popup hidden")
 	end
 
 	if State.whichkeyTimer then
@@ -2215,7 +2475,7 @@ end
 ---@return number|nil prevMode The previous mode
 function ModeManager.setMode(mode)
 	if mode == State.mode then
-		log.df("Mode already set to %s... abort", mode)
+		log.df("[ModeManager.setMode] Mode already set to %s... abort", mode)
 		return false
 	end
 
@@ -2226,7 +2486,7 @@ function ModeManager.setMode(mode)
 	MenuBar.setTitle(mode)
 	Overlay.update(mode)
 
-	log.df(string.format("Mode changed: %s -> %s", previousMode, mode))
+	log.df("[ModeManager.setMode] Mode changed: %s -> %s", previousMode, mode)
 
 	return true, previousMode
 end
@@ -2513,24 +2773,34 @@ function Actions.forceDeselectTextHighlights()
 	if supportsMarkers then
 		local startMarker = focused:attributeValue("AXStartTextMarker")
 		if not startMarker then
-			log.df("No AXStartTextMarker found; cannot clear")
+			log.df(
+				"[Actions.forceDeselectTextHighlights] No AXStartTextMarker found; cannot clear"
+			)
 			return
 		end
 
 		local emptyRange, err =
 			hs.axuielement.axtextmarker.newRange(startMarker, startMarker)
 		if not emptyRange then
-			log.ef("Error creating empty range: %s", err)
+			log.ef(
+				"[Actions.forceDeselectTextHighlights] Error creating empty range: %s",
+				err
+			)
 			return
 		end
 
 		local ok, setErr =
 			focused:setAttributeValue("AXSelectedTextMarkerRange", emptyRange)
 		if ok then
-			log.df("Text deselected via AX markers.")
+			log.df(
+				"[Actions.forceDeselectTextHighlights] Text deselected via AX markers."
+			)
 			return
 		else
-			log.ef("Could not set AXSelectedTextMarkerRange: %s", setErr)
+			log.ef(
+				"[Actions.forceDeselectTextHighlights] Could not set AXSelectedTextMarkerRange: %s",
+				setErr
+			)
 		end
 	end
 
@@ -2539,9 +2809,13 @@ function Actions.forceDeselectTextHighlights()
 	if frame then
 		local center = { x = frame.x + frame.w / 2, y = frame.y + frame.h / 2 }
 		hs.eventtap.leftClick(center)
-		log.df("Text deselected via simulated click.")
+		log.df(
+			"[Actions.forceDeselectTextHighlights] Text deselected via simulated click."
+		)
 	else
-		log.ef("No frame available for click fallback.")
+		log.ef(
+			"[Actions.forceDeselectTextHighlights] No frame available for click fallback."
+		)
 	end
 end
 
@@ -2770,7 +3044,7 @@ function Marks.clear()
 	State.marks = {}
 	State.linkCapture = ""
 	MarkPool.releaseAll()
-	log.df("Cleared marks")
+	log.df("[Marks.clear] Cleared marks")
 end
 
 ---Adds a mark to the list
@@ -3039,7 +3313,9 @@ function Marks.click(combination)
 		if c == combination and State.marks[i] and State.onClickCallback then
 			local success, err = pcall(State.onClickCallback, State.marks[i])
 			if not success then
-				log.ef("Error clicking element: " .. tostring(err))
+				log.ef(
+					"[Marks.click] Error clicking element: " .. tostring(err)
+				)
 			end
 			break
 		end
@@ -3530,7 +3806,10 @@ function EventHandler.handleVimInput(char, opts)
 	local modifiers = opts.modifiers
 
 	log.df(
-		"handleVimInput: " .. char .. " modifiers: " .. hs.inspect(modifiers)
+		"[EventHandler.handleVimInput] "
+			.. char
+			.. " modifiers: "
+			.. hs.inspect(modifiers)
 	)
 
 	Utils.clearCache()
@@ -3565,7 +3844,7 @@ function EventHandler.handleVimInput(char, opts)
 		Whichkey.scheduleShow(State.keyCapture)
 		MenuBar.setTitle(State.mode, State.keyCapture)
 		Overlay.update(State.mode, State.keyCapture)
-		log.df("Leader key pressed")
+		log.df("[EventHandler.handleVimInput] Leader key pressed")
 		return
 	end
 
@@ -3632,13 +3911,16 @@ function EventHandler.handleVimInput(char, opts)
 		-- Found a complete mapping, execute it
 		if type(action) == "string" then
 			if action == "noop" then
-				log.df("No mapping")
+				log.df("[EventHandler.handleVimInput] No mapping")
 			else
 				local cmd = Commands[action]
 				if cmd then
 					cmd()
 				else
-					log.wf("Unknown command: " .. mapping)
+					log.wf(
+						"[EventHandler.handleVimInput] Unknown command: "
+							.. mapping
+					)
 				end
 			end
 		elseif type(action) == "table" then
@@ -3656,7 +3938,9 @@ function EventHandler.handleVimInput(char, opts)
 			Whichkey.hide()
 		end
 	elseif prefixes and prefixes[State.keyCapture] then
-		log.df("Found prefix: " .. State.keyCapture)
+		log.df(
+			"[EventHandler.handleVimInput] Found prefix: " .. State.keyCapture
+		)
 		-- Continue waiting for more keys
 	else
 		-- No mapping or prefix found, reset
@@ -3921,7 +4205,7 @@ function EventHandler.process(event)
 		event:getProperty(hs.eventtap.event.properties.eventSourceUserData)
 		== eventSourceIgnoreSignature
 	then
-		log.df("SYNTHETIC EVENT DETECTED – SKIPPING")
+		log.df("[EventHandler.process] SYNTHETIC EVENT DETECTED – SKIPPING")
 		return false
 	end
 
@@ -3988,7 +4272,9 @@ local function cleanupOnAppSwitch()
 	-- Force garbage collection to free up memory
 	collectgarbage("collect")
 
-	log.df("Cleaned up caches and state for app switch")
+	log.df(
+		"[Utils.cleanupOnAppSwitch] Cleaned up caches and state for app switch"
+	)
 end
 
 local focusCheckTimer = nil
@@ -4028,10 +4314,9 @@ local function updateFocusState()
 			end
 
 			log.df(
-				"Focus changed: editable="
-					.. tostring(isEditable)
-					.. ", role="
-					.. tostring(role)
+				"[Utils.updateFocusState] Focus changed: editable=%s, role=%s",
+				tostring(isEditable),
+				tostring(role)
 			)
 		end
 	else
@@ -4062,7 +4347,7 @@ local function startFocusPolling()
 		end)
 		:start()
 
-	log.df("Focus polling started")
+	log.df("[Utils.startFocusPolling] Focus polling started")
 end
 
 local appWatcher = nil
@@ -4078,20 +4363,25 @@ local function startAppWatcher()
 	startFocusPolling()
 
 	appWatcher = hs.application.watcher.new(function(appName, eventType)
-		log.df(string.format("App event: %s - %s", appName, eventType))
+		log.df("[Utils.startAppWatcher] App event: %s - %s", appName, eventType)
 
 		if eventType == hs.application.watcher.activated then
-			log.df(string.format("App activated: %s", appName))
+			log.df("[Utils.startAppWatcher] App activated: %s", appName)
 
 			cleanupOnAppSwitch()
 
 			startFocusPolling()
 
+			hs.timer.doAfter(0.2, function()
+				Elements.enableEnhancedUIForChrome()
+				Elements.enableAccessibilityForElectron()
+			end)
+
 			if not State.eventLoop then
 				State.eventLoop = hs.eventtap
 					.new({ hs.eventtap.event.types.keyDown }, EventHandler.process)
 					:start()
-				log.df("Started event loop")
+				log.df("[Utils.startAppWatcher] Started event loop")
 			end
 
 			if
@@ -4101,7 +4391,10 @@ local function startAppWatcher()
 				)
 			then
 				ModeManager.setModeDisabled()
-				log.df("Disabled mode for excluded app: " .. appName)
+				log.df(
+					"[Utils.startAppWatcher] Disabled mode for excluded app: %s",
+					appName
+				)
 			else
 				ModeManager.setModeNormal()
 			end
@@ -4110,7 +4403,7 @@ local function startAppWatcher()
 
 	appWatcher:start()
 
-	log.df("App watcher started")
+	log.df("[Utils.startAppWatcher] App watcher started")
 end
 
 local launcherWatcher = {}
@@ -4126,7 +4419,10 @@ local function startLaunchersWatcher()
 		if launcherWatcher[launcher] then
 			launcherWatcher[launcher]:unsubscribeAll()
 			launcherWatcher[launcher] = nil
-			log.df("Stopped launcher watcher: " .. launcher)
+			log.df(
+				"[Utils.startLaunchersWatcher] Stopped launcher watcher: %s",
+				launcher
+			)
 		end
 
 		launcherWatcher[launcher] = hs.window.filter
@@ -4136,7 +4432,10 @@ local function startLaunchersWatcher()
 		launcherWatcher[launcher]:subscribe(
 			hs.window.filter.windowCreated,
 			function()
-				log.df("Launcher opened: " .. launcher)
+				log.df(
+					"[Utils.startLaunchersWatcher] Launcher opened: %s",
+					launcher
+				)
 				ModeManager.setModeDisabled()
 			end
 		)
@@ -4144,7 +4443,10 @@ local function startLaunchersWatcher()
 		launcherWatcher[launcher]:subscribe(
 			hs.window.filter.windowDestroyed,
 			function()
-				log.df("Launcher closed: " .. launcher)
+				log.df(
+					"[Utils.startLaunchersWatcher] Launcher closed: %s",
+					launcher
+				)
 				ModeManager.setModeNormal()
 			end
 		)
@@ -4164,7 +4466,9 @@ local function setupPeriodicCleanup()
 			if State.mode ~= MODES.LINKS then
 				Utils.clearCache()
 				collectgarbage("collect")
-				log.df("Periodic cache cleanup completed")
+				log.df(
+					"[Utils.setupPeriodicCleanup] Periodic cache cleanup completed"
+				)
 			end
 		end)
 		:start()
@@ -4176,26 +4480,26 @@ local function cleanupWatchers()
 	if appWatcher then
 		appWatcher:stop()
 		appWatcher = nil
-		log.df("Stopped app watcher")
+		log.df("[Utils.cleanupWatchers] Stopped app watcher")
 	end
 
 	if State.cleanupTimer then
 		State.cleanupTimer:stop()
 		State.cleanupTimer = nil
-		log.df("Stopped cleanup timer")
+		log.df("[Utils.cleanupWatchers] Stopped cleanup timer")
 	end
 
 	if focusCheckTimer then
 		focusCheckTimer:stop()
 		focusCheckTimer = nil
-		log.df("Stopped focus check timer")
+		log.df("[Utils.cleanupWatchers] Stopped focus check timer")
 	end
 
 	for _, launcher in pairs(launcherWatcher) do
 		if launcher then
 			launcher:unsubscribeAll()
 			launcher = nil
-			log.df("Stopped launcher watcher")
+			log.df("[Utils.cleanupWatchers] Stopped launcher watcher")
 		end
 	end
 end
@@ -4223,7 +4527,7 @@ function M:init()
 	log = hs.logger.new(M.name, "info")
 
 	self._initialized = true
-	log.i("Initialized")
+	log.i("[M:init] Initialized")
 
 	return self
 end
@@ -4259,7 +4563,7 @@ function M:configure(userConfig, opts)
 	-- Reinitialize logger with configured level
 	log = hs.logger.new(M.name, M.config.logLevel)
 
-	log.i("Configured")
+	log.i("[M:configure] Configured")
 
 	return self
 end
@@ -4268,7 +4572,7 @@ end
 ---@return Hs.Vimnav
 function M:start()
 	if self._running then
-		log.w("Vimnav already running")
+		log.w("[M:start] Vimnav already running")
 		return self
 	end
 
@@ -4303,7 +4607,7 @@ function M:start()
 	end
 
 	self._running = true
-	log.i("Started")
+	log.i("[M:start] Started")
 
 	return self
 end
@@ -4315,14 +4619,14 @@ function M:stop()
 		return self
 	end
 
-	log.i("Stopping Vimnav")
+	log.i("[M:stop] Stopping Vimnav")
 
 	cleanupWatchers()
 
 	if State.eventLoop then
 		State.eventLoop:stop()
 		State.eventLoop = nil
-		log.df("Stopped event loop")
+		log.df("[M:stop] Stopped event loop")
 	end
 
 	MenuBar.destroy()
@@ -4334,7 +4638,7 @@ function M:stop()
 	State = {}
 
 	self._running = false
-	log.i("Vimnav stopped")
+	log.i("[M:stop] Vimnav stopped")
 
 	return self
 end
@@ -4342,7 +4646,7 @@ end
 ---Restarts the module
 ---@return Hs.Vimnav
 function M:restart()
-	log.i("Restarting Vimnav...")
+	log.i("[M:restart] Restarting Vimnav...")
 	self:stop()
 	self:start()
 	return self

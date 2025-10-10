@@ -24,6 +24,8 @@ Navigate Safari, Mail, Finder, or any macOS app with the same Vim keybindings yo
 - Performance optimized with async processing
 - Highly customizable keybindings and behavior
 - Simple which-key support
+- Enhanced accessibility support for Chrome apps
+- Best effort support for Electron apps
 
 > [!NOTE]
 > This is a personal project maintained on a best-effort basis. PRs are more likely to be reviewed than feature requests or issues, unless I am facing the same problem.
@@ -529,6 +531,40 @@ spoon.Vimnav:configure({
    separator = "#6c7086",
    description = "#cdd6f4",
   },
+ },
+})
+```
+
+### Enhanced Accessibility
+
+#### Chromium
+
+Vimnav uses the `AXEnhancedUserInterface` property to enable accessibility for Chrome apps. This is a best effort feature and may not work for all apps.
+
+To enable this feature, you need to add the following to your `~/.hammerspoon/init.lua`:
+
+```lua
+spoon.Vimnav:configure({
+ enhancedAccessibility = {
+  enableForChrome = true,
+  -- defaults included for { "Google Chrome", "Brave Browser", "Microsoft Edge" },
+  chromiumApps = {}, -- add your chromium apps here
+ },
+})
+```
+
+#### Electron
+
+Vimnav uses the `AXManualAccessibility` property to enable accessibility for Electron apps. This is a best effort feature and may not work for all apps.
+
+To enable this feature, you need to add the following to your `~/.hammerspoon/init.lua`:
+
+```lua
+spoon.Vimnav:configure({
+ enhancedAccessibility = {
+  enableForElectron = true,
+  -- defaults included for { "Code", "Visual Studio Code", "Slack", "Notion", "Discord", "Figma", "Obsidian" },
+  electronApps = {}, -- add your electron apps here
  },
 })
 ```
