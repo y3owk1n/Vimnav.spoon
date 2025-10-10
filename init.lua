@@ -750,8 +750,8 @@ State = {}
 
 -- Element cache with weak references for garbage collection
 local elementCache = setmetatable({}, { __mode = "k" })
-
 local attributeCache = setmetatable({}, { __mode = "k" })
+local electronCache = setmetatable({}, { __mode = "k" })
 
 --------------------------------------------------------------------------------
 -- Spatial Indexing
@@ -1260,14 +1260,18 @@ end
 ---Gets an element from the cache
 ---@param key string
 ---@param factory fun(): Hs.Vimnav.Element|nil
+---@param force? boolean
 ---@return Hs.Vimnav.Element|nil
-function Utils.getCachedElement(key, factory)
+function Utils.getCachedElement(key, factory, force)
+	force = force or false
+
 	if
 		elementCache[key]
 		and pcall(function()
 			return elementCache[key]:isValid()
 		end)
 		and elementCache[key]:isValid()
+		and not force
 	then
 		return elementCache[key]
 	end
@@ -1282,12 +1286,14 @@ end
 --- Reset the full state to default
 function Utils.resetFullState()
 	State = defaultState
+	log.df("[Utils.resetFullState] Reset state")
 end
 
 ---Reset the keycapture state
 ---@return nil
 function Utils.resetKeyCaptureState()
 	State.keyCapture = nil
+	log.df("[Utils.resetKeyCaptureState] Reset key capture state")
 end
 
 ---Resets the leader state
@@ -1308,16 +1314,18 @@ end
 
 ---Clears the element cache
 ---@return nil
-function Utils.clearCache()
+function Utils.clearElementCache()
 	elementCache = setmetatable({}, { __mode = "k" })
 	attributeCache = setmetatable({}, { __mode = "k" })
+	log.df("[Utils.clearElementCache] Cleared element cache")
 end
 
 ---Gets an attribute from an element
 ---@param element Hs.Vimnav.Element
 ---@param attributeName string
+---@param force? boolean
 ---@return Hs.Vimnav.Element|nil
-function Utils.getAttribute(element, attributeName)
+function Utils.getAttribute(element, attributeName, force)
 	if not element then
 		return nil
 	end
@@ -1325,7 +1333,7 @@ function Utils.getAttribute(element, attributeName)
 	local cacheKey = tostring(element) .. ":" .. attributeName
 	local cached = attributeCache[cacheKey]
 
-	if cached ~= nil then
+	if cached ~= nil and not force then
 		return cached == "NIL_VALUE" and nil or cached
 	end
 
@@ -1444,8 +1452,6 @@ function Utils.isInBrowser()
 			)
 		or false
 end
-
-local electronCache = {}
 
 ---@return boolean
 function Utils.isElectronApp()
@@ -1646,80 +1652,89 @@ end
 --------------------------------------------------------------------------------
 
 ---Returns the application element
+---@param force? boolean
 ---@return Hs.Vimnav.Element|nil
-function Elements.getApp()
+function Elements.getApp(force)
 	return Utils.getCachedElement("app", function()
 		return hs.application.frontmostApplication()
-	end)
+	end, force)
 end
 
 ---Returns the application element for AXUIElement
+---@param force? boolean
 ---@return Hs.Vimnav.Element|nil
-function Elements.getAxApp()
+function Elements.getAxApp(force)
 	return Utils.getCachedElement("axApp", function()
-		local app = Elements.getApp()
+		local app = Elements.getApp(force)
 		return app and hs.axuielement.applicationElement(app)
-	end)
+	end, force)
 end
 
 ---Returns the window element
+---@param force? boolean
 ---@return Hs.Vimnav.Element|nil
-function Elements.getWindow()
+function Elements.getWindow(force)
 	return Utils.getCachedElement("window", function()
-		local app = Elements.getApp()
+		local app = Elements.getApp(force)
 		return app and app:focusedWindow()
-	end)
+	end, force)
 end
 
 ---Returns the window element for AXUIElement
+---@param force? boolean
 ---@return Hs.Vimnav.Element|nil
-function Elements.getAxWindow()
+function Elements.getAxWindow(force)
 	return Utils.getCachedElement("axWindow", function()
-		local window = Elements.getWindow()
+		local window = Elements.getWindow(force)
 		return window and hs.axuielement.windowElement(window)
-	end)
+	end, force)
 end
 
 ---Returns the focused element for AXUIElement
+---@param force? boolean
 ---@return Hs.Vimnav.Element|nil
-function Elements.getAxFocusedElement()
+function Elements.getAxFocusedElement(force)
 	return Utils.getCachedElement("axFocusedElement", function()
-		local axApp = Elements.getAxApp()
-		return axApp and Utils.getAttribute(axApp, "AXFocusedUIElement")
-	end)
+		local axApp = Elements.getAxApp(force)
+		return axApp and Utils.getAttribute(axApp, "AXFocusedUIElement", force)
+	end, force)
 end
 
 ---Returns the web area element for AXUIElement
+---@param force? boolean
 ---@return Hs.Vimnav.Element|nil
-function Elements.getAxWebArea()
+function Elements.getAxWebArea(force)
 	return Utils.getCachedElement("axWebArea", function()
-		local axWindow = Elements.getAxWindow()
-		return axWindow and Elements.findAxRole(axWindow, "AXWebArea")
-	end)
+		local axWindow = Elements.getAxWindow(force)
+		return axWindow and Elements.findAxRole(axWindow, "AXWebArea", force)
+	end, force)
 end
 
 ---Returns the menu bar element for AXUIElement
+---@param force? boolean
 ---@return Hs.Vimnav.Element|nil
-function Elements.getAxMenuBar()
+function Elements.getAxMenuBar(force)
 	return Utils.getCachedElement("axMenuBar", function()
-		local axApp = Elements.getAxApp()
-		return axApp and Utils.getAttribute(axApp, "AXMenuBar")
-	end)
+		local axApp = Elements.getAxApp(force)
+		return axApp and Utils.getAttribute(axApp, "AXMenuBar", force)
+	end, force)
 end
 
 ---Returns the full area element
+---@param force? boolean
 ---@return Hs.Vimnav.Element|nil
-function Elements.getFullArea()
+function Elements.getFullArea(force)
 	return Utils.getCachedElement("fullArea", function()
-		local axWin = Elements.getAxWindow()
-		local axMenuBar = Elements.getAxMenuBar()
+		local axWin = Elements.getAxWindow(force)
+		local axMenuBar = Elements.getAxMenuBar(force)
 
 		if not axWin or not axMenuBar then
 			return nil
 		end
 
-		local winFrame = Utils.getAttribute(axWin, "AXFrame") or {}
-		local menuBarFrame = Utils.getAttribute(axMenuBar, "AXFrame") or {}
+		local winFrame = Utils.getAttribute(axWin, "AXFrame", force) or {}
+		local menuBarFrame = Utils.getAttribute(axMenuBar, "AXFrame", force)
+			or {}
 
 		return {
 			x = 0,
@@ -1727,31 +1742,33 @@ function Elements.getFullArea()
 			w = menuBarFrame.w,
 			h = winFrame.h + winFrame.y + menuBarFrame.h,
 		}
-	end)
+	end, force)
 end
 
 ---Finds an element with a specific AXRole
 ---@param rootElement Hs.Vimnav.Element
 ---@param role string
+---@param force? boolean
 ---@return Hs.Vimnav.Element|nil
-function Elements.findAxRole(rootElement, role)
+function Elements.findAxRole(rootElement, role, force)
 	if not rootElement then
 		return nil
 	end
 
-	local axRole = Utils.getAttribute(rootElement, "AXRole")
+	local axRole = Utils.getAttribute(rootElement, "AXRole", force)
 	if axRole == role then
 		return rootElement
 	end
 
-	local axChildren = Utils.getAttribute(rootElement, "AXChildren") or {}
+	local axChildren = Utils.getAttribute(rootElement, "AXChildren", force)
+		or {}
 
 	if type(axChildren) == "string" then
 		return nil
 	end
 
 	for _, child in ipairs(axChildren) do
-		local result = Elements.findAxRole(child, role)
+		local result = Elements.findAxRole(child, role, force)
 		if result then
 			return result
 		end
@@ -3812,7 +3829,7 @@ function EventHandler.handleVimInput(char, opts)
 			.. hs.inspect(modifiers)
 	)
 
-	Utils.clearCache()
+	Utils.clearElementCache()
 
 	-- handle link capture first
 	if ModeManager.isMode(MODES.LINKS) then
@@ -4252,7 +4269,7 @@ end
 ---@return nil
 local function cleanupOnAppSwitch()
 	-- Clear all element caches
-	Utils.clearCache()
+	Utils.clearElementCache()
 
 	-- Clear any active marks and canvas
 	Marks.clear()
@@ -4282,9 +4299,7 @@ local focusCheckTimer = nil
 ---Updates focus state (called by timer)
 ---@return nil
 local function updateFocusState()
-	Utils.clearCache()
-
-	local focusedElement = Elements.getAxFocusedElement()
+	local focusedElement = Elements.getAxFocusedElement(true)
 
 	-- Quick check: if same element, skip
 	if focusedElement == State.focusLastElement then
@@ -4369,13 +4384,9 @@ local function startAppWatcher()
 			log.df("[Utils.startAppWatcher] App activated: %s", appName)
 
 			cleanupOnAppSwitch()
-
 			startFocusPolling()
-
-			hs.timer.doAfter(0.2, function()
-				Elements.enableEnhancedUIForChrome()
-				Elements.enableAccessibilityForElectron()
-			end)
+			Elements.enableEnhancedUIForChrome()
+			Elements.enableAccessibilityForElectron()
 
 			if not State.eventLoop then
 				State.eventLoop = hs.eventtap
@@ -4464,7 +4475,7 @@ local function setupPeriodicCleanup()
 		.new(30, function() -- Every 30 seconds
 			-- Only clean up if we're not actively showing marks
 			if State.mode ~= MODES.LINKS then
-				Utils.clearCache()
+				Utils.clearElementCache()
 				collectgarbage("collect")
 				log.df(
 					"[Utils.setupPeriodicCleanup] Periodic cache cleanup completed"
@@ -4635,6 +4646,9 @@ function M:stop()
 
 	cleanupOnAppSwitch()
 
+	-- reset electron cache as well
+	electronCache = setmetatable({}, { __mode = "k" })
+
 	State = {}
 
 	self._running = false
@@ -4664,6 +4678,11 @@ function M:debug()
 	return {
 		config = M.config,
 		state = State,
+		caches = {
+			elementCache = elementCache,
+			attributeCache = attributeCache,
+			electronCache = electronCache,
+		},
 	}
 end
 
