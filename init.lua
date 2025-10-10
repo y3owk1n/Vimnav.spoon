@@ -4376,6 +4376,8 @@ local function startAppWatcher()
 	end
 
 	startFocusPolling()
+	Elements.enableEnhancedUIForChrome()
+	Elements.enableAccessibilityForElectron()
 
 	appWatcher = hs.application.watcher.new(function(appName, eventType)
 		log.df("[Utils.startAppWatcher] App event: %s - %s", appName, eventType)
