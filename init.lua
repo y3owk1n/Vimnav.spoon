@@ -1263,12 +1263,6 @@ function Utils.resetFullState()
 	State = defaultState
 end
 
----Reset the linkcapture state
----@return nil
-function Utils.resetLinkCaptureState()
-	State.linkCapture = ""
-end
-
 ---Reset the keycapture state
 ---@return nil
 function Utils.resetKeyCaptureState()
@@ -1281,6 +1275,14 @@ function Utils.resetLeaderState()
 	State.leaderPressed = false
 	State.leaderCapture = ""
 	log.df("Reset leader state")
+end
+
+---Resets the focus state
+---@return nil
+function Utils.resetFocusState()
+	State.focusCachedResult = false
+	State.focusLastElement = nil
+	log.df("Reset focus state")
 end
 
 ---Clears the element cache
@@ -2267,7 +2269,6 @@ function ModeManager.setModeLink()
 		return false
 	end
 
-	Utils.resetLinkCaptureState()
 	Marks.clear()
 
 	return true
@@ -2324,7 +2325,6 @@ function ModeManager.setModeVisual()
 		return false
 	end
 
-	Utils.resetLinkCaptureState()
 	Marks.clear()
 
 	return true
@@ -2493,8 +2493,7 @@ function Actions.forceUnfocus()
 		hs.alert.show("Force unfocused!")
 
 		-- Reset focus state
-		State.focusCachedResult = false
-		State.focusLastElement = nil
+		Utils.resetFocusState()
 	end
 end
 
@@ -2769,7 +2768,7 @@ function Marks.clear()
 		State.canvas = nil
 	end
 	State.marks = {}
-	Utils.resetLinkCaptureState()
+	State.linkCapture = ""
 	MarkPool.releaseAll()
 	log.df("Cleared marks")
 end
@@ -3970,9 +3969,6 @@ local function cleanupOnAppSwitch()
 	-- Clear any active marks and canvas
 	Marks.clear()
 
-	-- Reset link capture state
-	Utils.resetLinkCaptureState()
-
 	-- Reset leader state
 	Utils.resetLeaderState()
 
@@ -3983,8 +3979,7 @@ local function cleanupOnAppSwitch()
 	Whichkey.hide()
 
 	-- Reset focus state
-	State.focusCachedResult = false
-	State.focusLastElement = nil
+	Utils.resetFocusState()
 
 	-- Force garbage collection to free up memory
 	collectgarbage("collect")
