@@ -36,6 +36,10 @@ local CanvasCache = {}
 local EventHandler = {}
 local Whichkey = {}
 local CleanupManager = {}
+local StateManager = {}
+local CacheManager = {}
+local TimerManager = {}
+local WatcherManager = {}
 
 local log
 
@@ -168,6 +172,11 @@ local log
 ---@field whichkeyTimer table|nil Which-key popup timer
 ---@field whichkeyCanvas table|nil Which-key popup canvas
 ---@field showingHelp boolean Whether the help popup is currently showing
+---@field appWatcher table|nil App watcher
+---@field launcherWatcher table|nil Launcher watcher
+---@field screenWatcher table|nil Screen watcher
+---@field caffeineWatcher table|nil Caffeine watcher
+---@field focusCheckTimer table|nil Focus check timer
 
 ---@class Hs.Vimnav.State.MappingPrefixes
 ---@field normal table<string, boolean> Normal mode mappings
@@ -743,11 +752,12 @@ local defaultState = {
 	whichKeyTimer = nil,
 	whichKeyCanvas = nil,
 	showingHelp = false,
+	appWatcher = nil,
+	launcherWatcher = {},
+	screenWatcher = nil,
+	caffeineWatcher = nil,
+	focusCheckTimer = nil,
 }
-
----@type Hs.Vimnav.State
----@diagnostic disable-next-line: missing-fields
-State = {}
 
 -- Element cache with weak references for garbage collection
 local elementCache = setmetatable({}, { __mode = "k" })
@@ -1282,43 +1292,6 @@ function Utils.getCachedElement(key, factory, force)
 		elementCache[key] = element
 	end
 	return element
-end
-
---- Reset the full state to default
-function Utils.resetFullState()
-	State = defaultState
-	log.df("[Utils.resetFullState] Reset state")
-end
-
----Reset the keycapture state
----@return nil
-function Utils.resetKeyCaptureState()
-	State.keyCapture = nil
-	log.df("[Utils.resetKeyCaptureState] Reset key capture state")
-end
-
----Resets the leader state
----@return nil
-function Utils.resetLeaderState()
-	State.leaderPressed = false
-	State.leaderCapture = ""
-	log.df("[Utils.resetLeaderState] Reset leader state")
-end
-
----Resets the focus state
----@return nil
-function Utils.resetFocusState()
-	State.focusCachedResult = false
-	State.focusLastElement = nil
-	log.df("[Utils.resetFocusState] Reset focus state")
-end
-
----Clears the element cache
----@return nil
-function Utils.clearElementCache()
-	elementCache = setmetatable({}, { __mode = "k" })
-	attributeCache = setmetatable({}, { __mode = "k" })
-	log.df("[Utils.clearElementCache] Cleared element cache")
 end
 
 ---Gets an attribute from an element
@@ -2461,10 +2434,7 @@ function Whichkey.hide()
 		log.df("[Whichkey.hide] Which-key popup hidden")
 	end
 
-	if State.whichkeyTimer then
-		State.whichkeyTimer:stop()
-		State.whichkeyTimer = nil
-	end
+	TimerManager.stopWhichkey()
 end
 
 ---Schedule which-key popup to show after delay
@@ -2773,7 +2743,7 @@ function Actions.forceUnfocus()
 		hs.alert.show("Force unfocused!")
 
 		-- Reset focus state
-		Utils.resetFocusState()
+		StateManager.resetFocus()
 	end
 end
 
@@ -3832,7 +3802,8 @@ function EventHandler.handleVimInput(char, opts)
 			.. hs.inspect(modifiers)
 	)
 
-	Utils.clearElementCache()
+	-- Clear element cache on every input
+	CacheManager.clearElements()
 
 	-- handle link capture first
 	if ModeManager.isMode(MODES.LINKS) then
@@ -4241,31 +4212,497 @@ function EventHandler.process(event)
 	return false
 end
 
+function EventHandler.startEventLoop()
+	if not State.eventLoop then
+		State.eventLoop = hs.eventtap
+			.new({ hs.eventtap.event.types.keyDown }, EventHandler.process)
+			:start()
+		log.df("[EventHandler.startEventLoop] Started event loop")
+	end
+end
+
+function EventHandler.stopEventLoop()
+	if State.eventLoop then
+		State.eventLoop:stop()
+		State.eventLoop = nil
+		log.df("[EventHandler.stopEventLoop] Stopped event loop")
+	end
+end
+
 --------------------------------------------------------------------------------
 -- Watchers
 --------------------------------------------------------------------------------
 
----Periodic cache cleanup to prevent memory leaks
+---Starts the app watcher
 ---@return nil
-local function setupPeriodicCleanup()
-	if State.cleanupTimer then
-		State.cleanupTimer:stop()
-	end
+function WatcherManager.startAppWatcher()
+	WatcherManager.stopAppWatcher()
 
-	State.cleanupTimer = hs.timer
-		.new(30, function() -- Every 30 seconds
-			-- Only clean up if we're not actively showing marks
-			if State.mode ~= MODES.LINKS then
-				CleanupManager.medium()
-				log.df(
-					"[Utils.setupPeriodicCleanup] Periodic cache cleanup completed"
+	TimerManager.startFocusCheck()
+	Elements.enableEnhancedUIForChrome()
+	Elements.enableAccessibilityForElectron()
+
+	State.appWatcher = hs.application.watcher.new(function(appName, eventType)
+		log.df(
+			"[WatcherManager.startAppWatcher] App event: %s - %s",
+			appName,
+			eventType
+		)
+
+		if eventType == hs.application.watcher.activated then
+			log.df(
+				"[WatcherManager.startAppWatcher] App activated: %s",
+				appName
+			)
+
+			CleanupManager.onAppSwitch()
+			TimerManager.startFocusCheck()
+			Elements.enableEnhancedUIForChrome()
+			Elements.enableAccessibilityForElectron()
+			EventHandler.startEventLoop()
+
+			if
+				Utils.tblContains(
+					M.config.applicationGroups.exclusions,
+					appName
 				)
+			then
+				ModeManager.setModeDisabled()
+				log.df(
+					"[WatcherManager.startAppWatcher] Disabled mode for excluded app: %s",
+					appName
+				)
+			else
+				ModeManager.setModeNormal()
 			end
-		end)
-		:start()
+		end
+	end)
+
+	State.appWatcher:start()
+
+	log.df("[WatcherManager.startAppWatcher] App watcher started")
 end
 
-local focusCheckTimer = nil
+function WatcherManager.stopAppWatcher()
+	if State.appWatcher then
+		State.appWatcher:stop()
+		State.appWatcher = nil
+		log.df("[WatcherManager.stopAppWatcher] Stopped app watcher")
+	end
+end
+
+function WatcherManager.startLaunchersWatcher()
+	local launchers = M.config.applicationGroups.launchers
+
+	if not launchers or #launchers == 0 then
+		return
+	end
+
+	for _, launcher in ipairs(launchers) do
+		WatcherManager.stopLauncherWatcher(launcher)
+
+		State.launcherWatcher[launcher] = hs.window.filter
+			.new(false)
+			:setAppFilter(launcher, { visible = true })
+
+		State.launcherWatcher[launcher]:subscribe(
+			hs.window.filter.windowCreated,
+			function()
+				log.df(
+					"[WatcherManager.startLaunchersWatcher] Launcher opened: %s",
+					launcher
+				)
+				ModeManager.setModeDisabled()
+			end
+		)
+
+		State.launcherWatcher[launcher]:subscribe(
+			hs.window.filter.windowDestroyed,
+			function()
+				log.df(
+					"[WatcherManager.startLaunchersWatcher] Launcher closed: %s",
+					launcher
+				)
+				ModeManager.setModeNormal()
+			end
+		)
+	end
+end
+
+function WatcherManager.stopLauncherWatcher(launcher)
+	if State.launcherWatcher and State.launcherWatcher[launcher] then
+		State.launcherWatcher[launcher]:unsubscribeAll()
+		State.launcherWatcher[launcher] = nil
+		log.df(
+			"[WatcherManager.stopLauncherWatcher] Stopped launcher watcher: %s",
+			launcher
+		)
+	end
+end
+
+function WatcherManager.stopLaunchersWatcher()
+	if State.launcherWatcher then
+		for _, launcher in pairs(State.launcherWatcher) do
+			if launcher then
+				launcher:unsubscribeAll()
+				launcher = nil
+			end
+		end
+		State.launcherWatcher = {}
+		log.df("[WatcherManager.stopLaunchersWatcher] Stopped launcher watcher")
+	end
+end
+
+function WatcherManager.startScreenWatcher()
+	WatcherManager.stopScreenWatcher()
+	State.screenWatcher =
+		hs.screen.watcher.new(CleanupManager.onScreenChange):start()
+	log.df("[WatcherManager.startScreenWatcher] Screen watcher started")
+end
+
+function WatcherManager.stopScreenWatcher()
+	if State.screenWatcher then
+		State.screenWatcher:stop()
+		State.screenWatcher = nil
+		log.df("[WatcherManager.stopScreenWatcher] Stopped screen watcher")
+	end
+end
+
+local function handleCaffeineEvent(eventType)
+	if eventType == hs.caffeinate.watcher.systemDidWake then
+		log.df("[handleCaffeineEvent] System woke from sleep")
+
+		-- Give the system time to stabilize
+		hs.timer.doAfter(1.0, function()
+			-- Clean up everything
+			CleanupManager.onWake()
+
+			-- Recreate overlay with correct screen position
+			if M.config.overlay.enabled then
+				Overlay.destroy()
+				hs.timer.doAfter(0.1, function()
+					Overlay.create()
+					Overlay.update(State.mode)
+				end)
+			end
+
+			-- Recreate menubar in case it got corrupted
+			if M.config.menubar.enabled then
+				MenuBar.destroy()
+				MenuBar.create()
+				MenuBar.setTitle(State.mode)
+			end
+
+			-- Restart focus polling
+			TimerManager.startFocusCheck()
+
+			-- Restart periodic cleanup timer
+			TimerManager.startPeriodicCleanup()
+
+			-- Re-enable enhanced accessibility if needed
+			Elements.enableEnhancedUIForChrome()
+			Elements.enableAccessibilityForElectron()
+
+			-- Verify event loop is still running
+			if not State.eventLoop or not State.eventLoop:isEnabled() then
+				log.wf(
+					"[handleCaffeineEvent] Event loop not running, restarting..."
+				)
+				EventHandler.stopEventLoop()
+				EventHandler.startEventLoop()
+			end
+
+			log.df("[handleCaffeineEvent] Recovery complete after wake")
+		end)
+	elseif eventType == hs.caffeinate.watcher.systemWillSleep then
+		log.df("[handleCaffeineEvent] System going to sleep")
+
+		CleanupManager.onSleep()
+
+		log.df("[handleCaffeineEvent] Cleanup complete before sleep")
+	end
+end
+
+function WatcherManager.startCaffeineWatcher()
+	WatcherManager.stopCaffeineWatcher()
+	State.caffeineWatcher =
+		hs.caffeinate.watcher.new(handleCaffeineEvent):start()
+	log.df("[WatcherManager.startCaffeineWatcher] Caffeine watcher started")
+end
+
+function WatcherManager.stopCaffeineWatcher()
+	if State.caffeineWatcher then
+		State.caffeineWatcher:stop()
+		State.caffeineWatcher = nil
+		log.df("[WatcherManager.stopCaffeineWatcher] Stopped caffeine watcher")
+	end
+end
+
+---Clean up timers and watchers
+---@return nil
+function WatcherManager.stopAll()
+	TimerManager.stopAll()
+	WatcherManager.stopAppWatcher()
+	WatcherManager.stopLaunchersWatcher()
+	WatcherManager.stopScreenWatcher()
+	WatcherManager.stopCaffeineWatcher()
+end
+
+--------------------------------------------------------------------------------
+-- Cleanup Manager
+--------------------------------------------------------------------------------
+
+---Light cleanup - resets input states
+---@return nil
+function CleanupManager.light()
+	log.df("[CleanupManager.light] Performing light cleanup")
+	StateManager.resetInput()
+end
+
+---Medium cleanup - clears UI elements and focus state
+---@return nil
+function CleanupManager.medium()
+	log.df("[CleanupManager.medium] Performing medium cleanup")
+
+	-- First do light cleanup
+	CleanupManager.light()
+
+	-- Clear UI elements
+	Marks.clear()
+	Whichkey.hide()
+
+	-- Reset focus state
+	StateManager.resetFocus()
+end
+
+---Heavy cleanup - clears caches and forces GC
+---@return nil
+function CleanupManager.heavy()
+	log.df("[CleanupManager.heavy] Performing heavy cleanup")
+
+	-- First do medium cleanup
+	CleanupManager.medium()
+
+	-- Clear all caches
+	CacheManager.clearAll()
+	CacheManager.collectGarbage()
+end
+
+---Full cleanup - stops timers and performs complete reset
+---@return nil
+function CleanupManager.full()
+	log.df("[CleanupManager.full] Performing full cleanup")
+
+	-- First do heavy cleanup
+	CleanupManager.heavy()
+
+	-- Stop all timers
+	TimerManager.stopAll()
+
+	-- Hide all UI elements
+	if State.canvas then
+		pcall(function()
+			State.canvas:hide()
+		end)
+	end
+	if Overlay.canvas then
+		pcall(function()
+			Overlay.canvas:hide()
+		end)
+	end
+end
+
+---Cleanup for app switching - medium + element cache
+---@return nil
+function CleanupManager.onAppSwitch()
+	log.df("[CleanupManager.onAppSwitch] App switch cleanup")
+	CleanupManager.heavy()
+end
+
+---Cleanup before sleep - full cleanup with UI hiding
+---@return nil
+function CleanupManager.onSleep()
+	log.df("[CleanupManager.onSleep] Sleep cleanup")
+	CleanupManager.full()
+end
+
+---Cleanup on wake - just heavy, no timer stop
+function CleanupManager.onWake()
+	log.df("[CleanupManager.onWake] Wake cleanup")
+	CleanupManager.heavy()
+end
+
+---Cleanup on mode change - light cleanup only
+---@param fromMode number
+---@param toMode number
+---@return nil
+function CleanupManager.onModeChange(fromMode, toMode)
+	log.df(
+		"[CleanupManager.onModeChange] Mode change: %s -> %s",
+		fromMode,
+		toMode
+	)
+
+	-- Always do light cleanup on mode change
+	CleanupManager.light()
+
+	-- Clear marks when leaving LINKS mode
+	if fromMode == MODES.LINKS then
+		hs.timer.doAfter(0, Marks.clear)
+	end
+
+	-- Clear marks when entering certain modes
+	if toMode == MODES.NORMAL or toMode == MODES.PASSTHROUGH then
+		hs.timer.doAfter(0, Marks.clear)
+	end
+end
+
+---Cleanup when command execution completes
+---@return nil
+function CleanupManager.onCommandComplete()
+	log.df("[CleanupManager.onCommandComplete] Command complete cleanup")
+
+	StateManager.resetLeader()
+	StateManager.resetKeyCapture()
+
+	if State.showingHelp then
+		StateManager.resetHelp()
+	else
+		Whichkey.hide()
+	end
+end
+
+---Cleanup when escape is pressed
+---@return nil
+function CleanupManager.onEscape()
+	log.df("[CleanupManager.onEscape] Escape cleanup")
+
+	CleanupManager.light()
+	Whichkey.hide()
+	MenuBar.setTitle(State.mode)
+	Overlay.update(State.mode)
+end
+
+---Cleanup on screen change
+function CleanupManager.onScreenChange()
+	log.df("[CleanupManager.onScreenChange] Screen changed")
+
+	-- Only clear element cache (positions changed)
+	CacheManager.clearElements()
+
+	-- Recreate overlay if enabled
+	if M.config.overlay.enabled and State.mode ~= MODES.DISABLED then
+		Overlay.destroy()
+		hs.timer.doAfter(0.1, function()
+			Overlay.create()
+			Overlay.update(State.mode)
+		end)
+	end
+
+	-- Redraw marks if showing
+	if State.canvas and #State.marks > 0 then
+		hs.timer.doAfter(0.2, Marks.draw)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- State Manager
+--------------------------------------------------------------------------------
+
+---Reset key capture state
+function StateManager.resetKeyCapture()
+	State.keyCapture = nil
+	log.df("[StateManager.resetKeyCapture] Reset")
+end
+
+---Reset leader state
+function StateManager.resetLeader()
+	State.leaderPressed = false
+	State.leaderCapture = ""
+	log.df("[StateManager.resetLeader] Reset")
+end
+
+---Reset link capture state
+function StateManager.resetLinkCapture()
+	State.linkCapture = ""
+	log.df("[StateManager.resetLinkCapture] Reset")
+end
+
+---Reset focus state
+function StateManager.resetFocus()
+	State.focusCachedResult = false
+	State.focusLastElement = nil
+	log.df("[StateManager.resetFocus] Reset")
+end
+
+---Reset help state
+function StateManager.resetHelp()
+	State.showingHelp = false
+	log.df("[StateManager.resetHelp] Reset")
+end
+
+---Reset all input-related state (key, leader, link capture)
+function StateManager.resetInput()
+	StateManager.resetKeyCapture()
+	StateManager.resetLeader()
+	StateManager.resetLinkCapture()
+	StateManager.resetHelp()
+	log.df("[StateManager.resetInput] All input state reset")
+end
+
+---Reset all state completely
+function StateManager.resetAll()
+	State = Utils.deepCopy(defaultState)
+	log.df("[StateManager.resetAll] Complete state reset")
+end
+
+--------------------------------------------------------------------------------
+-- Cache Manager
+--------------------------------------------------------------------------------
+
+---Clear element cache
+function CacheManager.clearElements()
+	elementCache = setmetatable({}, { __mode = "k" })
+	attributeCache = setmetatable({}, { __mode = "k" })
+	log.df("[CacheManager.clearElements] Element cache cleared")
+end
+
+---Clear electron cache
+function CacheManager.clearElectron()
+	electronCache = setmetatable({}, { __mode = "k" })
+	log.df("[CacheManager.clearElectron] Electron cache cleared")
+end
+
+---Clear canvas template cache
+function CacheManager.clearCanvasTemplate()
+	CanvasCache.template = nil
+	log.df("[CacheManager.clearCanvasTemplate] Canvas template cache cleared")
+end
+
+---Clear mark pool
+function CacheManager.clearMarkPool()
+	MarkPool.releaseAll()
+	log.df("[CacheManager.clearMarkPool] Mark pool cleared")
+end
+
+---Clear all caches
+function CacheManager.clearAll()
+	CacheManager.clearElements()
+	CacheManager.clearElectron()
+	CacheManager.clearCanvasTemplate()
+	CacheManager.clearMarkPool()
+	log.df("[CacheManager.clearAll] All caches cleared")
+end
+
+---Force garbage collection
+function CacheManager.collectGarbage()
+	collectgarbage("collect")
+	log.df("[CacheManager.collectGarbage] Garbage collected")
+end
+
+--------------------------------------------------------------------------------
+-- Timer Manager
+--------------------------------------------------------------------------------
 
 ---Updates focus state (called by timer)
 ---@return nil
@@ -4300,7 +4737,7 @@ local function updateFocusState()
 			end
 
 			log.df(
-				"[Utils.updateFocusState] Focus changed: editable=%s, role=%s",
+				"[updateFocusState] Focus changed: editable=%s, role=%s",
 				tostring(isEditable),
 				tostring(role)
 			)
@@ -4321,422 +4758,69 @@ end
 
 ---Starts focus polling
 ---@return nil
-local function startFocusPolling()
-	if focusCheckTimer then
-		focusCheckTimer:stop()
-		focusCheckTimer = nil
-	end
+function TimerManager.startFocusCheck()
+	TimerManager.stopFocusCheck()
 
-	focusCheckTimer = hs.timer
+	State.focusCheckTimer = hs.timer
 		.new(M.config.focus.checkInterval or 0.1, function()
 			pcall(updateFocusState)
 		end)
 		:start()
 
-	log.df("[Utils.startFocusPolling] Focus polling started")
+	log.df("[TimerManager.startFocusCheck] Focus polling started")
 end
 
-local appWatcher = nil
+---Stop focus check timer
+function TimerManager.stopFocusCheck()
+	if State.focusCheckTimer then
+		State.focusCheckTimer:stop()
+		State.focusCheckTimer = nil
+		log.df("[TimerManager.stopFocusCheck] Stopped")
+	end
+end
 
----Starts the app watcher
+---Start Periodic cache cleanup to prevent memory leaks
 ---@return nil
-local function startAppWatcher()
-	if appWatcher then
-		appWatcher:stop()
-		appWatcher = nil
-	end
+function TimerManager.startPeriodicCleanup()
+	TimerManager.stopPeriodicCleanup()
 
-	startFocusPolling()
-	Elements.enableEnhancedUIForChrome()
-	Elements.enableAccessibilityForElectron()
-
-	appWatcher = hs.application.watcher.new(function(appName, eventType)
-		log.df("[Utils.startAppWatcher] App event: %s - %s", appName, eventType)
-
-		if eventType == hs.application.watcher.activated then
-			log.df("[Utils.startAppWatcher] App activated: %s", appName)
-
-			CleanupManager.onAppSwitch()
-			startFocusPolling()
-			Elements.enableEnhancedUIForChrome()
-			Elements.enableAccessibilityForElectron()
-
-			if not State.eventLoop then
-				State.eventLoop = hs.eventtap
-					.new({ hs.eventtap.event.types.keyDown }, EventHandler.process)
-					:start()
-				log.df("[Utils.startAppWatcher] Started event loop")
-			end
-
-			if
-				Utils.tblContains(
-					M.config.applicationGroups.exclusions,
-					appName
-				)
-			then
-				ModeManager.setModeDisabled()
+	State.cleanupTimer = hs.timer
+		.new(30, function() -- Every 30 seconds
+			-- Only clean up if we're not actively showing marks
+			if State.mode ~= MODES.LINKS then
+				CleanupManager.medium()
 				log.df(
-					"[Utils.startAppWatcher] Disabled mode for excluded app: %s",
-					appName
+					"[TimerManager.setupPeriodicCleanup] Periodic cache cleanup completed"
 				)
-			else
-				ModeManager.setModeNormal()
 			end
-		end
-	end)
-
-	appWatcher:start()
-
-	log.df("[Utils.startAppWatcher] App watcher started")
-end
-
-local launcherWatcher = {}
-
-local function startLaunchersWatcher()
-	local launchers = M.config.applicationGroups.launchers
-
-	if not launchers or #launchers == 0 then
-		return
-	end
-
-	for _, launcher in ipairs(launchers) do
-		if launcherWatcher[launcher] then
-			launcherWatcher[launcher]:unsubscribeAll()
-			launcherWatcher[launcher] = nil
-			log.df(
-				"[Utils.startLaunchersWatcher] Stopped launcher watcher: %s",
-				launcher
-			)
-		end
-
-		launcherWatcher[launcher] = hs.window.filter
-			.new(false)
-			:setAppFilter(launcher, { visible = true })
-
-		launcherWatcher[launcher]:subscribe(
-			hs.window.filter.windowCreated,
-			function()
-				log.df(
-					"[Utils.startLaunchersWatcher] Launcher opened: %s",
-					launcher
-				)
-				ModeManager.setModeDisabled()
-			end
-		)
-
-		launcherWatcher[launcher]:subscribe(
-			hs.window.filter.windowDestroyed,
-			function()
-				log.df(
-					"[Utils.startLaunchersWatcher] Launcher closed: %s",
-					launcher
-				)
-				ModeManager.setModeNormal()
-			end
-		)
-	end
-end
-
-local screenWatcher = nil
-
-local function handleScreenChange()
-	log.df("[handleScreenChange] Screen configuration changed")
-
-	-- Recreate overlay with new screen dimensions
-	if M.config.overlay.enabled and State.mode ~= MODES.DISABLED then
-		Overlay.destroy()
-		hs.timer.doAfter(0.1, function()
-			Overlay.create()
-			Overlay.update(State.mode)
 		end)
-	end
-
-	-- Clear element cache since positions may have changed
-	Utils.clearElementCache()
-
-	-- Redraw marks if they're currently showing
-	if State.canvas and #State.marks > 0 then
-		hs.timer.doAfter(0.2, function()
-			Marks.draw()
-		end)
-	end
+		:start()
 end
 
-local function startScreenWatcher()
-	if screenWatcher then
-		screenWatcher:stop()
-		screenWatcher = nil
-	end
-
-	screenWatcher = hs.screen.watcher.new(handleScreenChange):start()
-	log.df("[startScreenWatcher] Screen watcher started")
-end
-
-local caffeineWatcher = nil
-
-local function handleCaffeineEvent(eventType)
-	if eventType == hs.caffeinate.watcher.systemDidWake then
-		log.df("[handleCaffeineEvent] System woke from sleep")
-
-		-- Give the system time to stabilize
-		hs.timer.doAfter(1.0, function()
-			-- Clean up everything
-			CleanupManager.heavy()
-
-			-- Recreate overlay with correct screen position
-			if M.config.overlay.enabled then
-				Overlay.destroy()
-				hs.timer.doAfter(0.1, function()
-					Overlay.create()
-					Overlay.update(State.mode)
-				end)
-			end
-
-			-- Recreate menubar in case it got corrupted
-			if M.config.menubar.enabled then
-				MenuBar.destroy()
-				MenuBar.create()
-				MenuBar.setTitle(State.mode)
-			end
-
-			-- Restart focus polling
-			startFocusPolling()
-
-			-- Restart periodic cleanup timer
-			setupPeriodicCleanup()
-
-			-- Re-enable enhanced accessibility if needed
-			Elements.enableEnhancedUIForChrome()
-			Elements.enableAccessibilityForElectron()
-
-			-- Verify event loop is still running
-			if not State.eventLoop or not State.eventLoop:isEnabled() then
-				log.wf(
-					"[handleCaffeineEvent] Event loop not running, restarting..."
-				)
-				if State.eventLoop then
-					State.eventLoop:stop()
-				end
-				State.eventLoop = hs.eventtap
-					.new({ hs.eventtap.event.types.keyDown }, EventHandler.process)
-					:start()
-			end
-
-			log.df("[handleCaffeineEvent] Recovery complete after wake")
-		end)
-	elseif eventType == hs.caffeinate.watcher.systemWillSleep then
-		log.df("[handleCaffeineEvent] System going to sleep")
-
-		CleanupManager.onSleep()
-
-		log.df("[handleCaffeineEvent] Cleanup complete before sleep")
-	end
-end
-
--- Add this function to start the caffeine watcher
-local function startCaffeineWatcher()
-	if caffeineWatcher then
-		caffeineWatcher:stop()
-		caffeineWatcher = nil
-	end
-
-	caffeineWatcher = hs.caffeinate.watcher.new(handleCaffeineEvent):start()
-	log.df("[startCaffeineWatcher] Caffeine watcher started")
-end
-
----Clean up timers and watchers
----@return nil
-local function cleanupWatchers()
-	if appWatcher then
-		appWatcher:stop()
-		appWatcher = nil
-		log.df("[Utils.cleanupWatchers] Stopped app watcher")
-	end
-
+---Stop cleanup timer
+function TimerManager.stopPeriodicCleanup()
 	if State.cleanupTimer then
 		State.cleanupTimer:stop()
 		State.cleanupTimer = nil
-		log.df("[Utils.cleanupWatchers] Stopped cleanup timer")
-	end
-
-	if focusCheckTimer then
-		focusCheckTimer:stop()
-		focusCheckTimer = nil
-		log.df("[Utils.cleanupWatchers] Stopped focus check timer")
-	end
-
-	for _, launcher in pairs(launcherWatcher) do
-		if launcher then
-			launcher:unsubscribeAll()
-			launcher = nil
-			log.df("[Utils.cleanupWatchers] Stopped launcher watcher")
-		end
-	end
-
-	if screenWatcher then
-		screenWatcher:stop()
-		screenWatcher = nil
-		log.df("[Utils.cleanupWatchers] Stopped screen watcher")
-	end
-
-	if caffeineWatcher then
-		caffeineWatcher:stop()
-		caffeineWatcher = nil
-		log.df("[Utils.cleanupWatchers] Stopped caffeine watcher")
+		log.df("[TimerManager.stopCleanup] Stopped")
 	end
 end
 
---------------------------------------------------------------------------------
--- Cleanup Manager
---------------------------------------------------------------------------------
-
----Light cleanup - resets input states
----@return nil
-function CleanupManager.light()
-	log.df("[CleanupManager.light] Performing light cleanup")
-
-	Utils.resetKeyCaptureState()
-	Utils.resetLeaderState()
-	State.linkCapture = ""
-	State.showingHelp = false
-end
-
----Medium cleanup - clears UI elements and focus state
----@return nil
-function CleanupManager.medium()
-	log.df("[CleanupManager.medium] Performing medium cleanup")
-
-	-- First do light cleanup
-	CleanupManager.light()
-
-	-- Clear UI elements
-	Marks.clear()
-	Whichkey.hide()
-
-	-- Reset focus state
-	Utils.resetFocusState()
-end
-
----Heavy cleanup - clears caches and forces GC
----@return nil
-function CleanupManager.heavy()
-	log.df("[CleanupManager.heavy] Performing heavy cleanup")
-
-	-- First do medium cleanup
-	CleanupManager.medium()
-
-	-- Clear all caches
-	Utils.clearElementCache()
-	electronCache = setmetatable({}, { __mode = "k" })
-	MarkPool.releaseAll()
-
-	-- Clear canvas template cache
-	CanvasCache.template = nil
-
-	-- Force garbage collection
-	collectgarbage("collect")
-end
-
----Full cleanup - stops timers and performs complete reset
----@return nil
-function CleanupManager.full()
-	log.df("[CleanupManager.full] Performing full cleanup")
-
-	-- First do heavy cleanup
-	CleanupManager.heavy()
-
-	-- Stop all timers
-	if focusCheckTimer then
-		focusCheckTimer:stop()
-		focusCheckTimer = nil
-	end
-
-	if State.cleanupTimer then
-		State.cleanupTimer:stop()
-		State.cleanupTimer = nil
-	end
-
+---Stop which-key timer
+function TimerManager.stopWhichkey()
 	if State.whichkeyTimer then
 		State.whichkeyTimer:stop()
 		State.whichkeyTimer = nil
-	end
-
-	-- Hide all UI elements
-	if State.canvas then
-		pcall(function()
-			State.canvas:hide()
-		end)
-	end
-	if Overlay.canvas then
-		pcall(function()
-			Overlay.canvas:hide()
-		end)
+		log.df("[TimerManager.stopWhichkey] Stopped")
 	end
 end
 
----Cleanup for app switching - medium + element cache
----@return nil
-function CleanupManager.onAppSwitch()
-	log.df("[CleanupManager.onAppSwitch] App switch cleanup")
-	CleanupManager.heavy()
-end
-
----Cleanup before sleep - full cleanup with UI hiding
----@return nil
-function CleanupManager.onSleep()
-	log.df("[CleanupManager.onSleep] Sleep cleanup")
-	CleanupManager.full()
-end
-
----Cleanup on mode change - light cleanup only
----@param fromMode number
----@param toMode number
----@return nil
-function CleanupManager.onModeChange(fromMode, toMode)
-	log.df(
-		"[CleanupManager.onModeChange] Mode change: %s -> %s",
-		fromMode,
-		toMode
-	)
-
-	-- Always do light cleanup on mode change
-	CleanupManager.light()
-
-	-- Clear marks when leaving LINKS mode
-	if fromMode == MODES.LINKS then
-		hs.timer.doAfter(0, Marks.clear)
-	end
-
-	-- Clear marks when entering certain modes
-	if toMode == MODES.NORMAL or toMode == MODES.PASSTHROUGH then
-		hs.timer.doAfter(0, Marks.clear)
-	end
-end
-
----Cleanup when command execution completes
----@return nil
-function CleanupManager.onCommandComplete()
-	log.df("[CleanupManager.onCommandComplete] Command complete cleanup")
-
-	Utils.resetLeaderState()
-	Utils.resetKeyCaptureState()
-
-	if State.showingHelp then
-		State.showingHelp = false -- keep the popup on screen
-	else
-		Whichkey.hide()
-	end
-end
-
----Cleanup when escape is pressed
----@return nil
-function CleanupManager.onEscape()
-	log.df("[CleanupManager.onEscape] Escape cleanup")
-
-	CleanupManager.light()
-	Whichkey.hide()
-	MenuBar.setTitle(State.mode)
-	Overlay.update(State.mode)
+---Stop all timers
+function TimerManager.stopAll()
+	TimerManager.stopFocusCheck()
+	TimerManager.stopPeriodicCleanup()
+	TimerManager.stopWhichkey()
+	log.df("[TimerManager.stopAll] All timers stopped")
 end
 
 --------------------------------------------------------------------------------
@@ -4815,18 +4899,18 @@ function M:start()
 		self:configure({})
 	end
 
-	Utils.resetFullState()
+	StateManager.resetAll()
 
 	Utils.fetchMappingPrefixes()
 	Utils.generateCombinations()
 	RoleMaps.init() -- Initialize role maps for performance
 
-	cleanupWatchers()
-	startAppWatcher()
-	startLaunchersWatcher()
-	startScreenWatcher()
-	startCaffeineWatcher()
-	setupPeriodicCleanup()
+	WatcherManager.stopAll()
+	WatcherManager.startAppWatcher()
+	WatcherManager.startLaunchersWatcher()
+	WatcherManager.startScreenWatcher()
+	WatcherManager.startCaffeineWatcher()
+	TimerManager.startPeriodicCleanup()
 	MenuBar.create()
 	Overlay.create()
 
@@ -4858,13 +4942,9 @@ function M:stop()
 
 	log.i("[M:stop] Stopping Vimnav")
 
-	cleanupWatchers()
+	WatcherManager.stopAll()
 
-	if State.eventLoop then
-		State.eventLoop:stop()
-		State.eventLoop = nil
-		log.df("[M:stop] Stopped event loop")
-	end
+	EventHandler.stopEventLoop()
 
 	MenuBar.destroy()
 	Overlay.destroy()
@@ -4873,9 +4953,9 @@ function M:stop()
 	CleanupManager.full()
 
 	-- reset electron cache as well
-	electronCache = setmetatable({}, { __mode = "k" })
+	CacheManager.clearElectron()
 
-	State = {}
+	StateManager.resetAll()
 
 	self._running = false
 	log.i("[M:stop] Vimnav stopped")
