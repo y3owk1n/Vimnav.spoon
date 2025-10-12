@@ -27,6 +27,7 @@ local Actions = {}
 local ElementFinder = {}
 local Marks = {}
 local Commands = {}
+---@type Hs.Vimnav.State
 local State = {}
 local SpatialIndex = {}
 local AsyncTraversal = {}
@@ -161,7 +162,7 @@ local log
 ---@field mappingPrefixes Hs.Vimnav.State.MappingPrefixes Mapping prefixes
 ---@field allCombinations string[] All combinations
 ---@field eventLoop table|nil Event loop
----@field canvas table|nil Canvas
+---@field markCanvas table|nil Canvas
 ---@field onClickCallback fun(any)|nil On click callback for marks
 ---@field cleanupTimer table|nil Cleanup timer
 ---@field focusCachedResult boolean Focus cached result
@@ -177,6 +178,8 @@ local log
 ---@field screenWatcher table|nil Screen watcher
 ---@field caffeineWatcher table|nil Caffeine watcher
 ---@field focusCheckTimer table|nil Focus check timer
+---@field menubarItem table|nil Menubar item
+---@field overlayCanvas table|nil Overlay canvas
 
 ---@class Hs.Vimnav.State.MappingPrefixes
 ---@field normal table<string, boolean> Normal mode mappings
@@ -741,7 +744,7 @@ local defaultState = {
 	mappingPrefixes = {},
 	allCombinations = {},
 	eventLoop = nil,
-	canvas = nil,
+	markCanvas = nil,
 	onClickCallback = nil,
 	cleanupTimer = nil,
 	focusCachedResult = false,
@@ -757,6 +760,8 @@ local defaultState = {
 	screenWatcher = nil,
 	caffeineWatcher = nil,
 	focusCheckTimer = nil,
+	menubarItem = nil,
+	overlayCanvas = nil,
 }
 
 -- Element cache with weak references for garbage collection
@@ -1855,11 +1860,10 @@ function MenuBar.create()
 		return
 	end
 
-	if MenuBar.item then
-		MenuBar.destroy()
-	end
-	MenuBar.item = hs.menubar.new()
-	MenuBar.item:setTitle(defaultModeChars[MODES.NORMAL])
+	MenuBar.destroy()
+
+	State.menubarItem = hs.menubar.new()
+	State.menubarItem:setTitle(defaultModeChars[MODES.NORMAL])
 	log.df("[MenuBar.create] Created menu bar item")
 end
 
@@ -1867,7 +1871,7 @@ end
 ---@param mode number
 ---@param keys string|nil
 function MenuBar.setTitle(mode, keys)
-	if not M.config.menubar.enabled or not MenuBar.item then
+	if not M.config.menubar.enabled or not State.menubarItem then
 		return
 	end
 
@@ -1879,17 +1883,13 @@ function MenuBar.setTitle(mode, keys)
 		toDisplayModeChar = string.format("%s [%s]", modeChar, keys)
 	end
 
-	MenuBar.item:setTitle(toDisplayModeChar)
+	State.menubarItem:setTitle(toDisplayModeChar)
 end
 
 ---Destroys the menu bar item
 ---@return nil
 function MenuBar.destroy()
-	if MenuBar.item then
-		MenuBar.item:delete()
-		MenuBar.item = nil
-		log.df("[MenuBar.destroy] Destroyed menu bar item")
-	end
+	StateManager.resetMenubarItem()
 end
 
 --------------------------------------------------------------------------------
@@ -1903,9 +1903,7 @@ function Overlay.create()
 		return
 	end
 
-	if Overlay.canvas then
-		Overlay.destroy()
-	end
+	Overlay.destroy()
 
 	local screen = hs.screen.mainScreen()
 	local frame = screen:fullFrame()
@@ -2022,9 +2020,9 @@ function Overlay.create()
 		end
 	end
 
-	Overlay.canvas = hs.canvas.new(overlayFrame)
-	Overlay.canvas:level("overlay")
-	Overlay.canvas:behavior("canJoinAllSpaces")
+	State.overlayCanvas = hs.canvas.new(overlayFrame)
+	State.overlayCanvas:level("overlay")
+	State.overlayCanvas:behavior("canJoinAllSpaces")
 
 	log.df("[Overlay.create] Created overlay indicator at " .. position)
 end
@@ -2068,7 +2066,7 @@ end
 ---@param keys? string|nil
 ---@return nil
 function Overlay.update(mode, keys)
-	if not M.config.overlay.enabled or not Overlay.canvas then
+	if not M.config.overlay.enabled or not State.overlayCanvas then
 		return
 	end
 
@@ -2087,7 +2085,7 @@ function Overlay.update(mode, keys)
 	local newWidth = textWidth < height and height or textWidth
 
 	-- Get current frame
-	local currentFrame = Overlay.canvas:frame()
+	local currentFrame = State.overlayCanvas:frame()
 	local screen = hs.screen.mainScreen()
 	local screenFrame = screen:fullFrame()
 	local position = M.config.overlay.position or "top-center"
@@ -2115,7 +2113,7 @@ function Overlay.update(mode, keys)
 	end
 
 	-- Update canvas frame
-	Overlay.canvas:frame({
+	State.overlayCanvas:frame({
 		x = newX,
 		y = currentFrame.y,
 		w = newWidth,
@@ -2126,7 +2124,7 @@ function Overlay.update(mode, keys)
 	color.alpha = 0.2
 	local textColor = Overlay.getModeColor(mode)
 
-	Overlay.canvas:replaceElements({
+	State.overlayCanvas:replaceElements({
 		{
 			type = "rectangle",
 			action = "fill",
@@ -2148,17 +2146,13 @@ function Overlay.update(mode, keys)
 			},
 		},
 	})
-	Overlay.canvas:show()
+	State.overlayCanvas:show()
 end
 
 ---Destroys the overlay indicator
 ---@return nil
 function Overlay.destroy()
-	if Overlay.canvas then
-		Overlay.canvas:delete()
-		Overlay.canvas = nil
-		log.df("[Overlay.destroy] Destroyed overlay indicator")
-	end
+	StateManager.resetOverlayCanvas()
 end
 
 --------------------------------------------------------------------------------
@@ -2428,12 +2422,7 @@ end
 ---Hide which-key popup
 ---@return nil
 function Whichkey.hide()
-	if State.whichkeyCanvas then
-		State.whichkeyCanvas:delete()
-		State.whichkeyCanvas = nil
-		log.df("[Whichkey.hide] Which-key popup hidden")
-	end
-
+	StateManager.resetWhichkeyCanvas()
 	TimerManager.stopWhichkey()
 end
 
@@ -3027,12 +3016,9 @@ end
 ---Clears the marks
 ---@return nil
 function Marks.clear()
-	if State.canvas then
-		State.canvas:delete()
-		State.canvas = nil
-	end
-	State.marks = {}
-	State.linkCapture = ""
+	StateManager.resetMarkCanvas()
+	StateManager.resetMarks()
+	StateManager.resetLinkCapture()
 	MarkPool.releaseAll()
 	log.df("[Marks.clear] Cleared marks")
 end
@@ -3075,8 +3061,6 @@ function Marks.show(opts)
 	local elementType = opts.elementType
 
 	Marks.clear()
-	State.marks = {}
-	MarkPool.releaseAll()
 
 	if elementType == "link" then
 		local function _callback(elements)
@@ -3132,12 +3116,12 @@ end
 ---Draws the marks
 ---@return nil
 function Marks.draw()
-	if not State.canvas then
+	if not State.markCanvas then
 		local frame = Elements.getFullArea()
 		if not frame then
 			return
 		end
-		State.canvas = hs.canvas.new(frame)
+		State.markCanvas = hs.canvas.new(frame)
 	end
 
 	local captureLen = #State.linkCapture
@@ -3291,8 +3275,8 @@ function Marks.draw()
 		end
 	end
 
-	State.canvas:replaceElements(elementsToDraw)
-	State.canvas:show()
+	State.markCanvas:replaceElements(elementsToDraw)
+	State.markCanvas:show()
 end
 
 ---Clicks a mark
@@ -4500,14 +4484,19 @@ function CleanupManager.full()
 	TimerManager.stopAll()
 
 	-- Hide all UI elements
-	if State.canvas then
+	if State.markCanvas then
 		pcall(function()
-			State.canvas:hide()
+			State.markCanvas:hide()
 		end)
 	end
-	if Overlay.canvas then
+	if State.overlayCanvas then
 		pcall(function()
-			Overlay.canvas:hide()
+			State.overlayCanvas:hide()
+		end)
+	end
+	if State.whichkeyCanvas then
+		pcall(function()
+			State.whichkeyCanvas:hide()
 		end)
 	end
 end
@@ -4600,7 +4589,7 @@ function CleanupManager.onScreenChange()
 	end
 
 	-- Redraw marks if showing
-	if State.canvas and #State.marks > 0 then
+	if State.markCanvas and #State.marks > 0 then
 		hs.timer.doAfter(0.2, Marks.draw)
 	end
 end
@@ -4620,6 +4609,48 @@ function StateManager.resetLeader()
 	State.leaderPressed = false
 	State.leaderCapture = ""
 	log.df("[StateManager.resetLeader] Reset")
+end
+
+---Reset marks state
+function StateManager.resetMarks()
+	State.marks = {}
+	log.df("[StateManager.resetMarks] Reset")
+end
+
+---Reset marks canvas
+function StateManager.resetMarkCanvas()
+	if State.markCanvas then
+		State.markCanvas:delete()
+		State.markCanvas = nil
+	end
+	log.df("[StateManager.resetMarkCanvas] Reset")
+end
+
+---Reset whichkey canvas
+function StateManager.resetWhichkeyCanvas()
+	if State.whichkeyCanvas then
+		State.whichkeyCanvas:delete()
+		State.whichkeyCanvas = nil
+	end
+	log.df("[StateManager.resetWhichkeyCanvas] Reset")
+end
+
+---Reset overlay canvas
+function StateManager.resetOverlayCanvas()
+	if State.overlayCanvas then
+		State.overlayCanvas:delete()
+		State.overlayCanvas = nil
+	end
+	log.df("[StateManager.resetOverlayCanvas] Reset")
+end
+
+---Reset menubar item
+function StateManager.resetMenubarItem()
+	if State.menubarItem then
+		State.menubarItem:delete()
+		State.menubarItem = nil
+	end
+	log.df("[StateManager.resetMenubarItem] Reset")
 end
 
 ---Reset link capture state
@@ -4943,7 +4974,6 @@ function M:stop()
 	log.i("[M:stop] Stopping Vimnav")
 
 	WatcherManager.stopAll()
-
 	EventHandler.stopEventLoop()
 
 	MenuBar.destroy()
