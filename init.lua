@@ -4294,6 +4294,27 @@ local function cleanupOnAppSwitch()
 	)
 end
 
+---Periodic cache cleanup to prevent memory leaks
+---@return nil
+local function setupPeriodicCleanup()
+	if State.cleanupTimer then
+		State.cleanupTimer:stop()
+	end
+
+	State.cleanupTimer = hs.timer
+		.new(30, function() -- Every 30 seconds
+			-- Only clean up if we're not actively showing marks
+			if State.mode ~= MODES.LINKS then
+				Utils.clearElementCache()
+				collectgarbage("collect")
+				log.df(
+					"[Utils.setupPeriodicCleanup] Periodic cache cleanup completed"
+				)
+			end
+		end)
+		:start()
+end
+
 local focusCheckTimer = nil
 
 ---Updates focus state (called by timer)
@@ -4466,25 +4487,157 @@ local function startLaunchersWatcher()
 	end
 end
 
----Periodic cache cleanup to prevent memory leaks
----@return nil
-local function setupPeriodicCleanup()
-	if State.cleanupTimer then
-		State.cleanupTimer:stop()
+local screenWatcher = nil
+
+local function handleScreenChange()
+	log.df("[handleScreenChange] Screen configuration changed")
+
+	-- Recreate overlay with new screen dimensions
+	if M.config.overlay.enabled and State.mode ~= MODES.DISABLED then
+		Overlay.destroy()
+		hs.timer.doAfter(0.1, function()
+			Overlay.create()
+			Overlay.update(State.mode)
+		end)
 	end
 
-	State.cleanupTimer = hs.timer
-		.new(30, function() -- Every 30 seconds
-			-- Only clean up if we're not actively showing marks
-			if State.mode ~= MODES.LINKS then
-				Utils.clearElementCache()
-				collectgarbage("collect")
-				log.df(
-					"[Utils.setupPeriodicCleanup] Periodic cache cleanup completed"
-				)
-			end
+	-- Clear element cache since positions may have changed
+	Utils.clearElementCache()
+
+	-- Redraw marks if they're currently showing
+	if State.canvas and #State.marks > 0 then
+		hs.timer.doAfter(0.2, function()
+			Marks.draw()
 		end)
-		:start()
+	end
+end
+
+local function startScreenWatcher()
+	if screenWatcher then
+		screenWatcher:stop()
+		screenWatcher = nil
+	end
+
+	screenWatcher = hs.screen.watcher.new(handleScreenChange):start()
+	log.df("[startScreenWatcher] Screen watcher started")
+end
+
+local caffeineWatcher = nil
+
+local function handleCaffeineEvent(eventType)
+	if eventType == hs.caffeinate.watcher.systemDidWake then
+		log.df("[handleCaffeineEvent] System woke from sleep")
+
+		-- Give the system time to stabilize
+		hs.timer.doAfter(1.0, function()
+			-- Clean up everything
+			cleanupOnAppSwitch()
+
+			-- Recreate overlay with correct screen position
+			if M.config.overlay.enabled then
+				Overlay.destroy()
+				hs.timer.doAfter(0.1, function()
+					Overlay.create()
+					Overlay.update(State.mode)
+				end)
+			end
+
+			-- Recreate menubar in case it got corrupted
+			if M.config.menubar.enabled then
+				MenuBar.destroy()
+				MenuBar.create()
+				MenuBar.setTitle(State.mode)
+			end
+
+			-- Restart focus polling
+			startFocusPolling()
+
+			-- Restart periodic cleanup timer
+			setupPeriodicCleanup()
+
+			-- Re-enable enhanced accessibility if needed
+			Elements.enableEnhancedUIForChrome()
+			Elements.enableAccessibilityForElectron()
+
+			-- Verify event loop is still running
+			if not State.eventLoop or not State.eventLoop:isEnabled() then
+				log.wf(
+					"[handleCaffeineEvent] Event loop not running, restarting..."
+				)
+				if State.eventLoop then
+					State.eventLoop:stop()
+				end
+				State.eventLoop = hs.eventtap
+					.new({ hs.eventtap.event.types.keyDown }, EventHandler.process)
+					:start()
+			end
+
+			log.df("[handleCaffeineEvent] Recovery complete after wake")
+		end)
+	elseif eventType == hs.caffeinate.watcher.systemWillSleep then
+		log.df("[handleCaffeineEvent] System going to sleep")
+
+		-- Stop all timers to save resources
+		if focusCheckTimer then
+			focusCheckTimer:stop()
+			log.df("[handleCaffeineEvent] Stopped focus polling")
+		end
+
+		if State.cleanupTimer then
+			State.cleanupTimer:stop()
+			log.df("[handleCaffeineEvent] Stopped periodic cleanup timer")
+		end
+
+		if State.whichkeyTimer then
+			State.whichkeyTimer:stop()
+			State.whichkeyTimer = nil
+			log.df("[handleCaffeineEvent] Stopped which-key timer")
+		end
+
+		-- Clear all UI elements
+		Marks.clear()
+		Whichkey.hide()
+
+		-- Hide overlay but don't destroy (will recreate on wake if needed)
+		if State.canvas then
+			pcall(function()
+				State.canvas:hide()
+			end)
+		end
+		if Overlay.canvas then
+			pcall(function()
+				Overlay.canvas:hide()
+			end)
+		end
+
+		-- Clear all caches to free memory
+		Utils.clearElementCache()
+		electronCache = setmetatable({}, { __mode = "k" })
+		MarkPool.releaseAll()
+
+		-- Force garbage collection to free memory during sleep
+		collectgarbage("collect")
+
+		-- Reset state flags
+		Utils.resetKeyCaptureState()
+		Utils.resetLeaderState()
+		Utils.resetFocusState()
+		State.linkCapture = ""
+		State.showingHelp = false
+
+		log.df("[handleCaffeineEvent] Cleanup complete before sleep")
+	end
+end
+
+-- Add this function to start the caffeine watcher
+local function startCaffeineWatcher()
+	if caffeineWatcher then
+		caffeineWatcher:stop()
+		caffeineWatcher = nil
+	end
+
+	caffeineWatcher = hs.caffeinate.watcher.new(handleCaffeineEvent):start()
+	log.df("[startCaffeineWatcher] Caffeine watcher started")
 end
 
 ---Clean up timers and watchers
@@ -4514,6 +4667,18 @@ local function cleanupWatchers()
 			launcher = nil
 			log.df("[Utils.cleanupWatchers] Stopped launcher watcher")
 		end
+	end
+
+	if screenWatcher then
+		screenWatcher:stop()
+		screenWatcher = nil
+		log.df("[Utils.cleanupWatchers] Stopped screen watcher")
+	end
+
+	if caffeineWatcher then
+		caffeineWatcher:stop()
+		caffeineWatcher = nil
+		log.df("[Utils.cleanupWatchers] Stopped caffeine watcher")
 	end
 end
 
@@ -4602,6 +4767,8 @@ function M:start()
 	cleanupWatchers()
 	startAppWatcher()
 	startLaunchersWatcher()
+	startScreenWatcher()
+	startCaffeineWatcher()
 	setupPeriodicCleanup()
 	MenuBar.create()
 	Overlay.create()
