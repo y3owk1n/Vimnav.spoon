@@ -35,6 +35,7 @@ local MarkPool = {}
 local CanvasCache = {}
 local EventHandler = {}
 local Whichkey = {}
+local CleanupManager = {}
 
 local log
 
@@ -2500,6 +2501,8 @@ function ModeManager.setMode(mode)
 
 	State.mode = mode
 
+	CleanupManager.onModeChange(previousMode, mode)
+
 	MenuBar.setTitle(mode)
 	Overlay.update(mode)
 
@@ -3843,9 +3846,7 @@ function EventHandler.handleVimInput(char, opts)
 			if markText == State.linkCapture then
 				Marks.click(markText:lower())
 				ModeManager.setModeNormal()
-				Utils.resetKeyCaptureState()
-				Utils.resetLeaderState()
-				Whichkey.hide()
+				CleanupManager.onCommandComplete()
 				return
 			end
 		end
@@ -3946,14 +3947,7 @@ function EventHandler.handleVimInput(char, opts)
 			action()
 		end
 
-		Utils.resetLeaderState()
-		Utils.resetKeyCaptureState()
-
-		if State.showingHelp then
-			State.showingHelp = false -- keep the popup on screen
-		else
-			Whichkey.hide()
-		end
+		CleanupManager.onCommandComplete()
 	elseif prefixes and prefixes[State.keyCapture] then
 		log.df(
 			"[EventHandler.handleVimInput] Found prefix: " .. State.keyCapture
@@ -3961,9 +3955,7 @@ function EventHandler.handleVimInput(char, opts)
 		-- Continue waiting for more keys
 	else
 		-- No mapping or prefix found, reset
-		Utils.resetLeaderState()
-		Utils.resetKeyCaptureState()
-		Whichkey.hide()
+		CleanupManager.onCommandComplete()
 	end
 end
 
@@ -4041,11 +4033,7 @@ function EventHandler.handleInsertNormalMode(event)
 
 	if EventHandler.isEspace(event) then
 		if State.leaderPressed then
-			Utils.resetLeaderState()
-			Utils.resetKeyCaptureState()
-			Whichkey.hide()
-			MenuBar.setTitle(State.mode)
-			Overlay.update(State.mode)
+			CleanupManager.onEscape()
 			return true
 		end
 	end
@@ -4072,11 +4060,7 @@ function EventHandler.handleInsertVisualMode(event)
 
 	if EventHandler.isEspace(event) then
 		if State.leaderPressed then
-			Utils.resetLeaderState()
-			Utils.resetKeyCaptureState()
-			Whichkey.hide()
-			MenuBar.setTitle(State.mode)
-			Overlay.update(State.mode)
+			CleanupManager.onEscape()
 			return true
 		else
 			Utils.keyStroke({}, "right")
@@ -4105,11 +4089,7 @@ end
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function EventHandler.handleNormalMode(event)
 	if EventHandler.isEspace(event) then
-		Utils.resetLeaderState()
-		Utils.resetKeyCaptureState()
-		Whichkey.hide()
-		MenuBar.setTitle(State.mode)
-		Overlay.update(State.mode)
+		CleanupManager.onEscape()
 		Actions.forceDeselectTextHighlights()
 		return false
 	end
@@ -4265,35 +4245,6 @@ end
 -- Watchers
 --------------------------------------------------------------------------------
 
----Clears all caches and state when switching apps
----@return nil
-local function cleanupOnAppSwitch()
-	-- Clear all element caches
-	Utils.clearElementCache()
-
-	-- Clear any active marks and canvas
-	Marks.clear()
-
-	-- Reset leader state
-	Utils.resetLeaderState()
-
-	-- Reset key capture state
-	Utils.resetKeyCaptureState()
-
-	-- Reset whichkey state
-	Whichkey.hide()
-
-	-- Reset focus state
-	Utils.resetFocusState()
-
-	-- Force garbage collection to free up memory
-	collectgarbage("collect")
-
-	log.df(
-		"[Utils.cleanupOnAppSwitch] Cleaned up caches and state for app switch"
-	)
-end
-
 ---Periodic cache cleanup to prevent memory leaks
 ---@return nil
 local function setupPeriodicCleanup()
@@ -4305,8 +4256,7 @@ local function setupPeriodicCleanup()
 		.new(30, function() -- Every 30 seconds
 			-- Only clean up if we're not actively showing marks
 			if State.mode ~= MODES.LINKS then
-				Utils.clearElementCache()
-				collectgarbage("collect")
+				CleanupManager.medium()
 				log.df(
 					"[Utils.setupPeriodicCleanup] Periodic cache cleanup completed"
 				)
@@ -4406,7 +4356,7 @@ local function startAppWatcher()
 		if eventType == hs.application.watcher.activated then
 			log.df("[Utils.startAppWatcher] App activated: %s", appName)
 
-			cleanupOnAppSwitch()
+			CleanupManager.onAppSwitch()
 			startFocusPolling()
 			Elements.enableEnhancedUIForChrome()
 			Elements.enableAccessibilityForElectron()
@@ -4531,7 +4481,7 @@ local function handleCaffeineEvent(eventType)
 		-- Give the system time to stabilize
 		hs.timer.doAfter(1.0, function()
 			-- Clean up everything
-			cleanupOnAppSwitch()
+			CleanupManager.heavy()
 
 			-- Recreate overlay with correct screen position
 			if M.config.overlay.enabled then
@@ -4577,53 +4527,7 @@ local function handleCaffeineEvent(eventType)
 	elseif eventType == hs.caffeinate.watcher.systemWillSleep then
 		log.df("[handleCaffeineEvent] System going to sleep")
 
-		-- Stop all timers to save resources
-		if focusCheckTimer then
-			focusCheckTimer:stop()
-			log.df("[handleCaffeineEvent] Stopped focus polling")
-		end
-
-		if State.cleanupTimer then
-			State.cleanupTimer:stop()
-			log.df("[handleCaffeineEvent] Stopped periodic cleanup timer")
-		end
-
-		if State.whichkeyTimer then
-			State.whichkeyTimer:stop()
-			State.whichkeyTimer = nil
-			log.df("[handleCaffeineEvent] Stopped which-key timer")
-		end
-
-		-- Clear all UI elements
-		Marks.clear()
-		Whichkey.hide()
-
-		-- Hide overlay but don't destroy (will recreate on wake if needed)
-		if State.canvas then
-			pcall(function()
-				State.canvas:hide()
-			end)
-		end
-		if Overlay.canvas then
-			pcall(function()
-				Overlay.canvas:hide()
-			end)
-		end
-
-		-- Clear all caches to free memory
-		Utils.clearElementCache()
-		electronCache = setmetatable({}, { __mode = "k" })
-		MarkPool.releaseAll()
-
-		-- Force garbage collection to free memory during sleep
-		collectgarbage("collect")
-
-		-- Reset state flags
-		Utils.resetKeyCaptureState()
-		Utils.resetLeaderState()
-		Utils.resetFocusState()
-		State.linkCapture = ""
-		State.showingHelp = false
+		CleanupManager.onSleep()
 
 		log.df("[handleCaffeineEvent] Cleanup complete before sleep")
 	end
@@ -4680,6 +4584,159 @@ local function cleanupWatchers()
 		caffeineWatcher = nil
 		log.df("[Utils.cleanupWatchers] Stopped caffeine watcher")
 	end
+end
+
+--------------------------------------------------------------------------------
+-- Cleanup Manager
+--------------------------------------------------------------------------------
+
+---Light cleanup - resets input states
+---@return nil
+function CleanupManager.light()
+	log.df("[CleanupManager.light] Performing light cleanup")
+
+	Utils.resetKeyCaptureState()
+	Utils.resetLeaderState()
+	State.linkCapture = ""
+	State.showingHelp = false
+end
+
+---Medium cleanup - clears UI elements and focus state
+---@return nil
+function CleanupManager.medium()
+	log.df("[CleanupManager.medium] Performing medium cleanup")
+
+	-- First do light cleanup
+	CleanupManager.light()
+
+	-- Clear UI elements
+	Marks.clear()
+	Whichkey.hide()
+
+	-- Reset focus state
+	Utils.resetFocusState()
+end
+
+---Heavy cleanup - clears caches and forces GC
+---@return nil
+function CleanupManager.heavy()
+	log.df("[CleanupManager.heavy] Performing heavy cleanup")
+
+	-- First do medium cleanup
+	CleanupManager.medium()
+
+	-- Clear all caches
+	Utils.clearElementCache()
+	electronCache = setmetatable({}, { __mode = "k" })
+	MarkPool.releaseAll()
+
+	-- Clear canvas template cache
+	CanvasCache.template = nil
+
+	-- Force garbage collection
+	collectgarbage("collect")
+end
+
+---Full cleanup - stops timers and performs complete reset
+---@return nil
+function CleanupManager.full()
+	log.df("[CleanupManager.full] Performing full cleanup")
+
+	-- First do heavy cleanup
+	CleanupManager.heavy()
+
+	-- Stop all timers
+	if focusCheckTimer then
+		focusCheckTimer:stop()
+		focusCheckTimer = nil
+	end
+
+	if State.cleanupTimer then
+		State.cleanupTimer:stop()
+		State.cleanupTimer = nil
+	end
+
+	if State.whichkeyTimer then
+		State.whichkeyTimer:stop()
+		State.whichkeyTimer = nil
+	end
+
+	-- Hide all UI elements
+	if State.canvas then
+		pcall(function()
+			State.canvas:hide()
+		end)
+	end
+	if Overlay.canvas then
+		pcall(function()
+			Overlay.canvas:hide()
+		end)
+	end
+end
+
+---Cleanup for app switching - medium + element cache
+---@return nil
+function CleanupManager.onAppSwitch()
+	log.df("[CleanupManager.onAppSwitch] App switch cleanup")
+	CleanupManager.heavy()
+end
+
+---Cleanup before sleep - full cleanup with UI hiding
+---@return nil
+function CleanupManager.onSleep()
+	log.df("[CleanupManager.onSleep] Sleep cleanup")
+	CleanupManager.full()
+end
+
+---Cleanup on mode change - light cleanup only
+---@param fromMode number
+---@param toMode number
+---@return nil
+function CleanupManager.onModeChange(fromMode, toMode)
+	log.df(
+		"[CleanupManager.onModeChange] Mode change: %s -> %s",
+		fromMode,
+		toMode
+	)
+
+	-- Always do light cleanup on mode change
+	CleanupManager.light()
+
+	-- Clear marks when leaving LINKS mode
+	if fromMode == MODES.LINKS then
+		hs.timer.doAfter(0, Marks.clear)
+	end
+
+	-- Clear marks when entering certain modes
+	if toMode == MODES.NORMAL or toMode == MODES.PASSTHROUGH then
+		hs.timer.doAfter(0, Marks.clear)
+	end
+end
+
+---Cleanup when command execution completes
+---@return nil
+function CleanupManager.onCommandComplete()
+	log.df("[CleanupManager.onCommandComplete] Command complete cleanup")
+
+	Utils.resetLeaderState()
+	Utils.resetKeyCaptureState()
+
+	if State.showingHelp then
+		State.showingHelp = false -- keep the popup on screen
+	else
+		Whichkey.hide()
+	end
+end
+
+---Cleanup when escape is pressed
+---@return nil
+function CleanupManager.onEscape()
+	log.df("[CleanupManager.onEscape] Escape cleanup")
+
+	CleanupManager.light()
+	Whichkey.hide()
+	MenuBar.setTitle(State.mode)
+	Overlay.update(State.mode)
 end
 
 --------------------------------------------------------------------------------
@@ -4813,7 +4870,7 @@ function M:stop()
 	Overlay.destroy()
 	Marks.clear()
 
-	cleanupOnAppSwitch()
+	CleanupManager.full()
 
 	-- reset electron cache as well
 	electronCache = setmetatable({}, { __mode = "k" })
