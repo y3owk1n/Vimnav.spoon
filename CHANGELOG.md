@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.2.0](https://github.com/y3owk1n/Vimnav.spoon/compare/v1.1.1...v1.2.0) (2025-10-12)
+
+
+### Features
+
+* add arrow keys remap and move `back`/`forward` to `<leader>` ([#56](https://github.com/y3owk1n/Vimnav.spoon/issues/56)) ([4a2d062](https://github.com/y3owk1n/Vimnav.spoon/commit/4a2d0624cc9c8a654d367a679536b663ed9589b2))
+* add caffeine & screen watcher ([#65](https://github.com/y3owk1n/Vimnav.spoon/issues/65)) ([8e5c32b](https://github.com/y3owk1n/Vimnav.spoon/commit/8e5c32b1a2126831253f3d211ce1a077edae5180))
+* add electron and chromium support for enhanced accessibility ([#62](https://github.com/y3owk1n/Vimnav.spoon/issues/62)) ([3f8cd60](https://github.com/y3owk1n/Vimnav.spoon/commit/3f8cd60da1f850dd2cc6c46a8d211bb6fd30aeb9))
+* add which-key help with refactoring keymaps with description ([#51](https://github.com/y3owk1n/Vimnav.spoon/issues/51)) ([7299140](https://github.com/y3owk1n/Vimnav.spoon/commit/72991401abd57513dc181200d076f3a7e3bbb27e))
+* support simple visual mode for text selection ([#58](https://github.com/y3owk1n/Vimnav.spoon/issues/58)) ([635ebab](https://github.com/y3owk1n/Vimnav.spoon/commit/635ebab98a7799915464f2b130396a10ce84e287))
+
+
+### Bug Fixes
+
+* also call enableEnhanced* before watcher starts ([#64](https://github.com/y3owk1n/Vimnav.spoon/issues/64)) ([b9eba88](https://github.com/y3owk1n/Vimnav.spoon/commit/b9eba88098582c4d501edb07bf874f193d26ad89))
+* avoid clearing cache on focus timer ([#63](https://github.com/y3owk1n/Vimnav.spoon/issues/63)) ([92827fe](https://github.com/y3owk1n/Vimnav.spoon/commit/92827fe6f1e2c2858b315cde1e2dc2d099457324))
+* centralise cleanup to avoid messiness ([#66](https://github.com/y3owk1n/Vimnav.spoon/issues/66)) ([2586e20](https://github.com/y3owk1n/Vimnav.spoon/commit/2586e20dfbb111404c15f9e31fc00f87c5fb1fc0))
+* centralise state, cache, timer, watcher managers with stop and start function ([#67](https://github.com/y3owk1n/Vimnav.spoon/issues/67)) ([27a776c](https://github.com/y3owk1n/Vimnav.spoon/commit/27a776c02182592824884128f79f48771f5a1798))
+* dynamic width for key and description ([#54](https://github.com/y3owk1n/Vimnav.spoon/issues/54)) ([73916cc](https://github.com/y3owk1n/Vimnav.spoon/commit/73916cc802941d6430ed661f7e21b88a904b51bc))
+* handle ctrl key for visual mode too ([#60](https://github.com/y3owk1n/Vimnav.spoon/issues/60)) ([d7da762](https://github.com/y3owk1n/Vimnav.spoon/commit/d7da7626c9705fec6298d90e344f7e19f749f4fa))
+* move canvas and menubar to state ([#68](https://github.com/y3owk1n/Vimnav.spoon/issues/68)) ([20fbdcc](https://github.com/y3owk1n/Vimnav.spoon/commit/20fbdcc805723f821ddbe9bcd0bdb3e5607fc80f))
+* prevent `Utils.keyStroke` to re-enter eventloop ([#55](https://github.com/y3owk1n/Vimnav.spoon/issues/55)) ([be97c15](https://github.com/y3owk1n/Vimnav.spoon/commit/be97c15fcf8ab133f3ef7b92499979b5298f6d8a))
+* use `+more` as group description in whichkey ([#53](https://github.com/y3owk1n/Vimnav.spoon/issues/53)) ([f491362](https://github.com/y3owk1n/Vimnav.spoon/commit/f49136215b481840a371742280b6712766782c0b))
+
 ## [1.1.1](https://github.com/y3owk1n/Vimnav.spoon/compare/v1.1.0...v1.1.1) (2025-10-03)
 
 
