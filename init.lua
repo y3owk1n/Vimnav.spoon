@@ -15,6 +15,9 @@ local Utils = dofile(hs.spoons.resourcePath("./lib/utils.lua"))
 local Cache = dofile(hs.spoons.resourcePath("./lib/cache.lua"))
 local Elements = dofile(hs.spoons.resourcePath("./lib/elements.lua"))
 local RoleMaps = dofile(hs.spoons.resourcePath("./lib/rolemaps.lua"))
+local MarkPool = dofile(hs.spoons.resourcePath("./lib/marks.lua"))
+local Constants = dofile(hs.spoons.resourcePath("./lib/constants.lua"))
+local MenuBar = dofile(hs.spoons.resourcePath("./lib/menubar.lua"))
 
 ---@class Hs.Vimnav
 local M = {}
@@ -25,79 +28,19 @@ M.name = "Vimnav"
 M.license = "MIT - https://opensource.org/licenses/MIT"
 
 -- Internal modules
-local MenuBar = {}
 local Overlay = {}
 local ModeManager = {}
 local Actions = {}
 local ElementFinder = {}
 local Marks = {}
 local Commands = {}
-local MarkPool = {}
 local CanvasCache = {}
 local EventHandler = {}
 local Whichkey = {}
 local CleanupManager = {}
-local StateManager = {}
 local CacheManager = {}
 local TimerManager = {}
 local WatcherManager = {}
-
---------------------------------------------------------------------------------
--- Constants and Configuration
---------------------------------------------------------------------------------
-
-local MODES = {
-	DISABLED = 1,
-	NORMAL = 2,
-	INSERT = 3,
-	INSERT_NORMAL = 4,
-	INSERT_VISUAL = 5,
-	LINKS = 6,
-	PASSTHROUGH = 7,
-	VISUAL = 8,
-}
-
-local defaultModeChars = {
-	[MODES.DISABLED] = "X",
-	[MODES.INSERT] = "I",
-	[MODES.INSERT_NORMAL] = "IN",
-	[MODES.INSERT_VISUAL] = "IV",
-	[MODES.LINKS] = "L",
-	[MODES.NORMAL] = "N",
-	[MODES.PASSTHROUGH] = "P",
-	[MODES.VISUAL] = "V",
-}
-
---------------------------------------------------------------------------------
--- Memory Pool for Mark Elements
---------------------------------------------------------------------------------
-
-MarkPool.pool = {}
-MarkPool.active = {}
-
----Reuse mark objects to avoid GC pressure
----@return table
-function MarkPool.getMark()
-	local mark = table.remove(MarkPool.pool)
-	if not mark then
-		mark = { element = nil, frame = nil, role = nil }
-	end
-	MarkPool.active[#MarkPool.active + 1] = mark
-	return mark
-end
-
----Release all marks
----@return nil
-function MarkPool.releaseAll()
-	for i = 1, #MarkPool.active do
-		local mark = MarkPool.active[i]
-		mark.element = nil
-		mark.frame = nil
-		mark.role = nil
-		MarkPool.pool[#MarkPool.pool + 1] = mark
-	end
-	MarkPool.active = {}
-end
 
 --------------------------------------------------------------------------------
 -- Canvas Element Caching
@@ -152,56 +95,6 @@ function CanvasCache.getMarkTemplate(vimnav)
 	end
 
 	return CanvasCache.template
-end
-
---------------------------------------------------------------------------------
--- Element Access
---------------------------------------------------------------------------------
-
---------------------------------------------------------------------------------
--- Menu Bar
---------------------------------------------------------------------------------
-
----Creates the menu bar item
----@param vimnav Hs.Vimnav
----@return nil
-function MenuBar.create(vimnav)
-	if not vimnav.config.menubar.enabled then
-		return
-	end
-
-	MenuBar.destroy(vimnav)
-
-	vimnav.state.menubarItem = hs.menubar.new()
-	vimnav.state.menubarItem:setTitle(defaultModeChars[MODES.NORMAL])
-	vimnav.log.df("[MenuBar.create] Created menu bar item")
-end
-
----Set the menubar title
----@param vimnav Hs.Vimnav
----@param mode number
----@param keys string|nil
-function MenuBar.setTitle(vimnav, mode, keys)
-	if not vimnav.config.menubar.enabled or not vimnav.state.menubarItem then
-		return
-	end
-
-	local modeChar = defaultModeChars[mode] or "?"
-
-	local toDisplayModeChar = modeChar
-
-	if keys then
-		toDisplayModeChar = string.format("%s [%s]", modeChar, keys)
-	end
-
-	vimnav.state.menubarItem:setTitle(toDisplayModeChar)
-end
-
----Destroys the menu bar item
----@param vimnav Hs.Vimnav
----@return nil
-function MenuBar.destroy(vimnav)
-	StateManager.resetMenubarItem(vimnav)
 end
 
 --------------------------------------------------------------------------------
@@ -346,28 +239,28 @@ end
 ---@return table
 function Overlay.getModeColor(vimnav, mode)
 	local colors = {
-		[MODES.DISABLED] = Utils.hexToRgb(
+		[Constants.MODES.DISABLED] = Utils.hexToRgb(
 			vimnav.config.overlay.colors.disabled or "#5a5672"
 		),
-		[MODES.NORMAL] = Utils.hexToRgb(
+		[Constants.MODES.NORMAL] = Utils.hexToRgb(
 			vimnav.config.overlay.colors.normal or "#80b8e8"
 		),
-		[MODES.INSERT] = Utils.hexToRgb(
+		[Constants.MODES.INSERT] = Utils.hexToRgb(
 			vimnav.config.overlay.colors.insert or "#abe9b3"
 		),
-		[MODES.VISUAL] = Utils.hexToRgb(
+		[Constants.MODES.VISUAL] = Utils.hexToRgb(
 			vimnav.config.overlay.colors.visual or "#c9a0e9"
 		),
-		[MODES.INSERT_NORMAL] = Utils.hexToRgb(
+		[Constants.MODES.INSERT_NORMAL] = Utils.hexToRgb(
 			vimnav.config.overlay.colors.insertNormal or "#f9e2af"
 		),
-		[MODES.INSERT_VISUAL] = Utils.hexToRgb(
+		[Constants.MODES.INSERT_VISUAL] = Utils.hexToRgb(
 			vimnav.config.overlay.colors.insertVisual or "#c9a0e9"
 		),
-		[MODES.LINKS] = Utils.hexToRgb(
+		[Constants.MODES.LINKS] = Utils.hexToRgb(
 			vimnav.config.overlay.colors.links or "#f8bd96"
 		),
-		[MODES.PASSTHROUGH] = Utils.hexToRgb(
+		[Constants.MODES.PASSTHROUGH] = Utils.hexToRgb(
 			vimnav.config.overlay.colors.passthrough or "#f28fad"
 		),
 	}
@@ -386,7 +279,7 @@ function Overlay.update(vimnav, mode, keys)
 	end
 
 	local color = Overlay.getModeColor(vimnav, mode)
-	local modeChar = defaultModeChars[mode] or "?"
+	local modeChar = Constants.defaultModeChars[mode] or "?"
 	local fontSize = vimnav.config.overlay.size / 2
 
 	-- Build display text
@@ -469,7 +362,7 @@ end
 ---@param vimnav Hs.Vimnav
 ---@return nil
 function Overlay.destroy(vimnav)
-	StateManager.resetOverlayCanvas(vimnav)
+	State.resetOverlayCanvas(vimnav)
 end
 
 --------------------------------------------------------------------------------
@@ -547,13 +440,13 @@ function Whichkey.show(vimnav, prefix)
 	Whichkey.hide(vimnav)
 
 	local mapping
-	if ModeManager.isMode(vimnav, MODES.NORMAL) then
+	if ModeManager.isMode(vimnav, Constants.MODES.NORMAL) then
 		mapping = vimnav.config.mapping.normal
-	elseif ModeManager.isMode(vimnav, MODES.VISUAL) then
+	elseif ModeManager.isMode(vimnav, Constants.MODES.VISUAL) then
 		mapping = vimnav.config.mapping.visual
-	elseif ModeManager.isMode(vimnav, MODES.INSERT_NORMAL) then
+	elseif ModeManager.isMode(vimnav, Constants.MODES.INSERT_NORMAL) then
 		mapping = vimnav.config.mapping.insertNormal
-	elseif ModeManager.isMode(vimnav, MODES.INSERT_VISUAL) then
+	elseif ModeManager.isMode(vimnav, Constants.MODES.INSERT_VISUAL) then
 		mapping = vimnav.config.mapping.insertVisual
 	else
 		return
@@ -745,7 +638,7 @@ end
 ---@param vimnav Hs.Vimnav
 ---@return nil
 function Whichkey.hide(vimnav)
-	StateManager.resetWhichkeyCanvas(vimnav)
+	State.resetWhichkeyCanvas(vimnav)
 	TimerManager.stopWhichkey(vimnav)
 end
 
@@ -814,14 +707,14 @@ end
 ---@param vimnav Hs.Vimnav
 ---@return boolean
 function ModeManager.setModeDisabled(vimnav)
-	return ModeManager.setMode(vimnav, MODES.DISABLED)
+	return ModeManager.setMode(vimnav, Constants.MODES.DISABLED)
 end
 
 ---Set mode to passthrough
 ---@param vimnav Hs.Vimnav
 ---@return boolean
 function ModeManager.setModePassthrough(vimnav)
-	local ok = ModeManager.setMode(vimnav, MODES.PASSTHROUGH)
+	local ok = ModeManager.setMode(vimnav, Constants.MODES.PASSTHROUGH)
 
 	if not ok then
 		return false
@@ -838,7 +731,7 @@ end
 ---@param vimnav Hs.Vimnav
 ---@return boolean
 function ModeManager.setModeLink(vimnav)
-	local ok = ModeManager.setMode(vimnav, MODES.LINKS)
+	local ok = ModeManager.setMode(vimnav, Constants.MODES.LINKS)
 
 	if not ok then
 		return false
@@ -853,7 +746,7 @@ end
 ---@param vimnav Hs.Vimnav
 ---@return boolean
 function ModeManager.setModeInsert(vimnav)
-	local ok = ModeManager.setMode(vimnav, MODES.INSERT)
+	local ok = ModeManager.setMode(vimnav, Constants.MODES.INSERT)
 
 	if not ok then
 		return false
@@ -868,7 +761,7 @@ end
 ---@param vimnav Hs.Vimnav
 ---@return boolean
 function ModeManager.setModeInsertNormal(vimnav)
-	local ok = ModeManager.setMode(vimnav, MODES.INSERT_NORMAL)
+	local ok = ModeManager.setMode(vimnav, Constants.MODES.INSERT_NORMAL)
 
 	if not ok then
 		return false
@@ -883,7 +776,7 @@ end
 ---@param vimnav Hs.Vimnav
 ---@return boolean
 function ModeManager.setModeInsertVisual(vimnav)
-	local ok = ModeManager.setMode(vimnav, MODES.INSERT_VISUAL)
+	local ok = ModeManager.setMode(vimnav, Constants.MODES.INSERT_VISUAL)
 
 	if not ok then
 		return false
@@ -898,7 +791,7 @@ end
 ---@param vimnav Hs.Vimnav
 ---@return boolean
 function ModeManager.setModeVisual(vimnav)
-	local ok = ModeManager.setMode(vimnav, MODES.VISUAL)
+	local ok = ModeManager.setMode(vimnav, Constants.MODES.VISUAL)
 
 	if not ok then
 		return false
@@ -913,7 +806,7 @@ end
 ---@param vimnav Hs.Vimnav
 ---@return boolean
 function ModeManager.setModeNormal(vimnav)
-	local ok = ModeManager.setMode(vimnav, MODES.NORMAL)
+	local ok = ModeManager.setMode(vimnav, Constants.MODES.NORMAL)
 
 	if not ok then
 		return false
@@ -1076,7 +969,7 @@ function Actions.forceUnfocus(vimnav)
 		hs.alert.show("Force unfocused!")
 
 		-- Reset focus state
-		StateManager.resetFocus(vimnav)
+		State.resetFocus(vimnav)
 	end
 end
 
@@ -1367,9 +1260,9 @@ end
 ---@param vimnav Hs.Vimnav
 ---@return nil
 function Marks.clear(vimnav)
-	StateManager.resetMarkCanvas(vimnav)
-	StateManager.resetMarks(vimnav)
-	StateManager.resetLinkCapture(vimnav)
+	State.resetMarkCanvas(vimnav)
+	State.resetMarks(vimnav)
+	State.resetLinkCapture(vimnav)
 	MarkPool.releaseAll()
 	vimnav.log.df("[Marks.clear] Cleared marks")
 end
@@ -2202,7 +2095,7 @@ function EventHandler.handleVimInput(vimnav, char, opts)
 	CacheManager.clearElements(vimnav)
 
 	-- handle link capture first
-	if ModeManager.isMode(vimnav, MODES.LINKS) then
+	if ModeManager.isMode(vimnav, Constants.MODES.LINKS) then
 		vimnav.state.linkCapture = vimnav.state.linkCapture .. char:upper()
 		for i, _ in ipairs(vimnav.state.marks) do
 			if i > #vimnav.state.allCombinations then
@@ -2271,22 +2164,22 @@ function EventHandler.handleVimInput(vimnav, char, opts)
 	local mapping
 	local prefixes
 
-	if ModeManager.isMode(vimnav, MODES.NORMAL) then
+	if ModeManager.isMode(vimnav, Constants.MODES.NORMAL) then
 		mapping = vimnav.config.mapping.normal[vimnav.state.keyCapture]
 		prefixes = vimnav.state.mappingPrefixes.normal
 	end
 
-	if ModeManager.isMode(vimnav, MODES.INSERT_NORMAL) then
+	if ModeManager.isMode(vimnav, Constants.MODES.INSERT_NORMAL) then
 		mapping = vimnav.config.mapping.insertNormal[vimnav.state.keyCapture]
 		prefixes = vimnav.state.mappingPrefixes.insertNormal
 	end
 
-	if ModeManager.isMode(vimnav, MODES.INSERT_VISUAL) then
+	if ModeManager.isMode(vimnav, Constants.MODES.INSERT_VISUAL) then
 		mapping = vimnav.config.mapping.insertVisual[vimnav.state.keyCapture]
 		prefixes = vimnav.state.mappingPrefixes.insertVisual
 	end
 
-	if ModeManager.isMode(vimnav, MODES.VISUAL) then
+	if ModeManager.isMode(vimnav, Constants.MODES.VISUAL) then
 		mapping = vimnav.config.mapping.visual[vimnav.state.keyCapture]
 		prefixes = vimnav.state.mappingPrefixes.visual
 	end
@@ -2533,19 +2426,19 @@ function EventHandler.processVimInput(vimnav, event)
 
 		local modeMapping
 
-		if ModeManager.isMode(vimnav, MODES.NORMAL) then
+		if ModeManager.isMode(vimnav, Constants.MODES.NORMAL) then
 			modeMapping = vimnav.config.mapping.normal
 		end
 
-		if ModeManager.isMode(vimnav, MODES.INSERT_NORMAL) then
+		if ModeManager.isMode(vimnav, Constants.MODES.INSERT_NORMAL) then
 			modeMapping = vimnav.config.mapping.insertNormal
 		end
 
-		if ModeManager.isMode(vimnav, MODES.INSERT_VISUAL) then
+		if ModeManager.isMode(vimnav, Constants.MODES.INSERT_VISUAL) then
 			modeMapping = vimnav.config.mapping.insertVisual
 		end
 
-		if ModeManager.isMode(vimnav, MODES.VISUAL) then
+		if ModeManager.isMode(vimnav, Constants.MODES.VISUAL) then
 			modeMapping = vimnav.config.mapping.visual
 		end
 
@@ -2585,35 +2478,35 @@ function EventHandler.process(vimnav, event)
 		return false
 	end
 
-	if ModeManager.isMode(vimnav, MODES.DISABLED) then
+	if ModeManager.isMode(vimnav, Constants.MODES.DISABLED) then
 		return EventHandler.handleDisabledMode(event)
 	end
 
-	if ModeManager.isMode(vimnav, MODES.PASSTHROUGH) then
+	if ModeManager.isMode(vimnav, Constants.MODES.PASSTHROUGH) then
 		return EventHandler.handlePassthroughMode(vimnav, event)
 	end
 
-	if ModeManager.isMode(vimnav, MODES.INSERT) then
+	if ModeManager.isMode(vimnav, Constants.MODES.INSERT) then
 		return EventHandler.handleInsertMode(vimnav, event)
 	end
 
-	if ModeManager.isMode(vimnav, MODES.INSERT_NORMAL) then
+	if ModeManager.isMode(vimnav, Constants.MODES.INSERT_NORMAL) then
 		return EventHandler.handleInsertNormalMode(vimnav, event)
 	end
 
-	if ModeManager.isMode(vimnav, MODES.INSERT_VISUAL) then
+	if ModeManager.isMode(vimnav, Constants.MODES.INSERT_VISUAL) then
 		return EventHandler.handleInsertVisualMode(vimnav, event)
 	end
 
-	if ModeManager.isMode(vimnav, MODES.LINKS) then
+	if ModeManager.isMode(vimnav, Constants.MODES.LINKS) then
 		return EventHandler.handleLinkMode(vimnav, event)
 	end
 
-	if ModeManager.isMode(vimnav, MODES.NORMAL) then
+	if ModeManager.isMode(vimnav, Constants.MODES.NORMAL) then
 		return EventHandler.handleNormalMode(vimnav, event)
 	end
 
-	if ModeManager.isMode(vimnav, MODES.VISUAL) then
+	if ModeManager.isMode(vimnav, Constants.MODES.VISUAL) then
 		return EventHandler.handleVisualMode(vimnav, event)
 	end
 
@@ -2895,7 +2788,7 @@ end
 ---@return nil
 function CleanupManager.light(vimnav)
 	vimnav.log.df("[CleanupManager.light] Performing light cleanup")
-	StateManager.resetInput(vimnav)
+	State.resetInput(vimnav)
 end
 
 ---Medium cleanup - clears UI elements and focus state
@@ -2912,7 +2805,7 @@ function CleanupManager.medium(vimnav)
 	Whichkey.hide(vimnav)
 
 	-- Reset focus state
-	StateManager.resetFocus(vimnav)
+	State.resetFocus(vimnav)
 end
 
 ---Heavy cleanup - clears caches and forces GC
@@ -2998,12 +2891,15 @@ function CleanupManager.onModeChange(vimnav, fromMode, toMode)
 	CleanupManager.light(vimnav)
 
 	-- Clear marks when leaving LINKS mode
-	if fromMode == MODES.LINKS then
+	if fromMode == Constants.MODES.LINKS then
 		Marks.clear(vimnav)
 	end
 
 	-- Clear marks when entering certain modes
-	if toMode == MODES.NORMAL or toMode == MODES.PASSTHROUGH then
+	if
+		toMode == Constants.MODES.NORMAL
+		or toMode == Constants.MODES.PASSTHROUGH
+	then
 		Marks.clear(vimnav)
 	end
 end
@@ -3014,11 +2910,11 @@ end
 function CleanupManager.onCommandComplete(vimnav)
 	vimnav.log.df("[CleanupManager.onCommandComplete] Command complete cleanup")
 
-	StateManager.resetLeader(vimnav)
-	StateManager.resetKeyCapture(vimnav)
+	State.resetLeader(vimnav)
+	State.resetKeyCapture(vimnav)
 
 	if vimnav.state.showingHelp then
-		StateManager.resetHelp(vimnav)
+		State.resetHelp(vimnav)
 	else
 		Whichkey.hide(vimnav)
 	end
@@ -3047,7 +2943,7 @@ function CleanupManager.onScreenChange(vimnav)
 	-- Recreate overlay if enabled
 	if
 		vimnav.config.overlay.enabled
-		and vimnav.state.mode ~= MODES.DISABLED
+		and vimnav.state.mode ~= Constants.MODES.DISABLED
 	then
 		Overlay.destroy(vimnav)
 		hs.timer.doAfter(0.1, function()
@@ -3062,111 +2958,6 @@ function CleanupManager.onScreenChange(vimnav)
 			Marks.draw(vimnav)
 		end)
 	end
-end
-
---------------------------------------------------------------------------------
--- State Manager
---------------------------------------------------------------------------------
-
----Reset key capture state
----@param vimnav Hs.Vimnav
-function StateManager.resetKeyCapture(vimnav)
-	vimnav.state.keyCapture = nil
-	vimnav.log.df("[StateManager.resetKeyCapture] Reset")
-end
-
----Reset leader state
----@param vimnav Hs.Vimnav
-function StateManager.resetLeader(vimnav)
-	vimnav.state.leaderPressed = false
-	vimnav.state.leaderCapture = ""
-	vimnav.log.df("[StateManager.resetLeader] Reset")
-end
-
----Reset marks state
----@param vimnav Hs.Vimnav
-function StateManager.resetMarks(vimnav)
-	vimnav.state.marks = {}
-	vimnav.log.df("[StateManager.resetMarks] Reset")
-end
-
----Reset marks canvas
----@param vimnav Hs.Vimnav
-function StateManager.resetMarkCanvas(vimnav)
-	if vimnav.state.markCanvas then
-		vimnav.state.markCanvas:delete()
-		vimnav.state.markCanvas = nil
-	end
-	vimnav.log.df("[StateManager.resetMarkCanvas] Reset")
-end
-
----Reset whichkey canvas
----@param vimnav Hs.Vimnav
-function StateManager.resetWhichkeyCanvas(vimnav)
-	if vimnav.state.whichkeyCanvas then
-		vimnav.state.whichkeyCanvas:delete()
-		vimnav.state.whichkeyCanvas = nil
-	end
-	vimnav.log.df("[StateManager.resetWhichkeyCanvas] Reset")
-end
-
----Reset overlay canvas
----@param vimnav Hs.Vimnav
-function StateManager.resetOverlayCanvas(vimnav)
-	if vimnav.state.overlayCanvas then
-		vimnav.state.overlayCanvas:delete()
-		vimnav.state.overlayCanvas = nil
-	end
-	vimnav.log.df("[StateManager.resetOverlayCanvas] Reset")
-end
-
----Reset menubar item
----@param vimnav Hs.Vimnav
-function StateManager.resetMenubarItem(vimnav)
-	if vimnav.state.menubarItem then
-		vimnav.state.menubarItem:delete()
-		vimnav.state.menubarItem = nil
-	end
-	vimnav.log.df("[StateManager.resetMenubarItem] Reset")
-end
-
----Reset link capture state
----@param vimnav Hs.Vimnav
-function StateManager.resetLinkCapture(vimnav)
-	vimnav.state.linkCapture = ""
-	vimnav.log.df("[StateManager.resetLinkCapture] Reset")
-end
-
----Reset focus state
----@param vimnav Hs.Vimnav
-function StateManager.resetFocus(vimnav)
-	vimnav.state.focusCachedResult = false
-	vimnav.state.focusLastElement = nil
-	vimnav.log.df("[StateManager.resetFocus] Reset")
-end
-
----Reset help state
----@param vimnav Hs.Vimnav
-function StateManager.resetHelp(vimnav)
-	vimnav.state.showingHelp = false
-	vimnav.log.df("[StateManager.resetHelp] Reset")
-end
-
----Reset all input-related state (key, leader, link capture)
----@param vimnav Hs.Vimnav
-function StateManager.resetInput(vimnav)
-	StateManager.resetKeyCapture(vimnav)
-	StateManager.resetLeader(vimnav)
-	StateManager.resetLinkCapture(vimnav)
-	StateManager.resetHelp(vimnav)
-	vimnav.log.df("[StateManager.resetInput] All input state reset")
-end
-
----Reset all state completely
----@param vimnav Hs.Vimnav
-function StateManager.resetAll(vimnav)
-	vimnav.state = Utils.deepCopy(State:getDefaultState())
-	vimnav.log.df("[StateManager.resetAll] Complete state reset")
 end
 
 --------------------------------------------------------------------------------
@@ -3246,13 +3037,16 @@ local function updateFocusState(vimnav)
 			vimnav.state.focusCachedResult = isEditable
 
 			-- Update mode based on focus change
-			if isEditable and ModeManager.isMode(vimnav, MODES.NORMAL) then
+			if
+				isEditable
+				and ModeManager.isMode(vimnav, Constants.MODES.NORMAL)
+			then
 				ModeManager.setModeInsert(vimnav)
 			elseif not isEditable then
 				if
-					ModeManager.isMode(vimnav, MODES.INSERT)
-					or ModeManager.isMode(vimnav, MODES.INSERT_NORMAL)
-					or ModeManager.isMode(vimnav, MODES.INSERT_VISUAL)
+					ModeManager.isMode(vimnav, Constants.MODES.INSERT)
+					or ModeManager.isMode(vimnav, Constants.MODES.INSERT_NORMAL)
+					or ModeManager.isMode(vimnav, Constants.MODES.INSERT_VISUAL)
 				then
 					ModeManager.setModeNormal(vimnav)
 				end
@@ -3268,9 +3062,9 @@ local function updateFocusState(vimnav)
 		if vimnav.state.focusCachedResult then
 			vimnav.state.focusCachedResult = false
 			if
-				ModeManager.isMode(vimnav, MODES.INSERT)
-				or ModeManager.isMode(vimnav, MODES.INSERT_NORMAL)
-				or ModeManager.isMode(vimnav, MODES.INSERT_VISUAL)
+				ModeManager.isMode(vimnav, Constants.MODES.INSERT)
+				or ModeManager.isMode(vimnav, Constants.MODES.INSERT_NORMAL)
+				or ModeManager.isMode(vimnav, Constants.MODES.INSERT_VISUAL)
 			then
 				ModeManager.setModeNormal(vimnav)
 			end
@@ -3312,7 +3106,7 @@ function TimerManager.startPeriodicCleanup(vimnav)
 	vimnav.state.cleanupTimer = hs.timer
 		.new(30, function() -- Every 30 seconds
 			-- Only clean up if we're not actively showing marks
-			if vimnav.state.mode ~= MODES.LINKS then
+			if vimnav.state.mode ~= Constants.MODES.LINKS then
 				CleanupManager.medium(vimnav)
 				vimnav.log.df(
 					"[TimerManager.setupPeriodicCleanup] Periodic cache cleanup completed"
@@ -3423,7 +3217,7 @@ function M:start()
 
 	self.cache = Cache:new()
 
-	StateManager.resetAll(self)
+	self.state = State:new()
 
 	Utils.fetchMappingPrefixes(self)
 	Utils.generateCombinations(self)
@@ -3478,7 +3272,7 @@ function M:stop()
 	-- reset electron cache as well
 	CacheManager.clearElectron(vimnav)
 
-	StateManager.resetAll(self)
+	State.resetAll(self)
 
 	self._running = false
 	self.log.i("[M:stop] Vimnav stopped")

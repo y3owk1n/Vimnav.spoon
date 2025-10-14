@@ -1,0 +1,25 @@
+local M = {}
+
+M.MODES = {
+	DISABLED = 1,
+	NORMAL = 2,
+	INSERT = 3,
+	INSERT_NORMAL = 4,
+	INSERT_VISUAL = 5,
+	LINKS = 6,
+	PASSTHROUGH = 7,
+	VISUAL = 8,
+}
+
+M.defaultModeChars = {
+	[M.MODES.DISABLED] = "X",
+	[M.MODES.INSERT] = "I",
+	[M.MODES.INSERT_NORMAL] = "IN",
+	[M.MODES.INSERT_VISUAL] = "IV",
+	[M.MODES.LINKS] = "L",
+	[M.MODES.NORMAL] = "N",
+	[M.MODES.PASSTHROUGH] = "P",
+	[M.MODES.VISUAL] = "V",
+}
+
+return M
