@@ -125,7 +125,7 @@ function M:start()
 	Timer:stopAll()
 	Timer:startPeriodicCleanup()
 	MenuBar:create()
-	Overlay.create()
+	Overlay:create()
 
 	local currentApp = Elements.getApp()
 	if
@@ -162,7 +162,7 @@ function M:stop()
 	EventHandler:stop()
 
 	MenuBar:destroy()
-	Overlay.destroy()
+	Overlay:destroy()
 	Marks.clear()
 
 	Cleanup.full()

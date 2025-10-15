@@ -60,11 +60,6 @@ function M.full()
 			State.state.markCanvas:hide()
 		end)
 	end
-	if State.state.overlayCanvas then
-		pcall(function()
-			State.state.overlayCanvas:hide()
-		end)
-	end
 end
 
 ---Cleanup for app switching - medium + element cache
@@ -137,7 +132,7 @@ function M.onEscape()
 	M.light()
 	require("lib.whichkey"):hide()
 	require("lib.menubar"):setTitle(State.state.mode)
-	require("lib.overlay").update(State.state.mode)
+	require("lib.overlay"):update(State.state.mode)
 end
 
 ---Cleanup on screen change
@@ -153,10 +148,10 @@ function M.onScreenChange()
 		Config.config.overlay.enabled
 		and State.state.mode ~= require("lib.modes").MODES.DISABLED
 	then
-		Overlay.destroy()
+		Overlay:destroy()
 		hs.timer.doAfter(0.1, function()
-			Overlay.create()
-			Overlay.update(State.mode)
+			Overlay:create()
+			Overlay:update(State.mode)
 		end)
 	end
 

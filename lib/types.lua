@@ -121,7 +121,6 @@ local M = {}
 ---@field leaderPressed boolean Leader key was pressed
 ---@field leaderCapture string Captured keys after leader
 ---@field showingHelp boolean Whether the help popup is currently showing
----@field overlayCanvas table|nil Overlay canvas
 
 ---@class Hs.Vimnav.State.MappingPrefixes
 ---@field normal table<string, boolean> Normal mode mappings

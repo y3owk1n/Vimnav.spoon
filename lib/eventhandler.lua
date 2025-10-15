@@ -73,7 +73,7 @@ function M.handleVimInput(char, opts)
 			State.state.mode,
 			State.state.keyCapture
 		)
-		require("lib.overlay").update(State.state.mode, State.state.keyCapture)
+		require("lib.overlay"):update(State.state.mode, State.state.keyCapture)
 		return
 	end
 
@@ -109,7 +109,7 @@ function M.handleVimInput(char, opts)
 	end
 
 	require("lib.menubar"):setTitle(State.state.mode, State.state.keyCapture)
-	require("lib.overlay").update(State.state.mode, State.state.keyCapture)
+	require("lib.overlay"):update(State.state.mode, State.state.keyCapture)
 
 	-- Execute mapping
 	local mapping

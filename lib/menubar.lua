@@ -5,7 +5,7 @@ local Log = require("lib.log")
 
 local M = {}
 
----Mebubar item
+---Menubar item
 M.item = nil
 
 ---Creates the menu bar item
