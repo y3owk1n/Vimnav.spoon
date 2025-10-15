@@ -28,7 +28,7 @@ function M:startAppWatcher()
 
 	self:stopAppWatcher()
 
-	Timer.startFocusCheck()
+	Timer:startFocusCheck()
 	Elements.enableEnhancedUIForChrome()
 	Elements.enableAccessibilityForElectron()
 
@@ -43,7 +43,7 @@ function M:startAppWatcher()
 			Log.log.df("[Watchers.startAppWatcher] App activated: %s", appName)
 
 			Cleanup.onAppSwitch()
-			Timer.startFocusCheck()
+			Timer:startFocusCheck()
 			Elements.enableEnhancedUIForChrome()
 			Elements.enableAccessibilityForElectron()
 			EventHandler:start()
@@ -244,10 +244,10 @@ local function handleCaffeineEvent(eventType)
 			end
 
 			-- Restart focus polling
-			Timer.startFocusCheck()
+			Timer:startFocusCheck()
 
 			-- Restart periodic cleanup timer
-			Timer.startPeriodicCleanup()
+			Timer:startPeriodicCleanup()
 
 			-- Re-enable enhanced accessibility if needed
 			Elements.enableEnhancedUIForChrome()
@@ -292,6 +292,10 @@ function M:stopCaffeineWatcher()
 		self.caffeineWatcher = nil
 	end
 end
+
+--------------------------------------------------------------------------------
+-- Rest
+--------------------------------------------------------------------------------
 
 ---Start all watchers
 ---@return nil

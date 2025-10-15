@@ -115,16 +115,13 @@ local M = {}
 ---@field allCombinations string[] All combinations
 ---@field markCanvas table|nil Canvas
 ---@field onClickCallback fun(any)|nil On click callback for marks
----@field cleanupTimer table|nil Cleanup timer
 ---@field focusCachedResult boolean Focus cached result
 ---@field focusLastElement table|string|nil Focus last element
 ---@field maxElements number Maximum elements to search for (derived from config)
 ---@field leaderPressed boolean Leader key was pressed
 ---@field leaderCapture string Captured keys after leader
----@field whichkeyTimer table|nil Which-key popup timer
 ---@field whichkeyCanvas table|nil Which-key popup canvas
 ---@field showingHelp boolean Whether the help popup is currently showing
----@field focusCheckTimer table|nil Focus check timer
 ---@field menubarItem table|nil Menubar item
 ---@field overlayCanvas table|nil Overlay canvas
 

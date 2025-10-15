@@ -67,7 +67,7 @@ function M.handleVimInput(char, opts)
 		State.state.leaderCapture = ""
 		State.state.keyCapture = "<leader>"
 
-		require("lib.whichkey").scheduleShow(State.state.keyCapture)
+		Whichkey:scheduleShow(State.state.keyCapture)
 
 		require("lib.menubar").setTitle(
 			State.state.mode,
@@ -105,7 +105,7 @@ function M.handleVimInput(char, opts)
 	end
 
 	if State.state.keyCapture and #State.state.keyCapture > 0 then
-		require("lib.whichkey").scheduleShow(State.state.keyCapture)
+		Whichkey:scheduleShow(State.state.keyCapture)
 	end
 
 	require("lib.menubar").setTitle(State.state.mode, State.state.keyCapture)
@@ -374,7 +374,7 @@ function M.handleVisualMode(event)
 		Actions.forceDeselectTextHighlights()
 		Modes.setModeNormal()
 		Marks.clear()
-		Whichkey.hide()
+		Whichkey:hide()
 		return false
 	end
 

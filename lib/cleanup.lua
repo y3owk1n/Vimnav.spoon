@@ -24,7 +24,7 @@ function M.medium()
 
 	-- Clear UI elements
 	require("lib.marks").clear()
-	require("lib.whichkey").hide()
+	require("lib.whichkey"):hide()
 
 	-- Reset focus state
 	State:resetFocus()
@@ -52,7 +52,7 @@ function M.full()
 	M.heavy()
 
 	-- Stop all timers
-	require("lib.timer").stopAll()
+	require("lib.timer"):stopAll()
 
 	-- Hide all UI elements
 	if State.state.markCanvas then
@@ -130,7 +130,7 @@ function M.onCommandComplete()
 	if State.state.showingHelp then
 		State:resetHelp()
 	else
-		require("lib.whichkey").hide()
+		require("lib.whichkey"):hide()
 	end
 end
 
@@ -140,7 +140,7 @@ function M.onEscape()
 	Log.log.df("[CleanupManager.onEscape] Escape cleanup")
 
 	M.light()
-	require("lib.whichkey").hide()
+	require("lib.whichkey"):hide()
 	require("lib.menubar").setTitle(State.state.mode)
 	require("lib.overlay").update(State.state.mode)
 end
