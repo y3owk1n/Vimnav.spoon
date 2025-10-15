@@ -7,8 +7,8 @@ local Log = require("lib.log")
 local M = {}
 
 ---Process elements in background coroutine to avoid UI blocking
----@param element table
----@param opts Hs.Vimnav.Async.TraversalOpts
+---@param element table Element to start from
+---@param opts Hs.Vimnav.Async.TraversalOpts Opts for traversal
 ---@return nil
 function M.traverseElements(element, opts)
 	local matcher = opts.matcher
@@ -58,8 +58,8 @@ function M.traverseElements(element, opts)
 end
 
 ---Walks an element with a matcher
----@param element table
----@param opts Hs.Vimnav.Async.WalkElementOpts
+---@param element table Element to start from
+---@param opts Hs.Vimnav.Async.WalkElementOpts Opts for walking the elements
 ---@return boolean|nil
 function M.walkElement(element, opts)
 	local depth = opts.depth

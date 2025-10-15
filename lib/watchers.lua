@@ -135,7 +135,7 @@ function M.startLaunchersWatcher()
 end
 
 ---Stops one launcher watcher
----@param launcher string
+---@param launcher string Launcher to stop
 ---@return nil
 function M.stopLauncherWatcher(launcher)
 	Log.log.df(
@@ -197,7 +197,7 @@ function M.stopScreenWatcher()
 end
 
 ---Handles caffeine events
----@param eventType number
+---@param eventType number Event type
 ---@return nil
 local function handleCaffeineEvent(eventType)
 	Log.log.df(

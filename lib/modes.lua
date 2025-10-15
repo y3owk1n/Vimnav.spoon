@@ -31,7 +31,7 @@ M.MODES = MODES
 M.defaultModeChars = defaultModeChars
 
 ---Sets the mode
----@param mode number
+---@param mode number Mode to set
 ---@return boolean success Whether the mode was set
 ---@return number|nil prevMode The previous mode
 function M.setMode(mode)
@@ -56,7 +56,7 @@ function M.setMode(mode)
 end
 
 ---Checks if the current mode is the given mode
----@param mode number
+---@param mode number Mode to check
 ---@return boolean
 function M.isMode(mode)
 	local isMode = State.state.mode == mode

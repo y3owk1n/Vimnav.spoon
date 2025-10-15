@@ -34,7 +34,7 @@ function M:new()
 end
 
 ---Checks if the role is jumpable
----@param role string
+---@param role string Role to check
 ---@return boolean
 function M:isJumpable(role)
 	local isJumpable = self.jumpableSet and self.jumpableSet[role] == true
@@ -49,7 +49,7 @@ function M:isJumpable(role)
 end
 
 ---Checks if the role is editable
----@param role string
+---@param role string Role to check
 ---@return boolean
 function M:isEditable(role)
 	local isEditable = self.editableSet and self.editableSet[role] == true
@@ -64,7 +64,7 @@ function M:isEditable(role)
 end
 
 ---Checks if the role should be skipped
----@param role string
+---@param role string Role to check
 ---@return boolean
 function M:shouldSkip(role)
 	local shouldSkip = self.skipSet and self.skipSet[role] == true

@@ -142,7 +142,7 @@ function M.create()
 end
 
 ---Get color for mode
----@param mode number
+---@param mode number Mode to get color for
 ---@return table
 function M.getModeColor(mode)
 	local MODES = require("lib.modes").MODES
@@ -186,8 +186,8 @@ function M.getModeColor(mode)
 end
 
 ---Updates the overlay indicator
----@param mode number
----@param keys? string|nil
+---@param mode number Mode to update
+---@param keys? string|nil Keys to display
 ---@return nil
 function M.update(mode, keys)
 	Log.log.df("[Overlay.update] Updating overlay")

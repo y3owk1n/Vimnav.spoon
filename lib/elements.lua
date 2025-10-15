@@ -11,8 +11,8 @@ local Async = require("lib.async")
 local M = {}
 
 ---Returns the application element
----@param force? boolean
----@param silent? boolean
+---@param force? boolean If true, the element will be refreshed
+---@param silent? boolean If true, no log messages will be printed
 ---@return Hs.Vimnav.Element|nil
 function M.getApp(force, silent)
 	if not silent then
@@ -25,8 +25,8 @@ function M.getApp(force, silent)
 end
 
 ---Returns the application element for AXUIElement
----@param force? boolean
----@param silent? boolean
+---@param force? boolean If true, the element will be refreshed
+---@param silent? boolean If true, no log messages will be printed
 ---@return Hs.Vimnav.Element|nil
 function M.getAxApp(force, silent)
 	if not silent then
@@ -40,7 +40,7 @@ function M.getAxApp(force, silent)
 end
 
 ---Returns the window element
----@param force? boolean
+---@param force? boolean If true, the element will be refreshed
 ---@return Hs.Vimnav.Element|nil
 function M.getWindow(force)
 	Log.log.df("[Elements.getWindow] Getting window")
@@ -52,7 +52,7 @@ function M.getWindow(force)
 end
 
 ---Returns the window element for AXUIElement
----@param force? boolean
+---@param force? boolean If true, the element will be refreshed
 ---@return Hs.Vimnav.Element|nil
 function M.getAxWindow(force)
 	Log.log.df("[Elements.getAxWindow] Getting AXWindow")
@@ -64,8 +64,8 @@ function M.getAxWindow(force)
 end
 
 ---Returns the focused element for AXUIElement
----@param force? boolean
----@param silent? boolean
+---@param force? boolean If true, the element will be refreshed
+---@param silent? boolean If true, no log messages will be printed
 ---@return Hs.Vimnav.Element|nil
 function M.getAxFocusedElement(force, silent)
 	if not silent then
@@ -79,7 +79,7 @@ function M.getAxFocusedElement(force, silent)
 end
 
 ---Returns the web area element for AXUIElement
----@param force? boolean
+---@param force? boolean If true, the element will be refreshed
 ---@return Hs.Vimnav.Element|nil
 function M.getAxWebArea(force)
 	Log.log.df("[Elements.getAxWebArea] Getting AXWebArea")
@@ -91,7 +91,7 @@ function M.getAxWebArea(force)
 end
 
 ---Returns the menu bar element for AXUIElement
----@param force? boolean
+---@param force? boolean If true, the element will be refreshed
 ---@return Hs.Vimnav.Element|nil
 function M.getAxMenuBar(force)
 	Log.log.df("[Elements.getAxMenuBar] Getting AXMenuBar")
@@ -103,7 +103,7 @@ function M.getAxMenuBar(force)
 end
 
 ---Returns the full area element
----@param force? boolean
+---@param force? boolean If true, the element will be refreshed
 ---@return Hs.Vimnav.Element|nil
 function M.getFullArea(force)
 	Log.log.df("[Elements.getFullArea] Getting full area")
@@ -130,9 +130,9 @@ function M.getFullArea(force)
 end
 
 ---Finds an element with a specific AXRole
----@param rootElement Hs.Vimnav.Element
----@param role string
----@param force? boolean
+---@param rootElement Hs.Vimnav.Element Root element to start from
+---@param role string AXRole to find
+---@param force? boolean If true, the element will be refreshed
 ---@return Hs.Vimnav.Element|nil
 function M.findAxRole(rootElement, role, force)
 	Log.log.df("[Elements.findAxRole] Finding AXRole: %s", role)
@@ -297,7 +297,7 @@ function M.createViewportRegions()
 end
 
 ---Checks if the element is in the viewport
----@param opts Hs.Vimnav.Elements.IsInViewportOpts
+---@param opts Hs.Vimnav.Elements.IsInViewportOpts Opts for checking if element is in viewport
 ---@return boolean
 function M.isInViewport(opts)
 	Log.log.df("[Elements.isInViewport] Checking if element is in viewport")
@@ -488,8 +488,8 @@ function M.isElectronApp()
 end
 
 ---Finds clickable elements
----@param axApp Hs.Vimnav.Element
----@param opts Hs.Vimnav.Elements.FindClickableElementsOpts
+---@param axApp Hs.Vimnav.Element AXApp to find clickable elements in
+---@param opts Hs.Vimnav.Elements.FindClickableElementsOpts Opts for finding clickable elements
 ---@return nil
 function M.findClickableElements(axApp, opts)
 	Log.log.df("[Elements.findClickableElements] Finding clickable elements")
@@ -548,8 +548,8 @@ function M.findClickableElements(axApp, opts)
 end
 
 ---Finds input elements
----@param axApp Hs.Vimnav.Element
----@param opts Hs.Vimnav.Elements.FindElementsOpts
+---@param axApp Hs.Vimnav.Element AXApp to find input elements in
+---@param opts Hs.Vimnav.Elements.FindElementsOpts Opts for finding input elements
 ---@return nil
 function M.findInputElements(axApp, opts)
 	Log.log.df("[Elements.findInputElements] Finding input elements")
@@ -607,8 +607,8 @@ function M.findInputElements(axApp, opts)
 end
 
 ---Finds image elements
----@param axApp Hs.Vimnav.Element
----@param opts Hs.Vimnav.Elements.FindElementsOpts
+---@param axApp Hs.Vimnav.Element AXApp to find image elements in
+---@param opts Hs.Vimnav.Elements.FindElementsOpts Opts for finding image elements
 ---@return nil
 function M.findImageElements(axApp, opts)
 	Log.log.df("[Elements.findImageElements] Finding image elements")
@@ -641,8 +641,8 @@ function M.findImageElements(axApp, opts)
 end
 
 ---Finds next button elemets
----@param axApp Hs.Vimnav.Element
----@param opts Hs.Vimnav.Elements.FindElementsOpts
+---@param axApp Hs.Vimnav.Element AXApp to find next button elements in
+---@param opts Hs.Vimnav.Elements.FindElementsOpts Opts for finding next button elements
 ---@return nil
 function M.findNextButtonElements(axApp, opts)
 	Log.log.df("[Elements.findNextButtonElements] Finding next button elements")
@@ -687,8 +687,8 @@ function M.findNextButtonElements(axApp, opts)
 end
 
 ---Finds previous button elemets
----@param axApp Hs.Vimnav.Element
----@param opts Hs.Vimnav.Elements.FindElementsOpts
+---@param axApp Hs.Vimnav.Element AXApp to find previous button elements in
+---@param opts Hs.Vimnav.Elements.FindElementsOpts Opts for finding previous button elements
 ---@return nil
 function M.findPrevButtonElements(axApp, opts)
 	Log.log.df(

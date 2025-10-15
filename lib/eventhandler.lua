@@ -16,8 +16,8 @@ local Whichkey = require("lib.whichkey")
 local M = {}
 
 ---Handles Vim input
----@param char string
----@param opts? Hs.Vimnav.EventHandler.HandleVimInputOpts
+---@param char string Character to handle
+---@param opts? Hs.Vimnav.EventHandler.HandleVimInputOpts Opts for handling Vim input
 ---@return nil
 function M.handleVimInput(char, opts)
 	opts = opts or {}
@@ -176,8 +176,8 @@ function M.handleVimInput(char, opts)
 end
 
 ---Checks if the key is a valid key for the given name
----@param keyCode number
----@param name string
+---@param keyCode number Key code to check
+---@param name string Name of the key
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.isKey(keyCode, name)
 	local isKey = keyCode == hs.keycodes.map[name]
@@ -192,6 +192,9 @@ function M.isKey(keyCode, name)
 	return isKey
 end
 
+---Checks if the event is a shift-escape
+---@param event table Event to check
+---@return boolean isShiftEspace True if the event is a shift-escape, false otherwise
 function M.isShiftEspace(event)
 	local flags = event:getFlags()
 	local isShiftEspace = flags.shift and M.isKey(event:getKeyCode(), "escape")
@@ -204,6 +207,9 @@ function M.isShiftEspace(event)
 	return isShiftEspace
 end
 
+---Checks if the event is an escape
+---@param event table Event to check
+---@return boolean isEspace True if the event is an escape, false otherwise
 function M.isEspace(event)
 	local isEspace = M.isKey(event:getKeyCode(), "escape")
 
@@ -213,7 +219,7 @@ function M.isEspace(event)
 end
 
 ---Handles disabled mode
----@param event table
+---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.handleDisabledMode(event)
 	Log.log.df("[EventHandler.handleDisabledMode] Handling disabled mode")
@@ -222,7 +228,7 @@ function M.handleDisabledMode(event)
 end
 
 ---Handles passthrough mode
----@param event table
+---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.handlePassthroughMode(event)
 	Log.log.df("[EventHandler.handlePassthroughMode] Handling passthrough mode")
@@ -237,7 +243,7 @@ function M.handlePassthroughMode(event)
 end
 
 ---Handles insert mode
----@param event table
+---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.handleInsertMode(event)
 	Log.log.df("[EventHandler.handleInsertMode] Handling insert mode")
@@ -263,7 +269,7 @@ function M.handleInsertMode(event)
 end
 
 ---Handles insert normal mode
----@param event table
+---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.handleInsertNormalMode(event)
 	Log.log.df(
@@ -292,7 +298,7 @@ function M.handleInsertNormalMode(event)
 end
 
 ---Handles insert visual mode
----@param event table
+---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.handleInsertVisualMode(event)
 	Log.log.df(
@@ -329,7 +335,7 @@ function M.handleInsertVisualMode(event)
 end
 
 ---Handles links mode
----@param event table
+---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.handleLinkMode(event)
 	Log.log.df("[EventHandler.handleLinkMode] Handling link mode")
@@ -344,7 +350,7 @@ function M.handleLinkMode(event)
 end
 
 ---Handles normal mode
----@param event table
+---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.handleNormalMode(event)
 	Log.log.df("[EventHandler.handleNormalMode] Handling normal mode")
@@ -359,7 +365,7 @@ function M.handleNormalMode(event)
 end
 
 ---Handles visual mode
----@param event table
+---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.handleVisualMode(event)
 	Log.log.df("[EventHandler.handleVisualMode] Handling visual mode")
@@ -376,7 +382,7 @@ function M.handleVisualMode(event)
 end
 
 ---Handles vim input
----@param event table
+---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.processVimInput(event)
 	Log.log.df("[EventHandler.processVimInput] Processing Vim input")
@@ -475,7 +481,7 @@ function M.processVimInput(event)
 end
 
 ---Handles events
----@param event table
+---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.process(event)
 	Log.log.df("[EventHandler.process] Processing event")
@@ -527,6 +533,8 @@ function M.process(event)
 	return false
 end
 
+---Starts the event loop
+---@return nil
 function M.startEventLoop()
 	if not State.state.eventLoop then
 		State.state.eventLoop = hs.eventtap
@@ -538,6 +546,8 @@ function M.startEventLoop()
 	end
 end
 
+---Stops the event loop
+---@return nil
 function M.stopEventLoop()
 	if State.state.eventLoop then
 		State.state.eventLoop:stop()

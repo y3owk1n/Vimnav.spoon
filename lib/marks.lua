@@ -22,7 +22,7 @@ function M.clear()
 end
 
 ---Adds a mark to the list
----@param element table
+---@param element table Element to add
 ---@return nil
 function M.add(element)
 	Log.log.df("[Marks.add] Adding mark")
@@ -47,7 +47,7 @@ function M.add(element)
 end
 
 ---Show marks
----@param opts Hs.Vimnav.Marks.ShowOpts
+---@param opts Hs.Vimnav.Marks.ShowOpts Opts for showing marks
 ---@return nil
 function M.show(opts)
 	Log.log.df("[Marks.show] Showing marks")
@@ -304,7 +304,7 @@ function M.draw()
 end
 
 ---Clicks a mark
----@param combination string
+---@param combination string Combination to click
 ---@return nil
 function M.click(combination)
 	Log.log.df("[Marks.click] Clicking mark: %s", combination)

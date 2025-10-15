@@ -93,8 +93,8 @@ function M.onWake()
 end
 
 ---Cleanup on mode change - light cleanup only
----@param fromMode number
----@param toMode number
+---@param fromMode number Mode to leave
+---@param toMode number Mode to enter
 ---@return nil
 function M.onModeChange(fromMode, toMode)
 	Log.log.df(

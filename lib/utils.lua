@@ -3,7 +3,7 @@
 local M = {}
 
 ---Helper function to check if something is a "list-like" table
----@param t table
+---@param t table Table to check
 ---@return boolean
 function M.isList(t)
 	if type(t) ~= "table" then
@@ -20,7 +20,7 @@ function M.isList(t)
 end
 
 ---Helper function to deep copy a value
----@param obj table
+---@param obj table Object to copy
 ---@return table
 function M.deepCopy(obj)
 	if type(obj) ~= "table" then
@@ -67,8 +67,8 @@ function M.tblMerge(base, overlay, extendArrays)
 end
 
 ---Checks if a table contains a value
----@param tbl table
----@param val any
+---@param tbl table Table to check
+---@param val any Value to check
 ---@return boolean
 function M.tblContains(tbl, val)
 	for _, v in ipairs(tbl) do
@@ -84,10 +84,10 @@ M.eventSourceIgnoreSignature = 0xDEADBEEFDEADBEEF -- 64-bit value
 ---Custom keyStroke function
 ---This is a modified version that will send a special userData to the eventloop
 ---and ask it to ignore keys from here
----@param mods "cmd"|"ctrl"|"alt"|"shift"|"fn"|("cmd"|"ctrl"|"alt"|"shift"|"fn")[]
----@param key string
----@param delay? number
----@param application? table
+---@param mods "cmd"|"ctrl"|"alt"|"shift"|"fn"|("cmd"|"ctrl"|"alt"|"shift"|"fn")[] Modifiers
+---@param key string Key to press
+---@param delay? number Delay in seconds
+---@param application? table Application to send the event to
 ---@return nil
 function M.keyStroke(mods, key, delay, application)
 	if type(mods) == "string" then
@@ -114,7 +114,7 @@ function M.keyStroke(mods, key, delay, application)
 end
 
 ---Convert hex to RGB table
----@param hex string
+---@param hex string Hex color
 ---@return table
 function M.hexToRgb(hex)
 	hex = hex:gsub("#", "")
@@ -126,7 +126,7 @@ function M.hexToRgb(hex)
 end
 
 ---Double click at a point
----@param point table
+---@param point table Point to double click
 function M.doubleClickAtPoint(point)
 	-- first click
 	local click1_down = hs.eventtap.event.newMouseEvent(

@@ -111,6 +111,7 @@ function M.startPeriodicCleanup()
 end
 
 ---Stop cleanup timer
+---@return nil
 function M.stopPeriodicCleanup()
 	Log.log.df("[Timer.stopCleanup] Stopped")
 	if State.state.cleanupTimer then
@@ -120,6 +121,7 @@ function M.stopPeriodicCleanup()
 end
 
 ---Stop which-key timer
+---@return nil
 function M.stopWhichkey()
 	Log.log.df("[Timer.stopWhichkey] Stopped")
 	if State.state.whichkeyTimer then
@@ -129,6 +131,7 @@ function M.stopWhichkey()
 end
 
 ---Stop all timers
+---@return nil
 function M.stopAll()
 	Log.log.df("[TimerManager.stopAll] Stopping all timers")
 

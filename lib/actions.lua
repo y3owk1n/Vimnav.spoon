@@ -8,7 +8,7 @@ local Utils = require("lib.utils")
 local M = {}
 
 ---Performs a smooth scroll
----@param opts Hs.Vimnav.Actions.SmoothScrollOpts
+---@param opts Hs.Vimnav.Actions.SmoothScrollOpts Opts for smooth scroll
 ---@return nil
 function M.smoothScroll(opts)
 	local x = opts.x or 0
@@ -48,7 +48,7 @@ function M.smoothScroll(opts)
 end
 
 ---Opens a URL in a new tab
----@param url string
+---@param url string URL to open
 ---@return nil
 function M.openUrlInNewTab(url)
 	if not url then
@@ -80,7 +80,7 @@ function M.openUrlInNewTab(url)
 end
 
 ---Sets the clipboard contents
----@param contents string
+---@param contents string Contents to set
 ---@return nil
 function M.setClipboardContents(contents)
 	if not contents then
@@ -106,8 +106,8 @@ function M.setClipboardContents(contents)
 end
 
 ---Download base64 image
----@param url string
----@param description string
+---@param url string URL to download
+---@param description string Description for the downloaded image
 ---@return nil
 function M.downloadBase64Image(url, description)
 	local base64Data = url:match("^data:image/[^;]+;base64,(.+)$")
@@ -135,7 +135,7 @@ function M.downloadBase64Image(url, description)
 end
 
 ---Download image via http
----@param url string
+---@param url string URL to download
 ---@return nil
 function M.downloadImageViaHttp(url)
 	hs.http.asyncGet(url, nil, function(status, body, headers)
@@ -251,8 +251,8 @@ function M.forceDeselectTextHighlights()
 end
 
 ---Tries to click on a frame
----@param frame table
----@param opts? Hs.Vimnav.Actions.TryClickOpts
+---@param frame table Frame to click
+---@param opts? Hs.Vimnav.Actions.TryClickOpts Opts for clicking
 ---@return nil
 function M.tryClick(frame, opts)
 	Log.log.df("[Actions.tryClick] Clicking frame")

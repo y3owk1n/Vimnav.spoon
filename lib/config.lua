@@ -521,8 +521,8 @@ local DEFAULT_CONFIG = {
 ---@type Hs.Vimnav.Config
 M.config = {}
 
----@param userConfig Hs.Vimnav.Config
----@param opts? Hs.Vimnav.Config.SetOpts
+---@param userConfig Hs.Vimnav.Config User configuration
+---@param opts? Hs.Vimnav.Config.SetOpts Opts for setting config
 function M:new(userConfig, opts)
 	Log.log.df("[Config:new] Creating config")
 

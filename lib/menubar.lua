@@ -25,8 +25,9 @@ function M.create()
 end
 
 ---Set the menubar title
----@param mode number
----@param keys string|nil
+---@param mode number Mode to set
+---@param keys string|nil Keys to display
+---@return nil
 function M.setTitle(mode, keys)
 	Log.log.df("[MenuBar.setTitle] Setting menubar title")
 
