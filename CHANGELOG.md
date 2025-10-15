@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.2.1](https://github.com/y3owk1n/Vimnav.spoon/compare/v1.2.0...v1.2.1) (2025-10-15)
+
+
+### Bug Fixes
+
+* completely remove state and move diff states into own modules ([#81](https://github.com/y3owk1n/Vimnav.spoon/issues/81)) ([d810a66](https://github.com/y3owk1n/Vimnav.spoon/commit/d810a66be331e623704fc061a9475c54ef57a561))
+* move `eventloop` out from state ([#73](https://github.com/y3owk1n/Vimnav.spoon/issues/73)) ([e7b48d4](https://github.com/y3owk1n/Vimnav.spoon/commit/e7b48d499163aba36ee32796e2beffa7a338c0ac))
+* move `mappings` out from state ([#80](https://github.com/y3owk1n/Vimnav.spoon/issues/80)) ([2428d6f](https://github.com/y3owk1n/Vimnav.spoon/commit/2428d6f854eb25639d8fb3d56fbefdfc818702c0))
+* move `marks` out from state ([#79](https://github.com/y3owk1n/Vimnav.spoon/issues/79)) ([ad3a2fd](https://github.com/y3owk1n/Vimnav.spoon/commit/ad3a2fd3dae9a90deb6838cff4f9e8255f11c7c0))
+* move `menubar` out from state ([#77](https://github.com/y3owk1n/Vimnav.spoon/issues/77)) ([ad75c24](https://github.com/y3owk1n/Vimnav.spoon/commit/ad75c241b50daf9ce3e6814d7f50181dbb2c5007))
+* move `overlay` out from state ([#78](https://github.com/y3owk1n/Vimnav.spoon/issues/78)) ([cd5a279](https://github.com/y3owk1n/Vimnav.spoon/commit/cd5a27999a015efe7f70e182da4b4c204be82f62))
+* move `timers` out from state ([#75](https://github.com/y3owk1n/Vimnav.spoon/issues/75)) ([d3c26b2](https://github.com/y3owk1n/Vimnav.spoon/commit/d3c26b2a831a92b8941009850a0105d0c5418ec9))
+* move `watchers` out from state ([#74](https://github.com/y3owk1n/Vimnav.spoon/issues/74)) ([ffe3080](https://github.com/y3owk1n/Vimnav.spoon/commit/ffe30803cc65a9a08fa46960654f6aa5096ca4c7))
+* move `whichkeycanvas` out from state ([#76](https://github.com/y3owk1n/Vimnav.spoon/issues/76)) ([4fa8161](https://github.com/y3owk1n/Vimnav.spoon/commit/4fa81612836d0b692747f27563ade8a732a2c7bb))
+* update loggings after split refactoring ([#71](https://github.com/y3owk1n/Vimnav.spoon/issues/71)) ([9c18b77](https://github.com/y3owk1n/Vimnav.spoon/commit/9c18b7795d2f6015472d6d897b2ff734d0402df7))
+
 ## [1.2.0](https://github.com/y3owk1n/Vimnav.spoon/compare/v1.1.1...v1.2.0) (2025-10-12)
 
 
