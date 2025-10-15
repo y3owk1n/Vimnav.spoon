@@ -124,7 +124,7 @@ function M:start()
 
 	Timer:stopAll()
 	Timer:startPeriodicCleanup()
-	MenuBar.create()
+	MenuBar:create()
 	Overlay.create()
 
 	local currentApp = Elements.getApp()
@@ -161,7 +161,7 @@ function M:stop()
 	Watchers:stopAll()
 	EventHandler:stop()
 
-	MenuBar.destroy()
+	MenuBar:destroy()
 	Overlay.destroy()
 	Marks.clear()
 

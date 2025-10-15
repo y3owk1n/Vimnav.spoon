@@ -69,7 +69,7 @@ function M.handleVimInput(char, opts)
 
 		Whichkey:scheduleShow(State.state.keyCapture)
 
-		require("lib.menubar").setTitle(
+		require("lib.menubar"):setTitle(
 			State.state.mode,
 			State.state.keyCapture
 		)
@@ -108,7 +108,7 @@ function M.handleVimInput(char, opts)
 		Whichkey:scheduleShow(State.state.keyCapture)
 	end
 
-	require("lib.menubar").setTitle(State.state.mode, State.state.keyCapture)
+	require("lib.menubar"):setTitle(State.state.mode, State.state.keyCapture)
 	require("lib.overlay").update(State.state.mode, State.state.keyCapture)
 
 	-- Execute mapping

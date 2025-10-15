@@ -136,7 +136,7 @@ function M.onEscape()
 
 	M.light()
 	require("lib.whichkey"):hide()
-	require("lib.menubar").setTitle(State.state.mode)
+	require("lib.menubar"):setTitle(State.state.mode)
 	require("lib.overlay").update(State.state.mode)
 end
 

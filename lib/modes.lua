@@ -47,7 +47,7 @@ function M.setMode(mode)
 
 	require("lib.cleanup").onModeChange(previousMode, mode)
 
-	require("lib.menubar").setTitle(mode)
+	require("lib.menubar"):setTitle(mode)
 	require("lib.overlay").update(mode)
 
 	Log.log.df("[Modes.setMode] Mode changed: %s -> %s", previousMode, mode)
