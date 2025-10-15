@@ -120,7 +120,6 @@ local M = {}
 ---@field maxElements number Maximum elements to search for (derived from config)
 ---@field leaderPressed boolean Leader key was pressed
 ---@field leaderCapture string Captured keys after leader
----@field whichkeyCanvas table|nil Which-key popup canvas
 ---@field showingHelp boolean Whether the help popup is currently showing
 ---@field menubarItem table|nil Menubar item
 ---@field overlayCanvas table|nil Overlay canvas

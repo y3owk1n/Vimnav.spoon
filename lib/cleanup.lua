@@ -65,11 +65,6 @@ function M.full()
 			State.state.overlayCanvas:hide()
 		end)
 	end
-	if State.state.whichkeyCanvas then
-		pcall(function()
-			State.state.whichkeyCanvas:hide()
-		end)
-	end
 end
 
 ---Cleanup for app switching - medium + element cache
