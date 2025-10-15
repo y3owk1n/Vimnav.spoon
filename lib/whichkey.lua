@@ -8,11 +8,15 @@ local Log = require("lib.log")
 
 local M = {}
 
+-- This timer is just to used to cancel the popup if it's no longer needed
+-- Don't need to put it in timer module
+M.whichkeyTimer = nil
+
 ---Get available mappings for current prefix
 ---@param prefix string Current key capture
 ---@param mapping table Mode mapping table
 ---@return table Available mappings
-function M.getAvailableMappings(prefix, mapping)
+function M:getAvailableMappings(prefix, mapping)
 	Log.log.df("[Whichkey.getAvailableMappings] Getting available mappings")
 
 	local available = {}
@@ -72,7 +76,7 @@ end
 ---Show which-key popup
 ---@param prefix string Current key capture
 ---@return nil
-function M.show(prefix)
+function M:show(prefix)
 	Log.log.df("[Whichkey.show] Showing which-key popup for prefix: %s", prefix)
 
 	if not Config.config.whichkey.enabled then
@@ -80,7 +84,7 @@ function M.show(prefix)
 		return
 	end
 
-	M.hide()
+	M:hide()
 
 	local mapping
 	if Modes.isMode(Modes.MODES.NORMAL) then
@@ -95,7 +99,7 @@ function M.show(prefix)
 		return
 	end
 
-	local available = M.getAvailableMappings(prefix, mapping)
+	local available = M:getAvailableMappings(prefix, mapping)
 
 	-- Convert to sorted array
 	local items = {}
@@ -275,17 +279,20 @@ end
 
 ---Hide which-key popup
 ---@return nil
-function M.hide()
+function M:hide()
 	Log.log.df("[Whichkey.hide] Hiding which-key popup")
 
 	State:resetWhichkeyCanvas()
-	require("lib.timer").stopWhichkey()
+	if self.whichkeyTimer then
+		self.whichkeyTimer:stop()
+		self.whichkeyTimer = nil
+	end
 end
 
 ---Schedule which-key popup to show after delay
 ---@param prefix string Current key capture
 ---@return nil
-function M.scheduleShow(prefix)
+function M:scheduleShow(prefix)
 	Log.log.df(
 		"[Whichkey.scheduleShow] Scheduling which-key popup for prefix: %s",
 		prefix
@@ -296,11 +303,11 @@ function M.scheduleShow(prefix)
 		return
 	end
 
-	M.hide()
+	M:hide()
 
 	local delay = Config.config.whichkey.delay or 0.5
-	State.state.whichkeyTimer = hs.timer.doAfter(delay, function()
-		M.show(prefix)
+	self.whichkeyTimer = hs.timer.doAfter(delay, function()
+		M:show(prefix)
 	end)
 end
 

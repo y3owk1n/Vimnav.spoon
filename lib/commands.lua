@@ -78,7 +78,7 @@ function M.showHelp()
 	Log.log.df("[Commands.showHelp] Showing help for whichkey")
 
 	State.state.showingHelp = true
-	require("lib.whichkey").show("")
+	require("lib.whichkey"):show("")
 end
 
 ---Switches to passthrough mode

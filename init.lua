@@ -122,8 +122,8 @@ function M:start()
 
 	Watchers:startAll()
 
-	Timer.stopAll()
-	Timer.startPeriodicCleanup()
+	Timer:stopAll()
+	Timer:startPeriodicCleanup()
 	MenuBar.create()
 	Overlay.create()
 
@@ -157,7 +157,7 @@ function M:stop()
 
 	Log.log.i("[stop] Stopping Vimnav")
 
-	Timer.stopAll()
+	Timer:stopAll()
 	Watchers:stopAll()
 	EventHandler:stop()
 

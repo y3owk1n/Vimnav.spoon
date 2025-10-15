@@ -12,6 +12,10 @@ local Cleanup = require("lib.cleanup")
 
 local M = {}
 
+--------------------------------------------------------------------------------
+-- Focus
+--------------------------------------------------------------------------------
+
 ---Updates focus state (called by timer)
 ---@return nil
 local function updateFocusState()
@@ -67,14 +71,16 @@ local function updateFocusState()
 	end
 end
 
+M.focusCheckTimer = nil
+
 ---Starts focus polling
 ---@return nil
-function M.startFocusCheck()
+function M:startFocusCheck()
 	Log.log.df("[Timer.startFocusCheck] Starting focus polling")
 
-	M.stopFocusCheck()
+	M:stopFocusCheck()
 
-	State.state.focusCheckTimer = hs.timer
+	self.focusCheckTimer = hs.timer
 		.new(Config.config.focus.checkInterval or 0.1, function()
 			pcall(updateFocusState)
 		end)
@@ -82,22 +88,28 @@ function M.startFocusCheck()
 end
 
 ---Stop focus check timer
-function M.stopFocusCheck()
+function M:stopFocusCheck()
 	Log.log.df("[Timer.stopFocusCheck] Stopping focus polling")
-	if State.state.focusCheckTimer then
-		State.state.focusCheckTimer:stop()
-		State.state.focusCheckTimer = nil
+	if self.focusCheckTimer then
+		self.focusCheckTimer:stop()
+		self.focusCheckTimer = nil
 	end
 end
 
+--------------------------------------------------------------------------------
+-- Periodic Cleanup
+--------------------------------------------------------------------------------
+
+M.periodicCleanupTimer = nil
+
 ---Start Periodic cache cleanup to prevent memory leaks
 ---@return nil
-function M.startPeriodicCleanup()
+function M:startPeriodicCleanup()
 	Log.log.df("[Timer.startPeriodicCleanup] Starting periodic cache cleanup")
 
-	M.stopPeriodicCleanup()
+	M:stopPeriodicCleanup()
 
-	State.state.cleanupTimer = hs.timer
+	self.periodicCleanupTimer = hs.timer
 		.new(30, function() -- Every 30 seconds
 			-- Only clean up if we're not actively showing marks
 			if State.state.mode ~= Modes.MODES.LINKS then
@@ -112,32 +124,21 @@ end
 
 ---Stop cleanup timer
 ---@return nil
-function M.stopPeriodicCleanup()
+function M:stopPeriodicCleanup()
 	Log.log.df("[Timer.stopCleanup] Stopped")
-	if State.state.cleanupTimer then
-		State.state.cleanupTimer:stop()
-		State.state.cleanupTimer = nil
-	end
-end
-
----Stop which-key timer
----@return nil
-function M.stopWhichkey()
-	Log.log.df("[Timer.stopWhichkey] Stopped")
-	if State.state.whichkeyTimer then
-		State.state.whichkeyTimer:stop()
-		State.state.whichkeyTimer = nil
+	if self.periodicCleanupTimer then
+		self.periodicCleanupTimer:stop()
+		self.periodicCleanupTimer = nil
 	end
 end
 
 ---Stop all timers
 ---@return nil
-function M.stopAll()
+function M:stopAll()
 	Log.log.df("[TimerManager.stopAll] Stopping all timers")
 
-	M.stopFocusCheck()
-	M.stopPeriodicCleanup()
-	M.stopWhichkey()
+	M:stopFocusCheck()
+	M:stopPeriodicCleanup()
 end
 
 return M
