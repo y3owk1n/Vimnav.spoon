@@ -7,6 +7,7 @@ local State = require("lib.state")
 local Log = require("lib.log")
 local Elements = require("lib.elements")
 local Modes = require("lib.modes")
+local Mappings = require("lib.mappings")
 
 local M = {}
 
@@ -158,16 +159,16 @@ function M:draw()
 
 	local captureLen = #State.state.linkCapture
 	local elementsToDraw = {}
-	local template = M.getMarkTemplate()
+	local template = M:getMarkTemplate()
 
 	local count = 0
 	for i = 1, #self.marks do
-		if count >= #State.state.allCombinations then
+		if count >= #Mappings.allCombinations then
 			break
 		end
 
 		local mark = self.marks[i]
-		local markText = State.state.allCombinations[i]:upper()
+		local markText = Mappings.allCombinations[i]:upper()
 
 		if
 			captureLen == 0
@@ -317,7 +318,7 @@ end
 function M:click(combination)
 	Log.log.df("[Marks.click] Clicking mark: %s", combination)
 
-	for i, c in ipairs(State.state.allCombinations) do
+	for i, c in ipairs(Mappings.allCombinations) do
 		if
 			c == combination
 			and self.marks[i]

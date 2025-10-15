@@ -6,12 +6,18 @@ local Config = require("lib.config")
 
 local M = {}
 
+--------------------------------------------------------------------------------
+-- Combinations
+--------------------------------------------------------------------------------
+
+M.allCombinations = {}
+
 ---Generates all combinations of letters
 ---@return nil
-function M.generateCombinations()
+function M:generateCombinations()
 	Log.log.df("[Mappings.generateCombinations] Generating combinations")
 
-	if #State.state.allCombinations > 0 then
+	if #self.allCombinations > 0 then
 		Log.log.df(
 			"[Mappings.generateCombinations] Already generated combinations"
 		)
@@ -32,10 +38,10 @@ function M.generateCombinations()
 	for i = 1, #chars do
 		for j = 1, #chars do
 			table.insert(
-				State.state.allCombinations,
+				self.allCombinations,
 				chars:sub(i, i) .. chars:sub(j, j)
 			)
-			if #State.state.allCombinations >= State.state.maxElements then
+			if #self.allCombinations >= State.state.maxElements then
 				Log.log.df(
 					"[Mappings.generateCombinations] Reached max combinations"
 				)
@@ -45,20 +51,27 @@ function M.generateCombinations()
 	end
 	Log.log.df(
 		"[Mappings.generateCombinations] Generated %d combinations",
-		#State.state.allCombinations
+		#self.allCombinations
 	)
 end
 
+--------------------------------------------------------------------------------
+-- Prefixes
+--------------------------------------------------------------------------------
+
+---@type Hs.Vimnav.Mappings.MappingPrefixes
+M.mappingPrefixes = {}
+
 ---Fetches all mapping prefixes
 ---@return nil
-function M.fetchMappingPrefixes()
+function M:fetchMappingPrefixes()
 	Log.log.df("[Mappings.fetchMappingPrefixes] Fetching mapping prefixes")
 
-	State.state.mappingPrefixes = {}
-	State.state.mappingPrefixes.normal = {}
-	State.state.mappingPrefixes.visual = {}
-	State.state.mappingPrefixes.insertNormal = {}
-	State.state.mappingPrefixes.insertVisual = {}
+	self.mappingPrefixes = {}
+	self.mappingPrefixes.normal = {}
+	self.mappingPrefixes.visual = {}
+	self.mappingPrefixes.insertNormal = {}
+	self.mappingPrefixes.insertVisual = {}
 
 	local leaderKey = Config.config.leader.key or " "
 
@@ -95,22 +108,16 @@ function M.fetchMappingPrefixes()
 		end
 	end
 
-	addLeaderPrefixes(
-		Config.config.mapping.normal,
-		State.state.mappingPrefixes.normal
-	)
+	addLeaderPrefixes(Config.config.mapping.normal, self.mappingPrefixes.normal)
 	addLeaderPrefixes(
 		Config.config.mapping.insertNormal,
-		State.state.mappingPrefixes.insertNormal
+		self.mappingPrefixes.insertNormal
 	)
 	addLeaderPrefixes(
 		Config.config.mapping.insertVisual,
-		State.state.mappingPrefixes.insertVisual
+		self.mappingPrefixes.insertVisual
 	)
-	addLeaderPrefixes(
-		Config.config.mapping.visual,
-		State.state.mappingPrefixes.visual
-	)
+	addLeaderPrefixes(Config.config.mapping.visual, self.mappingPrefixes.visual)
 
 	Log.log.df("[Mappings.fetchMappingPrefixes] Fetched mapping prefixes")
 end

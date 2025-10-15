@@ -110,8 +110,6 @@ local M = {}
 ---@field keyCapture string|nil Multi character input
 ---@field linkCapture string Link capture state
 ---@field lastEscape number Last escape key press time
----@field mappingPrefixes Hs.Vimnav.State.MappingPrefixes Mapping prefixes
----@field allCombinations string[] All combinations
 ---@field onClickCallback fun(any)|nil On click callback for marks
 ---@field focusCachedResult boolean Focus cached result
 ---@field focusLastElement table|string|nil Focus last element
@@ -120,7 +118,7 @@ local M = {}
 ---@field leaderCapture string Captured keys after leader
 ---@field showingHelp boolean Whether the help popup is currently showing
 
----@class Hs.Vimnav.State.MappingPrefixes
+---@class Hs.Vimnav.Mappings.MappingPrefixes
 ---@field normal table<string, boolean> Normal mode mappings
 ---@field visual table<string, boolean> Visual mode mappings
 ---@field insertNormal table<string, boolean> Insert normal mode mappings

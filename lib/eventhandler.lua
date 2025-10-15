@@ -12,6 +12,7 @@ local Cleanup = require("lib.cleanup")
 local Actions = require("lib.actions")
 local Elements = require("lib.elements")
 local Whichkey = require("lib.whichkey")
+local Mappings = require("lib.mappings")
 
 local M = {}
 
@@ -38,11 +39,11 @@ function M.handleVimInput(char, opts)
 
 		State.state.linkCapture = State.state.linkCapture .. char:upper()
 		for i, _ in ipairs(require("lib.marks").marks) do
-			if i > #State.state.allCombinations then
+			if i > #Mappings.allCombinations then
 				break
 			end
 
-			local markText = State.state.allCombinations[i]:upper()
+			local markText = Mappings.allCombinations[i]:upper()
 			if markText == State.state.linkCapture then
 				Log.log.df(
 					"[EventHandler.handleVimInput] Clicking mark: %s",
@@ -117,22 +118,22 @@ function M.handleVimInput(char, opts)
 
 	if Modes.isMode(Modes.MODES.NORMAL) then
 		mapping = Config.config.mapping.normal[State.state.keyCapture]
-		prefixes = State.state.mappingPrefixes.normal
+		prefixes = Mappings.mappingPrefixes.normal
 	end
 
 	if Modes.isMode(Modes.MODES.INSERT_NORMAL) then
 		mapping = Config.config.mapping.insertNormal[State.state.keyCapture]
-		prefixes = State.state.mappingPrefixes.insertNormal
+		prefixes = Mappings.mappingPrefixes.insertNormal
 	end
 
 	if Modes.isMode(Modes.MODES.INSERT_VISUAL) then
 		mapping = Config.config.mapping.insertVisual[State.state.keyCapture]
-		prefixes = State.state.mappingPrefixes.insertVisual
+		prefixes = Mappings.mappingPrefixes.insertVisual
 	end
 
 	if Modes.isMode(Modes.MODES.VISUAL) then
 		mapping = Config.config.mapping.visual[State.state.keyCapture]
-		prefixes = State.state.mappingPrefixes.visual
+		prefixes = Mappings.mappingPrefixes.visual
 	end
 
 	if mapping and type(mapping) == "table" then

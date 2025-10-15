@@ -115,8 +115,8 @@ function M:start()
 	State:new()
 	EventHandler:new()
 
-	Mappings.fetchMappingPrefixes()
-	Mappings.generateCombinations()
+	Mappings:fetchMappingPrefixes()
+	Mappings:generateCombinations()
 
 	Roles:new() -- Initialize role maps for performance
 
