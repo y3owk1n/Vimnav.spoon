@@ -1,6 +1,5 @@
 ---@diagnostic disable: undefined-global
 
-local State = require("lib.state")
 local Log = require("lib.log")
 local Config = require("lib.config")
 
@@ -10,7 +9,10 @@ local M = {}
 -- Combinations
 --------------------------------------------------------------------------------
 
+---@type string[]
 M.allCombinations = {}
+
+M.maxElements = 0
 
 ---Generates all combinations of letters
 ---@return nil
@@ -33,7 +35,7 @@ function M:generateCombinations()
 		return
 	end
 
-	State.state.maxElements = #chars * #chars
+	self.maxElements = #chars * #chars
 
 	for i = 1, #chars do
 		for j = 1, #chars do
@@ -41,7 +43,7 @@ function M:generateCombinations()
 				self.allCombinations,
 				chars:sub(i, i) .. chars:sub(j, j)
 			)
-			if #self.allCombinations >= State.state.maxElements then
+			if #self.allCombinations >= self.maxElements then
 				Log.log.df(
 					"[Mappings.generateCombinations] Reached max combinations"
 				)

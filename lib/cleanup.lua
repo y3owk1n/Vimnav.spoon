@@ -1,6 +1,5 @@
 ---@diagnostic disable: undefined-global
 
-local State = require("lib.state")
 local Log = require("lib.log")
 local Cache = require("lib.cache")
 local Config = require("lib.config")
@@ -11,7 +10,7 @@ local M = {}
 ---@return nil
 function M.light()
 	Log.log.df("[CleanupManager.light] Performing light cleanup")
-	State:resetInput()
+	require("lib.eventhandler"):resetAllCaptures()
 end
 
 ---Medium cleanup - clears UI elements and focus state
@@ -27,7 +26,7 @@ function M.medium()
 	require("lib.whichkey"):hide()
 
 	-- Reset focus state
-	State:resetFocus()
+	require("lib.timer"):resetFocus()
 end
 
 ---Heavy cleanup - clears caches and forces GC
@@ -107,14 +106,10 @@ end
 function M.onCommandComplete()
 	Log.log.df("[CleanupManager.onCommandComplete] Command complete cleanup")
 
-	State:resetLeader()
-	State:resetKeyCapture()
+	require("lib.eventhandler"):resetLeader()
+	require("lib.eventhandler"):resetKeyCapture()
 
-	if State.state.showingHelp then
-		State:resetHelp()
-	else
-		require("lib.whichkey"):hide()
-	end
+	require("lib.whichkey"):hide()
 end
 
 ---Cleanup when escape is pressed
@@ -124,8 +119,11 @@ function M.onEscape()
 
 	M.light()
 	require("lib.whichkey"):hide()
-	require("lib.menubar"):setTitle(State.state.mode)
-	require("lib.overlay"):update(State.state.mode)
+
+	local Modes = require("lib.modes")
+
+	require("lib.menubar"):setTitle(Modes.mode)
+	require("lib.overlay"):update(Modes.mode)
 end
 
 ---Cleanup on screen change
@@ -137,14 +135,13 @@ function M.onScreenChange()
 
 	local Overlay = require("lib.overlay")
 
-	if
-		Config.config.overlay.enabled
-		and State.state.mode ~= require("lib.modes").MODES.DISABLED
-	then
+	local Modes = require("lib.modes")
+
+	if Config.config.overlay.enabled and Modes.mode ~= Modes.MODES.DISABLED then
 		Overlay:destroy()
 		hs.timer.doAfter(0.1, function()
 			Overlay:create()
-			Overlay:update(State.mode)
+			Overlay:update(Modes.mode)
 		end)
 	end
 

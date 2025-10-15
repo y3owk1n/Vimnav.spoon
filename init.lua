@@ -28,7 +28,6 @@ package.path = package.path
 --------------------------------------------------------------------------------
 
 local Log = require("lib.log")
-local State = require("lib.state")
 local Modes = require("lib.modes")
 local Utils = require("lib.utils")
 local Config = require("lib.config")
@@ -112,7 +111,6 @@ function M:start()
 	end
 
 	Cache:new()
-	State:new()
 	EventHandler:new()
 
 	Mappings:fetchMappingPrefixes()
@@ -135,10 +133,10 @@ function M:start()
 			currentApp:name()
 		)
 	then
-		Modes.setModeDisabled()
+		Modes:setModeDisabled()
 		Marks:clear()
 	else
-		Modes.setModeNormal()
+		Modes:setModeNormal()
 		Marks:clear()
 	end
 
@@ -170,8 +168,6 @@ function M:stop()
 	-- reset electron cache as well
 	Cache:clearElectron()
 
-	State:resetAll()
-
 	self._running = false
 	Log.log.i("[stop] Vimnav stopped")
 
@@ -198,7 +194,6 @@ end
 function M:debug()
 	return {
 		config = Config.config,
-		state = State.state,
 		caches = Cache.cache,
 	}
 end

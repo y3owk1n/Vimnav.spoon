@@ -7,17 +7,8 @@ local M = {}
 
 ---@type Hs.Vimnav.State
 local defaultState = {
-	mode = 1,
-	keyCapture = nil,
-	linkCapture = "",
-	lastEscape = 0,
-	onClickCallback = nil,
 	focusCachedResult = false,
 	focusLastElement = nil,
-	maxElements = 0,
-	leaderPressed = false,
-	leaderCapture = "",
-	showingHelp = false,
 }
 
 ---@type Hs.Vimnav.State
@@ -29,53 +20,6 @@ function M:new()
 	Log.log.df("[State:new] Creating state")
 
 	self.state = Utils.deepCopy(defaultState)
-end
-
----Reset key capture state
----@return nil
-function M:resetKeyCapture()
-	Log.log.df("[State:resetKeyCapture] Resetting key capture")
-	self.state.keyCapture = nil
-end
-
----Reset leader state
----@return nil
-function M:resetLeader()
-	Log.log.df("[State:resetLeader] Resetting leader")
-	self.state.leaderPressed = false
-	self.state.leaderCapture = ""
-end
-
----Reset link capture state
----@return nil
-function M:resetLinkCapture()
-	Log.log.df("[State:resetLinkCapture] Resetting link capture")
-	self.state.linkCapture = ""
-end
-
----Reset focus state
----@return nil
-function M:resetFocus()
-	Log.log.df("[State:resetFocus] Resetting focus")
-	self.state.focusCachedResult = false
-	self.state.focusLastElement = nil
-end
-
----Reset help state
----@return nil
-function M:resetHelp()
-	Log.log.df("[State:resetHelp] Resetting help")
-	self.state.showingHelp = false
-end
-
----Reset all input-related state (key, leader, link capture)
----@return nil
-function M:resetInput()
-	Log.log.df("[State:resetInput] Resetting input state")
-	M:resetKeyCapture()
-	M:resetLeader()
-	M:resetLinkCapture()
-	M:resetHelp()
 end
 
 ---Reset all state completely

@@ -21,9 +21,14 @@ end
 ---@param key string The key to use for the cache
 ---@param factory fun(): Hs.Vimnav.Element|nil Factory function to create the element
 ---@param force? boolean If true, the element will be refreshed
+---@param silent? boolean If true, no log messages will be printed
 ---@return Hs.Vimnav.Element|nil
-function M:getElement(key, factory, force)
-	Log.log.df("[Cache.getElement] Getting element: %s", key)
+function M:getElement(key, factory, force, silent)
+	silent = silent or false
+
+	if not silent then
+		Log.log.df("[Cache.getElement] Getting element: %s", key)
+	end
 
 	force = force or false
 
@@ -35,7 +40,9 @@ function M:getElement(key, factory, force)
 		and self.cache.elements[key]:isValid()
 		and not force
 	then
-		Log.log.df("[Cache.getElement] Found element in cache: %s", key)
+		if not silent then
+			Log.log.df("[Cache.getElement] Found element in cache: %s", key)
+		end
 		return self.cache.elements[key]
 	end
 
@@ -51,16 +58,23 @@ end
 ---@param element Hs.Vimnav.Element The element to get the attribute from
 ---@param attributeName string The attribute to get
 ---@param force? boolean If true, the attribute will be refreshed
+---@param silent? boolean If true, no log messages will be printed
 ---@return Hs.Vimnav.Element|nil
-function M:getAttribute(element, attributeName, force)
-	Log.log.df(
-		"[Cache.getAttribute] Getting attribute: %s for element: %s",
-		attributeName,
-		tostring(element)
-	)
+function M:getAttribute(element, attributeName, force, silent)
+	silent = silent or false
+
+	if not silent then
+		Log.log.df(
+			"[Cache.getAttribute] Getting attribute: %s for element: %s",
+			attributeName,
+			tostring(element)
+		)
+	end
 
 	if not element then
-		Log.log.ef("[Cache.getAttribute] No element found")
+		if not silent then
+			Log.log.ef("[Cache.getAttribute] No element found")
+		end
 		return nil
 	end
 
