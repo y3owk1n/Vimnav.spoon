@@ -77,7 +77,7 @@ function M.tblContains(tbl, val)
 	return false
 end
 
-local eventSourceIgnoreSignature = 0xDEADBEEFDEADBEEF -- 64-bit value
+M.eventSourceIgnoreSignature = 0xDEADBEEFDEADBEEF -- 64-bit value
 
 ---Custom keyStroke function
 ---This is a modified version that will send a special userData to the eventloop
@@ -97,11 +97,11 @@ function M.keyStroke(mods, key, delay, application)
 
 	dn:setProperty(
 		hs.eventtap.event.properties.eventSourceUserData,
-		eventSourceIgnoreSignature
+		M.eventSourceIgnoreSignature
 	)
 	up:setProperty(
 		hs.eventtap.event.properties.eventSourceUserData,
-		eventSourceIgnoreSignature
+		M.eventSourceIgnoreSignature
 	)
 
 	dn:post(application)

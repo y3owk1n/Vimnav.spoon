@@ -176,6 +176,9 @@ local M = {}
 ---@field type? string "left"|"right"
 ---@field doubleClick? boolean
 
+---@class Hs.Vimnav.EventHandler.HandleVimInputOpts
+---@field modifiers? table
+
 ---@alias Hs.Vimnav.Element table|string
 
 ---@alias Hs.Vimnav.Modifier "cmd"|"ctrl"|"alt"|"shift"|"fn"
