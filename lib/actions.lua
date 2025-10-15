@@ -1,7 +1,6 @@
 ---@diagnostic disable: undefined-global
 
 local Config = require("lib.config")
-local State = require("lib.state")
 local Log = require("lib.log")
 local Utils = require("lib.utils")
 
@@ -172,12 +171,14 @@ end
 ---Force unfocus
 ---@return nil
 function M.forceUnfocus()
-	if State.state.focusLastElement then
-		State.state.focusLastElement:setAttributeValue("AXFocused", false)
+	local Timer = require("lib.timer")
+
+	if Timer.focusLastElement then
+		Timer.focusLastElement:setAttributeValue("AXFocused", false)
 		hs.alert.show("Force unfocused!")
 
 		-- Reset focus state
-		State:resetFocus()
+		Timer:resetFocus()
 
 		Log.log.df("[Actions.forceUnfocus] Force unfocused!")
 	else

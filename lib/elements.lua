@@ -5,7 +5,6 @@ local Cache = require("lib.cache")
 local Log = require("lib.log")
 local Utils = require("lib.utils")
 local Roles = require("lib.roles")
-local State = require("lib.state")
 local Async = require("lib.async")
 
 local M = {}
@@ -21,7 +20,7 @@ function M.getApp(force, silent)
 
 	return Cache:getElement("app", function()
 		return hs.application.frontmostApplication()
-	end, force)
+	end, force, silent)
 end
 
 ---Returns the application element for AXUIElement
@@ -36,31 +35,37 @@ function M.getAxApp(force, silent)
 	return Cache:getElement("axApp", function()
 		local app = M.getApp(force, silent)
 		return app and hs.axuielement.applicationElement(app)
-	end, force)
+	end, force, silent)
 end
 
 ---Returns the window element
 ---@param force? boolean If true, the element will be refreshed
+---@param silent? boolean If true, no log messages will be printed
 ---@return Hs.Vimnav.Element|nil
-function M.getWindow(force)
-	Log.log.df("[Elements.getWindow] Getting window")
+function M.getWindow(force, silent)
+	if not silent then
+		Log.log.df("[Elements.getWindow] Getting window")
+	end
 
 	return Cache:getElement("window", function()
-		local app = M.getApp(force)
+		local app = M.getApp(force, silent)
 		return app and app:focusedWindow()
-	end, force)
+	end, force, silent)
 end
 
 ---Returns the window element for AXUIElement
 ---@param force? boolean If true, the element will be refreshed
+---@param silent? boolean If true, no log messages will be printed
 ---@return Hs.Vimnav.Element|nil
-function M.getAxWindow(force)
-	Log.log.df("[Elements.getAxWindow] Getting AXWindow")
+function M.getAxWindow(force, silent)
+	if not silent then
+		Log.log.df("[Elements.getAxWindow] Getting AXWindow")
+	end
 
 	return Cache:getElement("axWindow", function()
-		local window = M.getWindow(force)
+		local window = M.getWindow(force, silent)
 		return window and hs.axuielement.windowElement(window)
-	end, force)
+	end, force, silent)
 end
 
 ---Returns the focused element for AXUIElement
@@ -74,51 +79,66 @@ function M.getAxFocusedElement(force, silent)
 
 	return Cache:getElement("axFocusedElement", function()
 		local axApp = M.getAxApp(force, silent)
-		return axApp and Cache:getAttribute(axApp, "AXFocusedUIElement", force)
-	end, force)
+		return axApp
+			and Cache:getAttribute(axApp, "AXFocusedUIElement", force, silent)
+	end, force, silent)
 end
 
 ---Returns the web area element for AXUIElement
 ---@param force? boolean If true, the element will be refreshed
+---@param silent? boolean If true, no log messages will be printed
 ---@return Hs.Vimnav.Element|nil
-function M.getAxWebArea(force)
-	Log.log.df("[Elements.getAxWebArea] Getting AXWebArea")
+function M.getAxWebArea(force, silent)
+	if not silent then
+		Log.log.df("[Elements.getAxWebArea] Getting AXWebArea")
+	end
 
 	return Cache:getElement("axWebArea", function()
-		local axWindow = M.getAxWindow(force)
+		local axWindow = M.getAxWindow(force, silent)
 		return axWindow and M.findAxRole(axWindow, "AXWebArea", force)
-	end, force)
+	end, force, silent)
 end
 
 ---Returns the menu bar element for AXUIElement
 ---@param force? boolean If true, the element will be refreshed
+---@param silent? boolean If true, no log messages will be printed
 ---@return Hs.Vimnav.Element|nil
-function M.getAxMenuBar(force)
-	Log.log.df("[Elements.getAxMenuBar] Getting AXMenuBar")
+function M.getAxMenuBar(force, silent)
+	if not silent then
+		Log.log.df("[Elements.getAxMenuBar] Getting AXMenuBar")
+	end
 
 	return Cache:getElement("axMenuBar", function()
-		local axApp = M.getAxApp(force)
+		local axApp = M.getAxApp(force, silent)
 		return axApp and Cache:getAttribute(axApp, "AXMenuBar", force)
-	end, force)
+	end, force, silent)
 end
 
 ---Returns the full area element
 ---@param force? boolean If true, the element will be refreshed
+---@param silent? boolean If true, no log messages will be printed
 ---@return Hs.Vimnav.Element|nil
-function M.getFullArea(force)
-	Log.log.df("[Elements.getFullArea] Getting full area")
+function M.getFullArea(force, silent)
+	if not silent then
+		Log.log.df("[Elements.getFullArea] Getting full area")
+	end
 
 	return Cache:getElement("fullArea", function()
-		local axWin = M.getAxWindow(force)
-		local axMenuBar = M.getAxMenuBar(force)
+		local axWin = M.getAxWindow(force, silent)
+		local axMenuBar = M.getAxMenuBar(force, silent)
 
 		if not axWin or not axMenuBar then
 			return nil
 		end
 
-		local winFrame = Cache:getAttribute(axWin, "AXFrame", force) or {}
-		local menuBarFrame = Cache:getAttribute(axMenuBar, "AXFrame", force)
+		local winFrame = Cache:getAttribute(axWin, "AXFrame", force, silent)
 			or {}
+		local menuBarFrame = Cache:getAttribute(
+			axMenuBar,
+			"AXFrame",
+			force,
+			silent
+		) or {}
 
 		return {
 			x = 0,
@@ -126,7 +146,7 @@ function M.getFullArea(force)
 			w = menuBarFrame.w,
 			h = winFrame.h + winFrame.y + menuBarFrame.h,
 		}
-	end, force)
+	end, force, silent)
 end
 
 ---Finds an element with a specific AXRole
@@ -543,7 +563,7 @@ function M.findClickableElements(axApp, opts)
 	Async.traverseElements(axApp, {
 		matcher = _matcher,
 		callback = callback,
-		maxResults = State.state.maxElements,
+		maxResults = require("lib.mappings").maxElements,
 	})
 end
 
@@ -584,11 +604,11 @@ function M.findInputElements(axApp, opts)
 				"[Elements.findInputElements] Result count is 1, auto-clicking"
 			)
 
-			State.state.onClickCallback({
+			require("lib.marks").onClickCallback({
 				element = results[1],
 				frame = Cache:getAttribute(results[1], "AXFrame"),
 			})
-			require("lib.modes").setModeNormal()
+			require("lib.modes"):setModeNormal()
 			require("lib.marks"):clear()
 		else
 			Log.log.df(

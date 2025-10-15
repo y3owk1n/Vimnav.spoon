@@ -3,7 +3,6 @@
 local Config = require("lib.config")
 local Cache = require("lib.cache")
 local Utils = require("lib.utils")
-local State = require("lib.state")
 local Log = require("lib.log")
 local Elements = require("lib.elements")
 local Modes = require("lib.modes")
@@ -11,8 +10,14 @@ local Mappings = require("lib.mappings")
 
 local M = {}
 
+---@type table
 M.canvas = nil
+
+---@type table
 M.marks = {}
+
+---@type fun(any): nil
+M.onClickCallback = nil
 
 ---Clears the marks
 ---@return nil
@@ -26,7 +31,7 @@ function M:clear()
 
 	self.marks = {}
 
-	State:resetLinkCapture()
+	require("lib.eventhandler"):resetLinkCapture()
 	Cache:clearMarks()
 end
 
@@ -36,8 +41,8 @@ end
 function M:add(element)
 	Log.log.df("[Marks.add] Adding mark")
 
-	if #self.marks >= State.state.maxElements then
-		Log.log.df("[Marks.add] Reached max marks: %d", State.state.maxElements)
+	if #self.marks >= Mappings.maxElements then
+		Log.log.df("[Marks.add] Reached max marks: %d", Mappings.maxElements)
 		return
 	end
 
@@ -77,7 +82,7 @@ function M:show(opts)
 
 		local function _callback(elements)
 			-- Convert to marks
-			for i = 1, math.min(#elements, State.state.maxElements) do
+			for i = 1, math.min(#elements, Mappings.maxElements) do
 				M:add(elements[i])
 			end
 
@@ -87,7 +92,7 @@ function M:show(opts)
 			else
 				Log.log.df("[Marks.show] No links found")
 				hs.alert.show("No links found", nil, nil, 1)
-				Modes.setModeNormal()
+				Modes:setModeNormal()
 				M:clear()
 			end
 		end
@@ -110,7 +115,7 @@ function M:show(opts)
 			else
 				Log.log.df("[Marks.show] No inputs found")
 				hs.alert.show("No inputs found", nil, nil, 1)
-				Modes.setModeNormal()
+				Modes:setModeNormal()
 				M:clear()
 			end
 		end
@@ -132,7 +137,7 @@ function M:show(opts)
 			else
 				Log.log.df("[Marks.show] No images found")
 				hs.alert.show("No images found", nil, nil, 1)
-				Modes.setModeNormal()
+				Modes:setModeNormal()
 				M:clear()
 			end
 		end
@@ -157,7 +162,9 @@ function M:draw()
 		self.canvas = hs.canvas.new(frame)
 	end
 
-	local captureLen = #State.state.linkCapture
+	local linkCapture = require("lib.eventhandler").linkCapture
+
+	local captureLen = #linkCapture
 	local elementsToDraw = {}
 	local template = M:getMarkTemplate()
 
@@ -170,10 +177,7 @@ function M:draw()
 		local mark = self.marks[i]
 		local markText = Mappings.allCombinations[i]:upper()
 
-		if
-			captureLen == 0
-			or markText:sub(1, captureLen) == State.state.linkCapture
-		then
+		if captureLen == 0 or markText:sub(1, captureLen) == linkCapture then
 			-- Clone template and update coordinates
 			local bg = {}
 			local text = {}
@@ -319,13 +323,8 @@ function M:click(combination)
 	Log.log.df("[Marks.click] Clicking mark: %s", combination)
 
 	for i, c in ipairs(Mappings.allCombinations) do
-		if
-			c == combination
-			and self.marks[i]
-			and State.state.onClickCallback
-		then
-			local success, err =
-				pcall(State.state.onClickCallback, self.marks[i])
+		if c == combination and self.marks[i] and self.onClickCallback then
+			local success, err = pcall(self.onClickCallback, self.marks[i])
 			if not success then
 				Log.log.ef(
 					"[Marks.click] Error clicking element: " .. tostring(err)

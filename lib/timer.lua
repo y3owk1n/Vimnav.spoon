@@ -1,7 +1,6 @@
 ---@diagnostic disable: undefined-global
 
 local Elements = require("lib.elements")
-local State = require("lib.state")
 local Cache = require("lib.cache")
 local Modes = require("lib.modes")
 local Roles = require("lib.roles")
@@ -16,36 +15,43 @@ local M = {}
 -- Focus
 --------------------------------------------------------------------------------
 
+---@type boolean
+M.focusCachedResult = false
+---@type table|string|nil
+M.focusLastElement = nil
+
+M.focusCheckTimer = nil
+
 ---Updates focus state (called by timer)
 ---@return nil
-local function updateFocusState()
+function M:updateFocusState()
 	local focusedElement = Elements.getAxFocusedElement(true, true)
 
 	-- Quick check: if same element, skip
-	if focusedElement == State.state.focusLastElement then
+	if focusedElement == self.focusLastElement then
 		return
 	end
 
-	State.state.focusLastElement = focusedElement
+	self.focusLastElement = focusedElement
 
 	if focusedElement then
 		local role = Cache:getAttribute(focusedElement, "AXRole")
 		local isEditable = role and Roles:isEditable(role) or false
 
-		if isEditable ~= State.state.focusCachedResult then
-			State.state.focusCachedResult = isEditable
+		if isEditable ~= self.focusCachedResult then
+			self.focusCachedResult = isEditable
 
 			-- Update mode based on focus change
-			if isEditable and Modes.isMode(Modes.MODES.NORMAL) then
-				Modes.setModeInsert()
+			if isEditable and Modes:isMode(Modes.MODES.NORMAL) then
+				Modes:setModeInsert()
 				Marks:clear()
 			elseif not isEditable then
 				if
-					Modes.isMode(Modes.MODES.INSERT)
-					or Modes.isMode(Modes.MODES.INSERT_NORMAL)
-					or Modes.isMode(Modes.MODES.INSERT_VISUAL)
+					Modes:isMode(Modes.MODES.INSERT)
+					or Modes:isMode(Modes.MODES.INSERT_NORMAL)
+					or Modes:isMode(Modes.MODES.INSERT_VISUAL)
 				then
-					Modes.setModeNormal()
+					Modes:setModeNormal()
 					Marks:clear()
 				end
 			end
@@ -57,21 +63,27 @@ local function updateFocusState()
 			)
 		end
 	else
-		if State.state.focusCachedResult then
-			State.state.focusCachedResult = false
+		if self.focusCachedResult then
+			self.focusCachedResult = false
 			if
-				Modes.isMode(Modes.MODES.INSERT)
-				or Modes.isMode(Modes.MODES.INSERT_NORMAL)
-				or Modes.isMode(Modes.MODES.INSERT_VISUAL)
+				Modes:isMode(Modes.MODES.INSERT)
+				or Modes:isMode(Modes.MODES.INSERT_NORMAL)
+				or Modes:isMode(Modes.MODES.INSERT_VISUAL)
 			then
-				Modes.setModeNormal()
+				Modes:setModeNormal()
 				Marks:clear()
 			end
 		end
 	end
 end
 
-M.focusCheckTimer = nil
+---Reset focus state
+---@return nil
+function M:resetFocus()
+	Log.log.df("[Timer:resetFocus] Resetting focus")
+	self.focusCachedResult = false
+	self.focusLastElement = nil
+end
 
 ---Starts focus polling
 ---@return nil
@@ -82,7 +94,9 @@ function M:startFocusCheck()
 
 	self.focusCheckTimer = hs.timer
 		.new(Config.config.focus.checkInterval or 0.1, function()
-			pcall(updateFocusState)
+			pcall(function()
+				self:updateFocusState()
+			end)
 		end)
 		:start()
 end
@@ -112,7 +126,7 @@ function M:startPeriodicCleanup()
 	self.periodicCleanupTimer = hs.timer
 		.new(30, function() -- Every 30 seconds
 			-- Only clean up if we're not actively showing marks
-			if State.state.mode ~= Modes.MODES.LINKS then
+			if Modes.mode ~= Modes.MODES.LINKS then
 				Cleanup.medium()
 				Log.log.df(
 					"[Timer.setupPeriodicCleanup] Periodic cache cleanup completed"

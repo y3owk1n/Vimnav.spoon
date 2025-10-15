@@ -3,7 +3,6 @@
 local Log = require("lib.log")
 local Cache = require("lib.cache")
 local Modes = require("lib.modes")
-local State = require("lib.state")
 local Config = require("lib.config")
 local Commands = require("lib.commands")
 local Utils = require("lib.utils")
@@ -16,42 +15,79 @@ local Mappings = require("lib.mappings")
 
 local M = {}
 
+---@type string|nil
+M.keyCapture = nil
+
+---@type string
+M.linkCapture = ""
+
+---@type string
+M.leaderCapture = ""
+
+---@type boolean
+M.leaderPressed = false
+
+---Reset key capture state
+---@return nil
+function M:resetKeyCapture()
+	Log.log.df("[EventHandler:resetKeyCapture] Resetting key capture")
+	self.keyCapture = nil
+end
+
+---Reset link capture state
+---@return nil
+function M:resetLinkCapture()
+	Log.log.df("[EventHandler:resetLinkCapture] Resetting link capture")
+	self.linkCapture = ""
+end
+
+---Reset leader state
+---@return nil
+function M:resetLeader()
+	Log.log.df("[EventHandler:resetLeader] Resetting leader")
+	self.leaderPressed = false
+	self.leaderCapture = ""
+end
+
+---Reset all input-related state (key, leader, link capture)
+---@return nil
+function M:resetAllCaptures()
+	Log.log.df("[EventHandler:resetInput] Resetting input state")
+	self:resetKeyCapture()
+	self:resetLinkCapture()
+	self:resetLeader()
+end
+
 ---Handles Vim input
 ---@param char string Character to handle
 ---@param opts? Hs.Vimnav.EventHandler.HandleVimInputOpts Opts for handling Vim input
 ---@return nil
-function M.handleVimInput(char, opts)
+function M:handleVimInput(char, opts)
 	opts = opts or {}
 	local modifiers = opts.modifiers
-
-	Log.log.df(
-		"[EventHandler.handleVimInput] Handling Vim input: char=%s, mods=%s",
-		char,
-		hs.inspect(modifiers)
-	)
 
 	-- Clear element cache on every input
 	Cache:clearElements()
 
 	-- handle link capture first
-	if Modes.isMode(Modes.MODES.LINKS) then
+	if Modes:isMode(Modes.MODES.LINKS) then
 		Log.log.df("[EventHandler.handleVimInput] Links mode")
 
-		State.state.linkCapture = State.state.linkCapture .. char:upper()
+		self.linkCapture = self.linkCapture .. char:upper()
 		for i, _ in ipairs(require("lib.marks").marks) do
 			if i > #Mappings.allCombinations then
 				break
 			end
 
 			local markText = Mappings.allCombinations[i]:upper()
-			if markText == State.state.linkCapture then
+			if markText == self.linkCapture then
 				Log.log.df(
 					"[EventHandler.handleVimInput] Clicking mark: %s",
 					markText
 				)
 
 				require("lib.marks"):click(markText:lower())
-				Modes.setModeNormal()
+				Modes:setModeNormal()
 				require("lib.marks"):clear()
 				require("lib.cleanup").onCommandComplete()
 				return
@@ -61,20 +97,17 @@ function M.handleVimInput(char, opts)
 
 	-- Check if this is the leader key being pressed
 	local leaderKey = Config.config.leader.key
-	if char == leaderKey and not State.state.leaderPressed then
+	if char == leaderKey and not self.leaderPressed then
 		Log.log.df("[EventHandler.handleVimInput] Leader key pressed")
 
-		State.state.leaderPressed = true
-		State.state.leaderCapture = ""
-		State.state.keyCapture = "<leader>"
+		self.leaderPressed = true
+		self.leaderCapture = ""
+		self.keyCapture = "<leader>"
 
-		Whichkey:scheduleShow(State.state.keyCapture)
+		Whichkey:scheduleShow(self.keyCapture)
 
-		require("lib.menubar"):setTitle(
-			State.state.mode,
-			State.state.keyCapture
-		)
-		require("lib.overlay"):update(State.state.mode, State.state.keyCapture)
+		require("lib.menubar"):setTitle(Modes.mode, self.keyCapture)
+		require("lib.overlay"):update(Modes.mode, self.keyCapture)
 		return
 	end
 
@@ -87,52 +120,52 @@ function M.handleVimInput(char, opts)
 	end
 
 	-- Handle leader key sequences (including multi-char)
-	if State.state.leaderPressed then
-		State.state.leaderCapture = State.state.leaderCapture .. char
-		keyCombo = "<leader>" .. State.state.leaderCapture
+	if self.leaderPressed then
+		self.leaderCapture = self.leaderCapture .. char
+		keyCombo = "<leader>" .. self.leaderCapture
 	else
 		if modifiers and modifiers.ctrl then
 			keyCombo = "C-"
 		end
 		keyCombo = keyCombo .. char
 
-		if State.state.keyCapture then
-			State.state.keyCapture = State.state.keyCapture .. keyCombo
+		if self.keyCapture then
+			self.keyCapture = self.keyCapture .. keyCombo
 		end
 	end
 
-	if not State.state.keyCapture or State.state.leaderPressed then
-		State.state.keyCapture = keyCombo
+	if not self.keyCapture or self.leaderPressed then
+		self.keyCapture = keyCombo
 	end
 
-	if State.state.keyCapture and #State.state.keyCapture > 0 then
-		Whichkey:scheduleShow(State.state.keyCapture)
+	if self.keyCapture and #self.keyCapture > 0 then
+		Whichkey:scheduleShow(self.keyCapture)
 	end
 
-	require("lib.menubar"):setTitle(State.state.mode, State.state.keyCapture)
-	require("lib.overlay"):update(State.state.mode, State.state.keyCapture)
+	require("lib.menubar"):setTitle(Modes.mode, self.keyCapture)
+	require("lib.overlay"):update(Modes.mode, self.keyCapture)
 
 	-- Execute mapping
 	local mapping
 	local prefixes
 
-	if Modes.isMode(Modes.MODES.NORMAL) then
-		mapping = Config.config.mapping.normal[State.state.keyCapture]
+	if Modes:isMode(Modes.MODES.NORMAL) then
+		mapping = Config.config.mapping.normal[self.keyCapture]
 		prefixes = Mappings.mappingPrefixes.normal
 	end
 
-	if Modes.isMode(Modes.MODES.INSERT_NORMAL) then
-		mapping = Config.config.mapping.insertNormal[State.state.keyCapture]
+	if Modes:isMode(Modes.MODES.INSERT_NORMAL) then
+		mapping = Config.config.mapping.insertNormal[self.keyCapture]
 		prefixes = Mappings.mappingPrefixes.insertNormal
 	end
 
-	if Modes.isMode(Modes.MODES.INSERT_VISUAL) then
-		mapping = Config.config.mapping.insertVisual[State.state.keyCapture]
+	if Modes:isMode(Modes.MODES.INSERT_VISUAL) then
+		mapping = Config.config.mapping.insertVisual[self.keyCapture]
 		prefixes = Mappings.mappingPrefixes.insertVisual
 	end
 
-	if Modes.isMode(Modes.MODES.VISUAL) then
-		mapping = Config.config.mapping.visual[State.state.keyCapture]
+	if Modes:isMode(Modes.MODES.VISUAL) then
+		mapping = Config.config.mapping.visual[self.keyCapture]
 		prefixes = Mappings.mappingPrefixes.visual
 	end
 
@@ -163,10 +196,9 @@ function M.handleVimInput(char, opts)
 		end
 
 		require("lib.cleanup").onCommandComplete()
-	elseif prefixes and prefixes[State.state.keyCapture] then
+	elseif prefixes and prefixes[self.keyCapture] then
 		Log.log.df(
-			"[EventHandler.handleVimInput] Found prefix: "
-				.. State.state.keyCapture
+			"[EventHandler.handleVimInput] Found prefix: " .. self.keyCapture
 		)
 		-- Continue waiting for more keys
 	else
@@ -180,7 +212,7 @@ end
 ---@param keyCode number Key code to check
 ---@param name string Name of the key
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
-function M.isKey(keyCode, name)
+function M:isKey(keyCode, name)
 	local isKey = keyCode == hs.keycodes.map[name]
 
 	Log.log.df(
@@ -196,9 +228,9 @@ end
 ---Checks if the event is a shift-escape
 ---@param event table Event to check
 ---@return boolean isShiftEspace True if the event is a shift-escape, false otherwise
-function M.isShiftEspace(event)
+function M:isShiftEspace(event)
 	local flags = event:getFlags()
-	local isShiftEspace = flags.shift and M.isKey(event:getKeyCode(), "escape")
+	local isShiftEspace = flags.shift and M:isKey(event:getKeyCode(), "escape")
 
 	Log.log.df(
 		"[EventHandler.isShiftEspace] isShiftEspace=%s",
@@ -211,8 +243,8 @@ end
 ---Checks if the event is an escape
 ---@param event table Event to check
 ---@return boolean isEspace True if the event is an escape, false otherwise
-function M.isEspace(event)
-	local isEspace = M.isKey(event:getKeyCode(), "escape")
+function M:isEspace(event)
+	local isEspace = M:isKey(event:getKeyCode(), "escape")
 
 	Log.log.df("[EventHandler.isEspace] isEspace=%s", tostring(isEspace))
 
@@ -222,7 +254,7 @@ end
 ---Handles disabled mode
 ---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
-function M.handleDisabledMode(event)
+function M:handleDisabledMode(event)
 	Log.log.df("[EventHandler.handleDisabledMode] Handling disabled mode")
 
 	return false
@@ -231,11 +263,11 @@ end
 ---Handles passthrough mode
 ---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
-function M.handlePassthroughMode(event)
+function M:handlePassthroughMode(event)
 	Log.log.df("[EventHandler.handlePassthroughMode] Handling passthrough mode")
 
-	if M.isShiftEspace(event) then
-		Modes.setModeNormal()
+	if M:isShiftEspace(event) then
+		Modes:setModeNormal()
 		Marks:clear()
 		return true
 	end
@@ -246,22 +278,22 @@ end
 ---Handles insert mode
 ---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
-function M.handleInsertMode(event)
+function M:handleInsertMode(event)
 	Log.log.df("[EventHandler.handleInsertMode] Handling insert mode")
 
-	if M.isShiftEspace(event) then
+	if M:isShiftEspace(event) then
 		if Elements.isInBrowser() then
 			Actions.forceUnfocus()
 			hs.timer.doAfter(0.1, function()
-				Modes.setModeNormal()
+				Modes:setModeNormal()
 				Marks:clear()
 			end)
 		end
 		return true
 	end
 
-	if M.isEspace(event) then
-		Modes.setModeInsertNormal()
+	if M:isEspace(event) then
+		Modes:setModeInsertNormal()
 		Marks:clear()
 		return true
 	end
@@ -272,120 +304,120 @@ end
 ---Handles insert normal mode
 ---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
-function M.handleInsertNormalMode(event)
+function M:handleInsertNormalMode(event)
 	Log.log.df(
 		"[EventHandler.handleInsertNormalMode] Handling insert normal mode"
 	)
 
-	if M.isShiftEspace(event) then
+	if M:isShiftEspace(event) then
 		if Elements.isInBrowser() then
 			Actions.forceUnfocus()
 			hs.timer.doAfter(0.1, function()
-				Modes.setModeNormal()
+				Modes:setModeNormal()
 				Marks:clear()
 			end)
 		end
 		return true
 	end
 
-	if M.isEspace(event) then
-		if State.state.leaderPressed then
+	if M:isEspace(event) then
+		if self.leaderPressed then
 			Cleanup.onEscape()
 			return true
 		end
 	end
 
-	return M.processVimInput(event)
+	return self:processVimInput(event)
 end
 
 ---Handles insert visual mode
 ---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
-function M.handleInsertVisualMode(event)
+function M:handleInsertVisualMode(event)
 	Log.log.df(
 		"[EventHandler.handleInsertVisualMode] Handling insert visual mode"
 	)
 
-	if M.isShiftEspace(event) then
+	if M:isShiftEspace(event) then
 		if Elements.isInBrowser() then
 			Utils.keyStroke({}, "left")
 			hs.timer.doAfter(0.1, function()
 				Actions.forceUnfocus()
 			end)
 			hs.timer.doAfter(0.1, function()
-				Modes.setModeNormal()
+				Modes:setModeNormal()
 				Marks:clear()
 			end)
 		end
 		return true
 	end
 
-	if M.isEspace(event) then
-		if State.state.leaderPressed then
+	if M:isEspace(event) then
+		if self.leaderPressed then
 			Cleanup.onEscape()
 			return true
 		else
 			Utils.keyStroke({}, "right")
-			Modes.setModeInsertNormal()
+			Modes:setModeInsertNormal()
 			Marks:clear()
 			return true
 		end
 	end
 
-	return M.processVimInput(event)
+	return self:processVimInput(event)
 end
 
 ---Handles links mode
 ---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
-function M.handleLinkMode(event)
+function M:handleLinkMode(event)
 	Log.log.df("[EventHandler.handleLinkMode] Handling link mode")
 
-	if M.isEspace(event) then
-		Modes.setModeNormal()
+	if M:isEspace(event) then
+		Modes:setModeNormal()
 		Marks:clear()
 		return true
 	end
 
-	return M.processVimInput(event)
+	return self:processVimInput(event)
 end
 
 ---Handles normal mode
 ---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
-function M.handleNormalMode(event)
+function M:handleNormalMode(event)
 	Log.log.df("[EventHandler.handleNormalMode] Handling normal mode")
 
-	if M.isEspace(event) then
+	if M:isEspace(event) then
 		Cleanup.onEscape()
 		Actions.forceDeselectTextHighlights()
 		return false
 	end
 
-	return M.processVimInput(event)
+	return self:processVimInput(event)
 end
 
 ---Handles visual mode
 ---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
-function M.handleVisualMode(event)
+function M:handleVisualMode(event)
 	Log.log.df("[EventHandler.handleVisualMode] Handling visual mode")
 
-	if M.isEspace(event) then
+	if M:isEspace(event) then
 		Actions.forceDeselectTextHighlights()
-		Modes.setModeNormal()
+		Modes:setModeNormal()
 		Marks:clear()
 		Whichkey:hide()
 		return false
 	end
 
-	return M.processVimInput(event)
+	return self:processVimInput(event)
 end
 
 ---Handles vim input
 ---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
-function M.processVimInput(event)
+function M:processVimInput(event)
 	Log.log.df("[EventHandler.processVimInput] Processing Vim input")
 
 	local keyCode = event:getKeyCode()
@@ -421,12 +453,12 @@ function M.processVimInput(event)
 
 	-- Check if this is the leader key being pressed
 	local leaderKey = Config.config.leader.key or " "
-	if typedChar == leaderKey and not State.state.leaderPressed then
+	if typedChar == leaderKey and not self.leaderPressed then
 		Log.log.df(
 			"[EventHandler.processVimInput] Leader key detected, handling..."
 		)
 
-		M.handleVimInput(leaderKey, {
+		self:handleVimInput(leaderKey, {
 			modifiers = flags,
 		})
 
@@ -442,19 +474,19 @@ function M.processVimInput(event)
 
 		local modeMapping
 
-		if Modes.isMode(Modes.MODES.NORMAL) then
+		if Modes:isMode(Modes.MODES.NORMAL) then
 			modeMapping = Config.config.mapping.normal
 		end
 
-		if Modes.isMode(Modes.MODES.INSERT_NORMAL) then
+		if Modes:isMode(Modes.MODES.INSERT_NORMAL) then
 			modeMapping = Config.config.mapping.insertNormal
 		end
 
-		if Modes.isMode(Modes.MODES.INSERT_VISUAL) then
+		if Modes:isMode(Modes.MODES.INSERT_VISUAL) then
 			modeMapping = Config.config.mapping.insertVisual
 		end
 
-		if Modes.isMode(Modes.MODES.VISUAL) then
+		if Modes:isMode(Modes.MODES.VISUAL) then
 			modeMapping = Config.config.mapping.visual
 		end
 
@@ -474,7 +506,7 @@ function M.processVimInput(event)
 		end
 	end
 
-	M.handleVimInput(char, {
+	self:handleVimInput(char, {
 		modifiers = flags,
 	})
 
@@ -484,7 +516,7 @@ end
 ---Handles events
 ---@param event table Event to handle
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
-function M.process(event)
+function M:process(event)
 	Log.log.df("[EventHandler.process] Processing event")
 
 	local eventSourceIgnoreSignature = Utils.eventSourceIgnoreSignature
@@ -499,36 +531,36 @@ function M.process(event)
 		return false
 	end
 
-	if Modes.isMode(Modes.MODES.DISABLED) then
-		return M.handleDisabledMode(event)
+	if Modes:isMode(Modes.MODES.DISABLED) then
+		return self:handleDisabledMode(event)
 	end
 
-	if Modes.isMode(Modes.MODES.PASSTHROUGH) then
-		return M.handlePassthroughMode(event)
+	if Modes:isMode(Modes.MODES.PASSTHROUGH) then
+		return self:handlePassthroughMode(event)
 	end
 
-	if Modes.isMode(Modes.MODES.INSERT) then
-		return M.handleInsertMode(event)
+	if Modes:isMode(Modes.MODES.INSERT) then
+		return self:handleInsertMode(event)
 	end
 
-	if Modes.isMode(Modes.MODES.INSERT_NORMAL) then
-		return M.handleInsertNormalMode(event)
+	if Modes:isMode(Modes.MODES.INSERT_NORMAL) then
+		return self:handleInsertNormalMode(event)
 	end
 
-	if Modes.isMode(Modes.MODES.INSERT_VISUAL) then
-		return M.handleInsertVisualMode(event)
+	if Modes:isMode(Modes.MODES.INSERT_VISUAL) then
+		return self:handleInsertVisualMode(event)
 	end
 
-	if Modes.isMode(Modes.MODES.LINKS) then
-		return M.handleLinkMode(event)
+	if Modes:isMode(Modes.MODES.LINKS) then
+		return self:handleLinkMode(event)
 	end
 
-	if Modes.isMode(Modes.MODES.NORMAL) then
-		return M.handleNormalMode(event)
+	if Modes:isMode(Modes.MODES.NORMAL) then
+		return self:handleNormalMode(event)
 	end
 
-	if Modes.isMode(Modes.MODES.VISUAL) then
-		return M.handleVisualMode(event)
+	if Modes:isMode(Modes.MODES.VISUAL) then
+		return self:handleVisualMode(event)
 	end
 
 	return false
@@ -537,8 +569,12 @@ end
 M.eventLoop = nil
 
 function M:new()
-	self.eventLoop =
-		hs.eventtap.new({ hs.eventtap.event.types.keyDown }, self.process)
+	self.eventLoop = hs.eventtap.new(
+		{ hs.eventtap.event.types.keyDown },
+		function(event)
+			return M:process(event)
+		end
+	)
 end
 
 ---Starts the event loop

@@ -2,11 +2,11 @@
 
 local Actions = require("lib.actions")
 local Config = require("lib.config")
-local State = require("lib.state")
 local Utils = require("lib.utils")
 local Cache = require("lib.cache")
 local Elements = require("lib.elements")
 local Log = require("lib.log")
+local Marks = require("lib.marks")
 
 local M = {}
 
@@ -77,7 +77,6 @@ end
 function M.showHelp()
 	Log.log.df("[Commands.showHelp] Showing help for whichkey")
 
-	State.state.showingHelp = true
 	require("lib.whichkey"):show("")
 end
 
@@ -86,7 +85,7 @@ end
 function M.enterPassthroughMode()
 	Log.log.df("[Commands.enterPassthroughMode] Entering passthrough mode")
 
-	return require("lib.modes").setModePassthrough()
+	return require("lib.modes"):setModePassthrough()
 end
 
 ---Switches to insert mode
@@ -94,7 +93,7 @@ end
 function M.enterInsertMode()
 	Log.log.df("[Commands.enterInsertMode] Entering insert mode")
 
-	return require("lib.modes").setModeInsert()
+	return require("lib.modes"):setModeInsert()
 end
 
 ---Switches to insert mode and make a new line above
@@ -151,7 +150,7 @@ end
 function M.enterInsertVisualMode()
 	Log.log.df("[Commands.enterInsertVisualMode] Entering insert visual mode")
 
-	return require("lib.modes").setModeInsertVisual()
+	return require("lib.modes"):setModeInsertVisual()
 end
 
 ---Switches to visual mode
@@ -159,7 +158,7 @@ end
 function M.enterVisualMode()
 	Log.log.df("[Commands.enterVisualMode] Entering visual mode")
 
-	return require("lib.modes").setModeVisual()
+	return require("lib.modes"):setModeVisual()
 end
 
 ---Switches to insert visual mode with line selection
@@ -179,14 +178,14 @@ end
 function M.gotoLink()
 	Log.log.df("[Commands.gotoLink] Going to link")
 
-	local ok = require("lib.modes").setModeLink()
+	local ok = require("lib.modes"):setModeLink()
 
 	if not ok then
 		Log.log.ef("[Commands.gotoLink] Failed to set mode to link")
 		return
 	end
 
-	State.state.onClickCallback = function(mark)
+	Marks.onClickCallback = function(mark)
 		Log.log.df("[Commands.gotoLink] Click callback")
 		local element = mark.element
 
@@ -211,14 +210,14 @@ end
 function M.gotoInput()
 	Log.log.df("[Commands.gotoInput] Going to input")
 
-	local ok = require("lib.modes").setModeLink()
+	local ok = require("lib.modes"):setModeLink()
 
 	if not ok then
 		Log.log.ef("[Commands.gotoInput] Failed to set mode to link")
 		return
 	end
 
-	State.state.onClickCallback = function(mark)
+	Marks.onClickCallback = function(mark)
 		Log.log.df("[Commands.gotoInput] Click callback")
 		local element = mark.element
 
@@ -245,14 +244,14 @@ end
 ---@return nil
 function M.doubleLeftClick()
 	Log.log.df("[Commands.doubleLeftClick] Double left click")
-	local ok = require("lib.modes").setModeLink()
+	local ok = require("lib.modes"):setModeLink()
 
 	if not ok then
 		Log.log.ef("[Commands.doubleLeftClick] Failed to set mode to link")
 		return
 	end
 
-	State.state.onClickCallback = function(mark)
+	Marks.onClickCallback = function(mark)
 		Log.log.df("[Commands.doubleLeftClick] Click callback")
 		local frame = mark.frame
 
@@ -269,14 +268,14 @@ end
 ---@return nil
 function M.rightClick()
 	Log.log.df("[Commands.rightClick] Right click")
-	local ok = require("lib.modes").setModeLink()
+	local ok = require("lib.modes"):setModeLink()
 
 	if not ok then
 		Log.log.ef("[Commands.rightClick] Failed to set mode to link")
 		return
 	end
 
-	State.state.onClickCallback = function(mark)
+	Marks.onClickCallback = function(mark)
 		Log.log.df("[Commands.rightClick] Click callback")
 		local element = mark.element
 
@@ -307,14 +306,14 @@ function M.gotoLinkNewTab()
 		return
 	end
 
-	local ok = require("lib.modes").setModeLink()
+	local ok = require("lib.modes"):setModeLink()
 
 	if not ok then
 		Log.log.ef("[Commands.gotoLinkNewTab] Failed to set mode to link")
 		return
 	end
 
-	State.state.onClickCallback = function(mark)
+	Marks.onClickCallback = function(mark)
 		Log.log.df("[Commands.gotoLinkNewTab] Click callback")
 		local url = Cache:getAttribute(mark.element, "AXURL")
 		if url then
@@ -339,14 +338,14 @@ function M.downloadImage()
 		return
 	end
 
-	local ok = require("lib.modes").setModeLink()
+	local ok = require("lib.modes"):setModeLink()
 
 	if not ok then
 		Log.log.ef("[Commands.downloadImage] Failed to set mode to link")
 		return
 	end
 
-	State.state.onClickCallback = function(mark)
+	Marks.onClickCallback = function(mark)
 		Log.log.df("[Commands.downloadImage] Click callback")
 
 		local element = mark.element
@@ -383,14 +382,14 @@ end
 function M.moveMouseToLink()
 	Log.log.df("[Commands.moveMouseToLink] Moving mouse to link")
 
-	local ok = require("lib.modes").setModeLink()
+	local ok = require("lib.modes"):setModeLink()
 
 	if not ok then
 		Log.log.ef("[Commands.moveMouseToLink] Failed to set mode to link")
 		return
 	end
 
-	State.state.onClickCallback = function(mark)
+	Marks.onClickCallback = function(mark)
 		Log.log.df("[Commands.moveMouseToLink] Click callback")
 
 		local frame = mark.frame
@@ -421,7 +420,7 @@ function M.copyLinkUrlToClipboard()
 		return
 	end
 
-	local ok = require("lib.modes").setModeLink()
+	local ok = require("lib.modes"):setModeLink()
 
 	if not ok then
 		Log.log.ef(
@@ -430,7 +429,7 @@ function M.copyLinkUrlToClipboard()
 		return
 	end
 
-	State.state.onClickCallback = function(mark)
+	Marks.onClickCallback = function(mark)
 		Log.log.df("[Commands.copyLinkUrlToClipboard] Click callback")
 
 		local url = Cache:getAttribute(mark.element, "AXURL")
@@ -566,7 +565,7 @@ function M.changeWord()
 	Log.log.df("[Commands.changeWord] Changing word")
 
 	M.deleteWord()
-	require("lib.modes").setModeInsert()
+	require("lib.modes"):setModeInsert()
 end
 
 ---Yank word
@@ -595,7 +594,7 @@ function M.changeLine()
 	Log.log.df("[Commands.changeLine] Changing line")
 
 	M.deleteLine()
-	require("lib.modes").setModeInsert()
+	require("lib.modes"):setModeInsert()
 end
 
 ---Yank line
@@ -623,7 +622,7 @@ function M.changeHighlighted()
 	Log.log.df("[Commands.changeHighlighted] Changing highlighted")
 
 	M.deleteHighlighted()
-	require("lib.modes").setModeInsert()
+	require("lib.modes"):setModeInsert()
 end
 
 ---Yank highlighted

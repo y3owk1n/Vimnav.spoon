@@ -5,7 +5,6 @@ local Elements = require("lib.elements")
 local Modes = require("lib.modes")
 local Marks = require("lib.marks")
 local Log = require("lib.log")
-local State = require("lib.state")
 local Config = require("lib.config")
 local Cleanup = require("lib.cleanup")
 local EventHandler = require("lib.eventhandler")
@@ -54,14 +53,14 @@ function M:startAppWatcher()
 					appName
 				)
 			then
-				Modes.setModeDisabled()
+				Modes:setModeDisabled()
 				Marks:clear()
 				Log.log.df(
 					"[Watchers.startAppWatcher] Disabled mode for excluded app: %s",
 					appName
 				)
 			else
-				Modes.setModeNormal()
+				Modes:setModeNormal()
 				Marks:clear()
 				Log.log.df(
 					"[Watchers.startAppWatcher] Enabled mode for app: %s",
@@ -122,7 +121,7 @@ function M:startLaunchersWatcher()
 					"[Watchers.startLaunchersWatcher] Launcher opened: %s",
 					launcher
 				)
-				Modes.setModeDisabled()
+				Modes:setModeDisabled()
 				Marks:clear()
 			end
 		)
@@ -134,7 +133,7 @@ function M:startLaunchersWatcher()
 					"[Watchers.startLaunchersWatcher] Launcher closed: %s",
 					launcher
 				)
-				Modes.setModeNormal()
+				Modes:setModeNormal()
 				Marks:clear()
 			end
 		)
@@ -232,7 +231,7 @@ local function handleCaffeineEvent(eventType)
 				Overlay:destroy()
 				hs.timer.doAfter(0.1, function()
 					Overlay:create()
-					Overlay:update(State.state.mode)
+					Overlay:update(Modes.mode)
 				end)
 			end
 
@@ -240,7 +239,7 @@ local function handleCaffeineEvent(eventType)
 			if Config.config.menubar.enabled then
 				MenuBar:destroy()
 				MenuBar:create()
-				MenuBar:setTitle(State.state.mode)
+				MenuBar:setTitle(Modes.mode)
 			end
 
 			-- Restart focus polling

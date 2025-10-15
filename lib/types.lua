@@ -105,19 +105,6 @@ local M = {}
 ---@field description string Description of the keyset
 ---@field action string|table|function|"noop"
 
----@class Hs.Vimnav.State
----@field mode number Vimnav mode
----@field keyCapture string|nil Multi character input
----@field linkCapture string Link capture state
----@field lastEscape number Last escape key press time
----@field onClickCallback fun(any)|nil On click callback for marks
----@field focusCachedResult boolean Focus cached result
----@field focusLastElement table|string|nil Focus last element
----@field maxElements number Maximum elements to search for (derived from config)
----@field leaderPressed boolean Leader key was pressed
----@field leaderCapture string Captured keys after leader
----@field showingHelp boolean Whether the help popup is currently showing
-
 ---@class Hs.Vimnav.Mappings.MappingPrefixes
 ---@field normal table<string, boolean> Normal mode mappings
 ---@field visual table<string, boolean> Visual mode mappings

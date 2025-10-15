@@ -88,13 +88,13 @@ function M:show(prefix)
 	M:hide()
 
 	local mapping
-	if Modes.isMode(Modes.MODES.NORMAL) then
+	if Modes:isMode(Modes.MODES.NORMAL) then
 		mapping = Config.config.mapping.normal
-	elseif Modes.isMode(Modes.MODES.VISUAL) then
+	elseif Modes:isMode(Modes.MODES.VISUAL) then
 		mapping = Config.config.mapping.visual
-	elseif Modes.isMode(Modes.MODES.INSERT_NORMAL) then
+	elseif Modes:isMode(Modes.MODES.INSERT_NORMAL) then
 		mapping = Config.config.mapping.insertNormal
-	elseif Modes.isMode(Modes.MODES.INSERT_VISUAL) then
+	elseif Modes:isMode(Modes.MODES.INSERT_VISUAL) then
 		mapping = Config.config.mapping.insertVisual
 	else
 		return
