@@ -589,7 +589,7 @@ function M.findInputElements(axApp, opts)
 				frame = Cache:getAttribute(results[1], "AXFrame"),
 			})
 			require("lib.modes").setModeNormal()
-			require("lib.marks").clear()
+			require("lib.marks"):clear()
 		else
 			Log.log.df(
 				"[Elements.findInputElements] Result count is %d, showing marks",

@@ -37,7 +37,7 @@ function M.handleVimInput(char, opts)
 		Log.log.df("[EventHandler.handleVimInput] Links mode")
 
 		State.state.linkCapture = State.state.linkCapture .. char:upper()
-		for i, _ in ipairs(State.state.marks) do
+		for i, _ in ipairs(require("lib.marks").marks) do
 			if i > #State.state.allCombinations then
 				break
 			end
@@ -49,9 +49,9 @@ function M.handleVimInput(char, opts)
 					markText
 				)
 
-				require("lib.marks").click(markText:lower())
+				require("lib.marks"):click(markText:lower())
 				Modes.setModeNormal()
-				require("lib.marks").clear()
+				require("lib.marks"):clear()
 				require("lib.cleanup").onCommandComplete()
 				return
 			end
@@ -235,7 +235,7 @@ function M.handlePassthroughMode(event)
 
 	if M.isShiftEspace(event) then
 		Modes.setModeNormal()
-		Marks.clear()
+		Marks:clear()
 		return true
 	end
 
@@ -253,7 +253,7 @@ function M.handleInsertMode(event)
 			Actions.forceUnfocus()
 			hs.timer.doAfter(0.1, function()
 				Modes.setModeNormal()
-				Marks.clear()
+				Marks:clear()
 			end)
 		end
 		return true
@@ -261,7 +261,7 @@ function M.handleInsertMode(event)
 
 	if M.isEspace(event) then
 		Modes.setModeInsertNormal()
-		Marks.clear()
+		Marks:clear()
 		return true
 	end
 
@@ -281,7 +281,7 @@ function M.handleInsertNormalMode(event)
 			Actions.forceUnfocus()
 			hs.timer.doAfter(0.1, function()
 				Modes.setModeNormal()
-				Marks.clear()
+				Marks:clear()
 			end)
 		end
 		return true
@@ -313,7 +313,7 @@ function M.handleInsertVisualMode(event)
 			end)
 			hs.timer.doAfter(0.1, function()
 				Modes.setModeNormal()
-				Marks.clear()
+				Marks:clear()
 			end)
 		end
 		return true
@@ -326,7 +326,7 @@ function M.handleInsertVisualMode(event)
 		else
 			Utils.keyStroke({}, "right")
 			Modes.setModeInsertNormal()
-			Marks.clear()
+			Marks:clear()
 			return true
 		end
 	end
@@ -342,7 +342,7 @@ function M.handleLinkMode(event)
 
 	if M.isEspace(event) then
 		Modes.setModeNormal()
-		Marks.clear()
+		Marks:clear()
 		return true
 	end
 
@@ -373,7 +373,7 @@ function M.handleVisualMode(event)
 	if M.isEspace(event) then
 		Actions.forceDeselectTextHighlights()
 		Modes.setModeNormal()
-		Marks.clear()
+		Marks:clear()
 		Whichkey:hide()
 		return false
 	end

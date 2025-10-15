@@ -136,10 +136,10 @@ function M:start()
 		)
 	then
 		Modes.setModeDisabled()
-		Marks.clear()
+		Marks:clear()
 	else
 		Modes.setModeNormal()
-		Marks.clear()
+		Marks:clear()
 	end
 
 	self._running = true
@@ -163,7 +163,7 @@ function M:stop()
 
 	MenuBar:destroy()
 	Overlay:destroy()
-	Marks.clear()
+	Marks:clear()
 
 	Cleanup.full()
 

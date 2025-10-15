@@ -38,7 +38,7 @@ local function updateFocusState()
 			-- Update mode based on focus change
 			if isEditable and Modes.isMode(Modes.MODES.NORMAL) then
 				Modes.setModeInsert()
-				Marks.clear()
+				Marks:clear()
 			elseif not isEditable then
 				if
 					Modes.isMode(Modes.MODES.INSERT)
@@ -46,7 +46,7 @@ local function updateFocusState()
 					or Modes.isMode(Modes.MODES.INSERT_VISUAL)
 				then
 					Modes.setModeNormal()
-					Marks.clear()
+					Marks:clear()
 				end
 			end
 
@@ -65,7 +65,7 @@ local function updateFocusState()
 				or Modes.isMode(Modes.MODES.INSERT_VISUAL)
 			then
 				Modes.setModeNormal()
-				Marks.clear()
+				Marks:clear()
 			end
 		end
 	end

@@ -85,7 +85,7 @@ function M.setModePassthrough()
 		return false
 	end
 
-	require("lib.marks").clear()
+	require("lib.marks"):clear()
 
 	return true
 end
@@ -101,7 +101,7 @@ function M.setModeLink()
 		return false
 	end
 
-	require("lib.marks").clear()
+	require("lib.marks"):clear()
 
 	return true
 end
@@ -117,7 +117,7 @@ function M.setModeInsert()
 		return false
 	end
 
-	require("lib.marks").clear()
+	require("lib.marks"):clear()
 
 	return true
 end
@@ -133,7 +133,7 @@ function M.setModeInsertNormal()
 		return false
 	end
 
-	require("lib.marks").clear()
+	require("lib.marks"):clear()
 
 	return true
 end
@@ -149,7 +149,7 @@ function M.setModeInsertVisual()
 		return false
 	end
 
-	require("lib.marks").clear()
+	require("lib.marks"):clear()
 
 	return true
 end
@@ -165,7 +165,7 @@ function M.setModeVisual()
 		return false
 	end
 
-	require("lib.marks").clear()
+	require("lib.marks"):clear()
 
 	return true
 end
@@ -181,7 +181,7 @@ function M.setModeNormal()
 		return false
 	end
 
-	require("lib.marks").clear()
+	require("lib.marks"):clear()
 
 	return true
 end

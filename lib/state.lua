@@ -9,12 +9,10 @@ local M = {}
 local defaultState = {
 	mode = 1,
 	keyCapture = nil,
-	marks = {},
 	linkCapture = "",
 	lastEscape = 0,
 	mappingPrefixes = {},
 	allCombinations = {},
-	markCanvas = nil,
 	onClickCallback = nil,
 	focusCachedResult = false,
 	focusLastElement = nil,
@@ -48,23 +46,6 @@ function M:resetLeader()
 	Log.log.df("[State:resetLeader] Resetting leader")
 	self.state.leaderPressed = false
 	self.state.leaderCapture = ""
-end
-
----Reset marks state
----@return nil
-function M:resetMarks()
-	Log.log.df("[State:resetMarks] Resetting marks")
-	self.state.marks = {}
-end
-
----Reset marks canvas
----@return nil
-function M:resetMarkCanvas()
-	Log.log.df("[State:resetMarkCanvas] Resetting marks canvas")
-	if self.state.markCanvas then
-		self.state.markCanvas:delete()
-		self.state.markCanvas = nil
-	end
 end
 
 ---Reset link capture state

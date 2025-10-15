@@ -55,14 +55,14 @@ function M:startAppWatcher()
 				)
 			then
 				Modes.setModeDisabled()
-				Marks.clear()
+				Marks:clear()
 				Log.log.df(
 					"[Watchers.startAppWatcher] Disabled mode for excluded app: %s",
 					appName
 				)
 			else
 				Modes.setModeNormal()
-				Marks.clear()
+				Marks:clear()
 				Log.log.df(
 					"[Watchers.startAppWatcher] Enabled mode for app: %s",
 					appName
@@ -123,7 +123,7 @@ function M:startLaunchersWatcher()
 					launcher
 				)
 				Modes.setModeDisabled()
-				Marks.clear()
+				Marks:clear()
 			end
 		)
 
@@ -135,7 +135,7 @@ function M:startLaunchersWatcher()
 					launcher
 				)
 				Modes.setModeNormal()
-				Marks.clear()
+				Marks:clear()
 			end
 		)
 	end

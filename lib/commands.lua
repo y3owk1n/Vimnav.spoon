@@ -202,7 +202,7 @@ function M.gotoLink()
 
 	hs.timer.doAfter(0, function()
 		Log.log.df("[Commands.gotoLink] Showing marks")
-		require("lib.marks").show({ elementType = "link" })
+		require("lib.marks"):show({ elementType = "link" })
 	end)
 end
 
@@ -237,7 +237,7 @@ function M.gotoInput()
 
 	hs.timer.doAfter(0, function()
 		Log.log.df("[Commands.gotoInput] Showing marks")
-		require("lib.marks").show({ elementType = "input" })
+		require("lib.marks"):show({ elementType = "input" })
 	end)
 end
 
@@ -261,7 +261,7 @@ function M.doubleLeftClick()
 
 	hs.timer.doAfter(0, function()
 		Log.log.df("[Commands.doubleLeftClick] Showing marks")
-		require("lib.marks").show({ elementType = "link" })
+		require("lib.marks"):show({ elementType = "link" })
 	end)
 end
 
@@ -292,7 +292,7 @@ function M.rightClick()
 
 	hs.timer.doAfter(0, function()
 		Log.log.df("[Commands.rightClick] Showing marks")
-		require("lib.marks").show({ elementType = "link" })
+		require("lib.marks"):show({ elementType = "link" })
 	end)
 end
 
@@ -324,7 +324,7 @@ function M.gotoLinkNewTab()
 
 	hs.timer.doAfter(0, function()
 		Log.log.df("[Commands.gotoLinkNewTab] Showing marks")
-		require("lib.marks").show({ elementType = "link", withUrls = true })
+		require("lib.marks"):show({ elementType = "link", withUrls = true })
 	end)
 end
 
@@ -374,7 +374,7 @@ function M.downloadImage()
 
 	hs.timer.doAfter(0, function()
 		Log.log.df("[Commands.downloadImage] Showing marks")
-		require("lib.marks").show({ elementType = "image" })
+		require("lib.marks"):show({ elementType = "image" })
 	end)
 end
 
@@ -404,7 +404,7 @@ function M.moveMouseToLink()
 
 	hs.timer.doAfter(0, function()
 		Log.log.df("[Commands.moveMouseToLink] Showing marks")
-		require("lib.marks").show({ elementType = "link" })
+		require("lib.marks"):show({ elementType = "link" })
 	end)
 end
 
@@ -443,7 +443,7 @@ function M.copyLinkUrlToClipboard()
 
 	hs.timer.doAfter(0, function()
 		Log.log.df("[Commands.copyLinkUrlToClipboard] Showing marks")
-		require("lib.marks").show({ elementType = "link", withUrls = true })
+		require("lib.marks"):show({ elementType = "link", withUrls = true })
 	end)
 end
 
