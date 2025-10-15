@@ -2,7 +2,6 @@
 
 local Config = require("lib.config")
 local Modes = require("lib.modes")
-local State = require("lib.state")
 local Utils = require("lib.utils")
 local Log = require("lib.log")
 
@@ -11,6 +10,8 @@ local M = {}
 -- This timer is just to used to cancel the popup if it's no longer needed
 -- Don't need to put it in timer module
 M.whichkeyTimer = nil
+
+M.canvas = nil
 
 ---Get available mappings for current prefix
 ---@param prefix string Current key capture
@@ -174,9 +175,9 @@ function M:show(prefix)
 	}
 
 	-- Create canvas
-	State.state.whichkeyCanvas = hs.canvas.new(popupFrame)
-	State.state.whichkeyCanvas:level("overlay")
-	State.state.whichkeyCanvas:behavior("canJoinAllSpaces")
+	self.canvas = hs.canvas.new(popupFrame)
+	self.canvas:level("overlay")
+	self.canvas:behavior("canJoinAllSpaces")
 
 	-- Build canvas elements
 	local elements = {}
@@ -273,8 +274,8 @@ function M:show(prefix)
 		end
 	end
 
-	State.state.whichkeyCanvas:replaceElements(elements)
-	State.state.whichkeyCanvas:show()
+	self.canvas:replaceElements(elements)
+	self.canvas:show()
 end
 
 ---Hide which-key popup
@@ -282,7 +283,11 @@ end
 function M:hide()
 	Log.log.df("[Whichkey.hide] Hiding which-key popup")
 
-	State:resetWhichkeyCanvas()
+	if self.canvas then
+		self.canvas:delete()
+		self.canvas = nil
+	end
+
 	if self.whichkeyTimer then
 		self.whichkeyTimer:stop()
 		self.whichkeyTimer = nil

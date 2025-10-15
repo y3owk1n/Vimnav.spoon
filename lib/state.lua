@@ -21,7 +21,6 @@ local defaultState = {
 	maxElements = 0,
 	leaderPressed = false,
 	leaderCapture = "",
-	whichKeyCanvas = nil,
 	showingHelp = false,
 	menubarItem = nil,
 	overlayCanvas = nil,
@@ -67,16 +66,6 @@ function M:resetMarkCanvas()
 	if self.state.markCanvas then
 		self.state.markCanvas:delete()
 		self.state.markCanvas = nil
-	end
-end
-
----Reset whichkey canvas
----@return nil
-function M:resetWhichkeyCanvas()
-	Log.log.df("[State:resetWhichkeyCanvas] Resetting whichkey canvas")
-	if self.state.whichkeyCanvas then
-		self.state.whichkeyCanvas:delete()
-		self.state.whichkeyCanvas = nil
 	end
 end
 
