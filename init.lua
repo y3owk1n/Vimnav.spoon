@@ -120,11 +120,9 @@ function M:start()
 
 	Roles:new() -- Initialize role maps for performance
 
-	Watchers.stopAll()
-	Watchers.startAppWatcher()
-	Watchers.startLaunchersWatcher()
-	Watchers.startScreenWatcher()
-	Watchers.startCaffeineWatcher()
+	Watchers:startAll()
+
+	Timer.stopAll()
 	Timer.startPeriodicCleanup()
 	MenuBar.create()
 	Overlay.create()
@@ -159,7 +157,8 @@ function M:stop()
 
 	Log.log.i("[stop] Stopping Vimnav")
 
-	Watchers.stopAll()
+	Timer.stopAll()
+	Watchers:stopAll()
 	EventHandler:stop()
 
 	MenuBar.destroy()
