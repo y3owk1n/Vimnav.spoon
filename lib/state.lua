@@ -22,7 +22,6 @@ local defaultState = {
 	leaderPressed = false,
 	leaderCapture = "",
 	showingHelp = false,
-	menubarItem = nil,
 	overlayCanvas = nil,
 }
 
@@ -76,16 +75,6 @@ function M:resetOverlayCanvas()
 	if self.state.overlayCanvas then
 		self.state.overlayCanvas:delete()
 		self.state.overlayCanvas = nil
-	end
-end
-
----Reset menubar item
----@return nil
-function M:resetMenubarItem()
-	Log.log.df("[State:resetMenubarItem] Resetting menubar item")
-	if self.state.menubarItem then
-		self.state.menubarItem:delete()
-		self.state.menubarItem = nil
 	end
 end
 

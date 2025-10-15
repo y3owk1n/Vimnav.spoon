@@ -238,9 +238,9 @@ local function handleCaffeineEvent(eventType)
 
 			-- Recreate menubar in case it got corrupted
 			if Config.config.menubar.enabled then
-				MenuBar.destroy()
-				MenuBar.create()
-				MenuBar.setTitle(State.state.mode)
+				MenuBar:destroy()
+				MenuBar:create()
+				MenuBar:setTitle(State.state.mode)
 			end
 
 			-- Restart focus polling
