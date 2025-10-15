@@ -22,7 +22,6 @@ local defaultState = {
 	leaderPressed = false,
 	leaderCapture = "",
 	showingHelp = false,
-	overlayCanvas = nil,
 }
 
 ---@type Hs.Vimnav.State
@@ -65,16 +64,6 @@ function M:resetMarkCanvas()
 	if self.state.markCanvas then
 		self.state.markCanvas:delete()
 		self.state.markCanvas = nil
-	end
-end
-
----Reset overlay canvas
----@return nil
-function M:resetOverlayCanvas()
-	Log.log.df("[State:resetOverlayCanvas] Resetting overlay canvas")
-	if self.state.overlayCanvas then
-		self.state.overlayCanvas:delete()
-		self.state.overlayCanvas = nil
 	end
 end
 

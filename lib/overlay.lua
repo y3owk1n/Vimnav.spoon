@@ -2,14 +2,16 @@
 
 local Config = require("lib.config")
 local Log = require("lib.log")
-local State = require("lib.state")
 local Utils = require("lib.utils")
 
 local M = {}
 
+---Overlay canvas
+M.canvas = nil
+
 ---Creates the overlay indicator
 ---@return nil
-function M.create()
+function M:create()
 	Log.log.df("[Overlay.create] Creating overlay")
 
 	if not Config.config.overlay.enabled then
@@ -17,7 +19,7 @@ function M.create()
 		return
 	end
 
-	M.destroy()
+	M:destroy()
 
 	local screen = hs.screen.mainScreen()
 	local frame = screen:fullFrame()
@@ -134,9 +136,9 @@ function M.create()
 		end
 	end
 
-	State.state.overlayCanvas = hs.canvas.new(overlayFrame)
-	State.state.overlayCanvas:level("overlay")
-	State.state.overlayCanvas:behavior("canJoinAllSpaces")
+	self.canvas = hs.canvas.new(overlayFrame)
+	self.canvas:level("overlay")
+	self.canvas:behavior("canJoinAllSpaces")
 
 	Log.log.df("[Overlay.create] Created overlay indicator at " .. position)
 end
@@ -144,7 +146,7 @@ end
 ---Get color for mode
 ---@param mode number Mode to get color for
 ---@return table
-function M.getModeColor(mode)
+function M:getModeColor(mode)
 	local MODES = require("lib.modes").MODES
 	local colors = {
 		[MODES.DISABLED] = Utils.hexToRgb(
@@ -189,15 +191,15 @@ end
 ---@param mode number Mode to update
 ---@param keys? string|nil Keys to display
 ---@return nil
-function M.update(mode, keys)
+function M:update(mode, keys)
 	Log.log.df("[Overlay.update] Updating overlay")
 
-	if not Config.config.overlay.enabled or not State.state.overlayCanvas then
+	if not Config.config.overlay.enabled or not self.canvas then
 		Log.log.df("[Overlay.update] Overlay disabled")
 		return
 	end
 
-	local color = M.getModeColor(mode)
+	local color = M:getModeColor(mode)
 	local modeChar = require("lib.modes").defaultModeChars[mode] or "?"
 	local fontSize = Config.config.overlay.size / 2
 
@@ -212,7 +214,7 @@ function M.update(mode, keys)
 	local newWidth = textWidth < height and height or textWidth
 
 	-- Get current frame
-	local currentFrame = State.state.overlayCanvas:frame()
+	local currentFrame = self.canvas:frame()
 	local screen = hs.screen.mainScreen()
 	local screenFrame = screen:fullFrame()
 	local position = Config.config.overlay.position or "top-center"
@@ -240,7 +242,7 @@ function M.update(mode, keys)
 	end
 
 	-- Update canvas frame
-	State.state.overlayCanvas:frame({
+	self.canvas:frame({
 		x = newX,
 		y = currentFrame.y,
 		w = newWidth,
@@ -249,9 +251,9 @@ function M.update(mode, keys)
 
 	-- Apply alpha to color
 	color.alpha = 0.2
-	local textColor = M.getModeColor(mode)
+	local textColor = M:getModeColor(mode)
 
-	State.state.overlayCanvas:replaceElements({
+	self.canvas:replaceElements({
 		{
 			type = "rectangle",
 			action = "fill",
@@ -274,14 +276,18 @@ function M.update(mode, keys)
 			},
 		},
 	})
-	State.state.overlayCanvas:show()
+	self.canvas:show()
 end
 
 ---Destroys the overlay indicator
 ---@return nil
-function M.destroy()
+function M:destroy()
 	Log.log.df("[Overlay.destroy] Destroying overlay")
-	State:resetOverlayCanvas()
+
+	if self.canvas then
+		self.canvas:delete()
+		self.canvas = nil
+	end
 end
 
 return M

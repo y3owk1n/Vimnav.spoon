@@ -229,10 +229,10 @@ local function handleCaffeineEvent(eventType)
 
 			-- Recreate overlay with correct screen position
 			if Config.config.overlay.enabled then
-				Overlay.destroy()
+				Overlay:destroy()
 				hs.timer.doAfter(0.1, function()
-					Overlay.create()
-					Overlay.update(State.state.mode)
+					Overlay:create()
+					Overlay:update(State.state.mode)
 				end)
 			end
 
