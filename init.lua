@@ -9,6 +9,10 @@
 
 ---@diagnostic disable: undefined-global
 
+--------------------------------------------------------------------------------
+-- Spoon path initialization (required to make spoon works with `require` import)
+--------------------------------------------------------------------------------
+
 local spoonPath = hs.spoons.scriptPath()
 package.path = package.path
 	.. ";"
@@ -18,6 +22,10 @@ package.path = package.path
 	.. "?/init.lua;"
 	.. spoonPath
 	.. "lib/?.lua"
+
+--------------------------------------------------------------------------------
+-- Imports
+--------------------------------------------------------------------------------
 
 local Log = require("lib.log")
 local State = require("lib.state")
@@ -35,6 +43,10 @@ local Cleanup = require("lib.cleanup")
 local Timer = require("lib.timer")
 local EventHandler = require("lib.eventhandler")
 local Watchers = require("lib.watchers")
+
+--------------------------------------------------------------------------------
+-- Module definition
+--------------------------------------------------------------------------------
 
 ---@class Hs.Vimnav
 local M = {}
@@ -59,7 +71,7 @@ function M:init()
 	Log:new(M.name, "info")
 
 	self._initialized = true
-	Log.log.i("[M:init] Initialized")
+	Log.log.i("[init] Initialized")
 
 	return self
 end
@@ -81,7 +93,7 @@ function M:configure(userConfig, opts)
 	-- Reinitialize logger with configured level
 	Log:new(M.name, Config.config.logLevel)
 
-	Log.log.i("[M:configure] Configured")
+	Log.log.i("[configure] Configured config")
 
 	return self
 end
@@ -90,11 +102,12 @@ end
 ---@return Hs.Vimnav
 function M:start()
 	if self._running then
-		Log.log.w("[M:start] Vimnav already running")
+		Log.log.w("[start] Vimnav already running")
 		return self
 	end
 
 	if not Config.config or not next(Config.config) then
+		Log.log.w("[start] No config found, using defaults")
 		self:configure({})
 	end
 
@@ -131,7 +144,7 @@ function M:start()
 	end
 
 	self._running = true
-	Log.log.i("[M:start] Started")
+	Log.log.i("[start] Started")
 
 	return self
 end
@@ -143,7 +156,7 @@ function M:stop()
 		return self
 	end
 
-	Log.log.i("[M:stop] Stopping Vimnav")
+	Log.log.i("[stop] Stopping Vimnav")
 
 	Watchers.stopAll()
 	EventHandler.stopEventLoop()
@@ -160,7 +173,7 @@ function M:stop()
 	State:resetAll()
 
 	self._running = false
-	Log.log.i("[M:stop] Vimnav stopped")
+	Log.log.i("[stop] Vimnav stopped")
 
 	return self
 end
@@ -168,7 +181,7 @@ end
 ---Restarts the module
 ---@return Hs.Vimnav
 function M:restart()
-	Log.log.i("[M:restart] Restarting Vimnav...")
+	Log.log.i("[restart] Restarting Vimnav...")
 	self:stop()
 	self:start()
 	return self

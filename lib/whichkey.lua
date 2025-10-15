@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 local Config = require("lib.config")
 local Modes = require("lib.modes")
 local State = require("lib.state")
@@ -11,6 +13,8 @@ local M = {}
 ---@param mapping table Mode mapping table
 ---@return table Available mappings
 function M.getAvailableMappings(prefix, mapping)
+	Log.log.df("[Whichkey.getAvailableMappings] Getting available mappings")
+
 	local available = {}
 	local prefixLen = #prefix
 
@@ -69,7 +73,10 @@ end
 ---@param prefix string Current key capture
 ---@return nil
 function M.show(prefix)
+	Log.log.df("[Whichkey.show] Showing which-key popup for prefix: %s", prefix)
+
 	if not Config.config.whichkey.enabled then
+		Log.log.df("[Whichkey.show] Which-key disabled")
 		return
 	end
 
@@ -264,13 +271,13 @@ function M.show(prefix)
 
 	State.state.whichkeyCanvas:replaceElements(elements)
 	State.state.whichkeyCanvas:show()
-
-	Log.log.df("[Whichkey.show] Which-key popup shown for prefix: " .. prefix)
 end
 
 ---Hide which-key popup
 ---@return nil
 function M.hide()
+	Log.log.df("[Whichkey.hide] Hiding which-key popup")
+
 	State:resetWhichkeyCanvas()
 	require("lib.timer").stopWhichkey()
 end
@@ -279,7 +286,13 @@ end
 ---@param prefix string Current key capture
 ---@return nil
 function M.scheduleShow(prefix)
+	Log.log.df(
+		"[Whichkey.scheduleShow] Scheduling which-key popup for prefix: %s",
+		prefix
+	)
+
 	if not Config.config.whichkey.enabled then
+		Log.log.df("[Whichkey.scheduleShow] Which-key disabled")
 		return
 	end
 

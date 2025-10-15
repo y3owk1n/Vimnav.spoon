@@ -1,5 +1,6 @@
+---@diagnostic disable: undefined-global
+
 local Config = require("lib.config")
-local Elements = require("lib.elements")
 local State = require("lib.state")
 local Log = require("lib.log")
 local Utils = require("lib.utils")
@@ -7,7 +8,7 @@ local Utils = require("lib.utils")
 local M = {}
 
 ---Performs a smooth scroll
----@param opts Hs.Vimnav.Actions.SmoothScrollOpts
+---@param opts Hs.Vimnav.Actions.SmoothScrollOpts Opts for smooth scroll
 ---@return nil
 function M.smoothScroll(opts)
 	local x = opts.x or 0
@@ -16,6 +17,10 @@ function M.smoothScroll(opts)
 
 	if not smooth then
 		hs.eventtap.event.newScrollEvent({ x, y }, {}, "pixel"):post()
+		Log.log.df("[Actions.smoothScroll] Smooth scroll disabled")
+		Log.log.df(
+			"[Actions.smoothScroll] Performing scroll without smooth scroll"
+		)
 		return
 	end
 
@@ -39,13 +44,15 @@ function M.smoothScroll(opts)
 	end
 
 	animate()
+	Log.log.df("[Actions.smoothScroll] Smooth scroll complete")
 end
 
 ---Opens a URL in a new tab
----@param url string
+---@param url string URL to open
 ---@return nil
 function M.openUrlInNewTab(url)
 	if not url then
+		Log.log.ef("[Actions.openUrlInNewTab] No URL provided")
 		return
 	end
 
@@ -58,8 +65,9 @@ function M.openUrlInNewTab(url)
 		Zen = 'tell application "Zen" to open location "%s"',
 	}
 
-	local currentApp = Elements.getApp()
+	local currentApp = require("lib.elements").getApp()
 	if not currentApp then
+		Log.log.ef("[Actions.openUrlInNewTab] No current app found")
 		return
 	end
 
@@ -67,14 +75,17 @@ function M.openUrlInNewTab(url)
 	local script = browserScripts[appName] or browserScripts["Safari"]
 
 	hs.osascript.applescript(string.format(script, url))
+
+	Log.log.df("[Actions.openUrlInNewTab] Opened URL in new tab")
 end
 
 ---Sets the clipboard contents
----@param contents string
+---@param contents string Contents to set
 ---@return nil
 function M.setClipboardContents(contents)
 	if not contents then
 		hs.alert.show("Nothing to copy", nil, nil, 2)
+		Log.log.ef("[Actions.setClipboardContents] Nothing to copy")
 		return
 	end
 
@@ -87,17 +98,20 @@ function M.setClipboardContents(contents)
 			nil,
 			2
 		)
+		Log.log.df("[Actions.setClipboardContents] Copied to clipboard")
 	else
 		hs.alert.show("Failed to copy to clipboard", nil, nil, 2)
+		Log.log.ef("[Actions.setClipboardContents] Failed to copy to clipboard")
 	end
 end
 
 ---Download base64 image
----@param url string
----@param description string
+---@param url string URL to download
+---@param description string Description for the downloaded image
 ---@return nil
 function M.downloadBase64Image(url, description)
 	local base64Data = url:match("^data:image/[^;]+;base64,(.+)$")
+	Log.log.df("[Actions.downloadBase64Image] Downloading base64 image")
 	if base64Data then
 		local decodedData = hs.base64.decode(base64Data)
 		---@diagnostic disable-next-line: param-type-mismatch
@@ -109,18 +123,29 @@ function M.downloadBase64Image(url, description)
 			file:write(decodedData)
 			file:close()
 			hs.alert.show("Image saved: " .. fileName, nil, nil, 2)
+			Log.log.df(
+				"[Actions.downloadBase64Image] Image saved: " .. fileName
+			)
+		else
+			Log.log.ef("[Actions.downloadBase64Image] Failed to save image")
 		end
+	else
+		Log.log.ef("[Actions.downloadBase64Image] No base64 data found")
 	end
 end
 
 ---Download image via http
----@param url string
+---@param url string URL to download
 ---@return nil
 function M.downloadImageViaHttp(url)
 	hs.http.asyncGet(url, nil, function(status, body, headers)
 		if status == 200 then
+			Log.log.df(
+				"[Actions.downloadImageViaHttp] Downloading image via http"
+			)
 			local contentType = headers["Content-Type"] or ""
 			if contentType:match("^image/") then
+				Log.log.df("[Actions.downloadImageViaHttp] Image found")
 				local fileName = url:match("^.+/(.+)$") or "image.jpg"
 				if not fileName:match("%.%w+$") then
 					fileName = fileName .. ".jpg"
@@ -133,7 +158,13 @@ function M.downloadImageViaHttp(url)
 					file:close()
 					hs.alert.show("Image downloaded: " .. fileName, nil, nil, 2)
 				end
+			else
+				Log.log.ef("[Actions.downloadImageViaHttp] Image not found")
 			end
+		else
+			Log.log.ef(
+				"[Actions.downloadImageViaHttp] Failed to download image"
+			)
 		end
 	end)
 end
@@ -147,15 +178,22 @@ function M.forceUnfocus()
 
 		-- Reset focus state
 		State:resetFocus()
+
+		Log.log.df("[Actions.forceUnfocus] Force unfocused!")
+	else
+		Log.log.ef("[Actions.forceUnfocus] No focusable element found")
 	end
 end
 
 ---Force deselect text highlights
 ---@return nil
 function M.forceDeselectTextHighlights()
-	local focused = Elements.getAxFocusedElement()
+	local focused = require("lib.elements").getAxFocusedElement()
 
 	if not focused then
+		Log.log.ef(
+			"[Actions.forceDeselectTextHighlights] No focusable element found"
+		)
 		return
 	end
 
@@ -166,7 +204,7 @@ function M.forceDeselectTextHighlights()
 	if supportsMarkers then
 		local startMarker = focused:attributeValue("AXStartTextMarker")
 		if not startMarker then
-			Log.log.df(
+			Log.log.ef(
 				"[Actions.forceDeselectTextHighlights] No AXStartTextMarker found; cannot clear"
 			)
 			return
@@ -213,10 +251,12 @@ function M.forceDeselectTextHighlights()
 end
 
 ---Tries to click on a frame
----@param frame table
----@param opts? Hs.Vimnav.Actions.TryClickOpts
+---@param frame table Frame to click
+---@param opts? Hs.Vimnav.Actions.TryClickOpts Opts for clicking
 ---@return nil
 function M.tryClick(frame, opts)
+	Log.log.df("[Actions.tryClick] Clicking frame")
+
 	opts = opts or {}
 	local type = opts.type or "left"
 	local doubleClick = opts.doubleClick or false
@@ -227,14 +267,18 @@ function M.tryClick(frame, opts)
 	if type == "left" then
 		if doubleClick then
 			Utils.doubleClickAtPoint({ x = clickX, y = clickY })
+			Log.log.df("[Actions.tryClick] Performed double click")
 		else
 			hs.eventtap.leftClick({ x = clickX, y = clickY }, 0)
+			Log.log.df("[Actions.tryClick] Performed left click")
 		end
 	elseif type == "right" then
 		hs.eventtap.rightClick({ x = clickX, y = clickY }, 0)
+		Log.log.df("[Actions.tryClick] Performed right click")
 	end
 	hs.timer.doAfter(0.1, function()
 		hs.mouse.absolutePosition(originalPos)
+		Log.log.df("[Actions.tryClick] Restored mouse position")
 	end)
 end
 

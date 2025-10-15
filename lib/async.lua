@@ -1,11 +1,14 @@
+---@diagnostic disable: undefined-global
+
 local Cache = require("lib.cache")
 local Config = require("lib.config")
+local Log = require("lib.log")
 
 local M = {}
 
 ---Process elements in background coroutine to avoid UI blocking
----@param element table
----@param opts Hs.Vimnav.Async.TraversalOpts
+---@param element table Element to start from
+---@param opts Hs.Vimnav.Async.TraversalOpts Opts for traversal
 ---@return nil
 function M.traverseElements(element, opts)
 	local matcher = opts.matcher
@@ -16,11 +19,13 @@ function M.traverseElements(element, opts)
 	local viewport = require("lib.elements").createViewportRegions()
 
 	if not viewport then
+		Log.log.ef("[Async.traverseElements] Failed to create viewport regions")
 		callback({})
 		return
 	end
 
 	local traverseCoroutine = coroutine.create(function()
+		Log.log.df("[Async.traverseElements] Traversing elements")
 		M.walkElement(element, {
 			depth = 0,
 			matcher = matcher,
@@ -35,6 +40,7 @@ function M.traverseElements(element, opts)
 	-- Resume coroutine in chunks
 	local function resumeWork()
 		if coroutine.status(traverseCoroutine) == "dead" then
+			Log.log.df("[Async.traverseElements] Traversal complete")
 			callback(results)
 			return
 		end
@@ -43,6 +49,7 @@ function M.traverseElements(element, opts)
 		if success and not shouldStop then
 			hs.timer.doAfter(0.001, resumeWork) -- 1ms pause
 		else
+			Log.log.ef("[Async.traverseElements] Traversal failed")
 			callback(results)
 		end
 	end
@@ -51,8 +58,8 @@ function M.traverseElements(element, opts)
 end
 
 ---Walks an element with a matcher
----@param element table
----@param opts Hs.Vimnav.Async.WalkElementOpts
+---@param element table Element to start from
+---@param opts Hs.Vimnav.Async.WalkElementOpts Opts for walking the elements
 ---@return boolean|nil
 function M.walkElement(element, opts)
 	local depth = opts.depth
@@ -61,6 +68,10 @@ function M.walkElement(element, opts)
 	local viewport = opts.viewport
 
 	if depth > Config.config.hints.depth then
+		Log.log.df(
+			"[Async.walkElement] Reached max depth: %s",
+			Config.config.hints.depth
+		)
 		return
 	end -- Hard depth limit
 
@@ -79,12 +90,14 @@ function M.walkElement(element, opts)
 			role == "AXWindow"
 			and el ~= require("lib.elements").getAxWindow()
 		then
+			Log.log.df("[Async.walkElement] Skipping AXWindow: %s", el)
 			return false
 		end
 
 		-- Get frame once, reuse everywhere
 		local frame = Cache:getAttribute(el, "AXFrame")
 		if not frame then
+			Log.log.ef("[Async.walkElement] No AXFrame found for element")
 			return
 		end
 
@@ -98,6 +111,7 @@ function M.walkElement(element, opts)
 				viewport = viewport,
 			})
 		then
+			Log.log.df("[Async.walkElement] Element outside viewport: %s", el)
 			return
 		end
 
@@ -122,6 +136,10 @@ function M.walkElement(element, opts)
 			})
 
 			if matched then
+				Log.log.df(
+					"[Async.walkElement] Matched element: %s",
+					children[i]
+				)
 				return true
 			end
 		end

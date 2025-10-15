@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 local Config = require("lib.config")
 local Cache = require("lib.cache")
 local Utils = require("lib.utils")
@@ -11,23 +13,28 @@ local M = {}
 ---Clears the marks
 ---@return nil
 function M.clear()
+	Log.log.df("[Marks.clear] Clearing marks")
+
 	State:resetMarkCanvas()
 	State:resetMarks()
 	State:resetLinkCapture()
 	Cache:clearMarks()
-	Log.log.df("[Marks.clear] Cleared marks")
 end
 
 ---Adds a mark to the list
----@param element table
+---@param element table Element to add
 ---@return nil
 function M.add(element)
+	Log.log.df("[Marks.add] Adding mark")
+
 	if #State.state.marks >= State.state.maxElements then
+		Log.log.df("[Marks.add] Reached max marks: %d", State.state.maxElements)
 		return
 	end
 
 	local frame = Cache:getAttribute(element, "AXFrame")
 	if not frame or frame.w <= 2 or frame.h <= 2 then
+		Log.log.df("[Marks.add] Frame is invalid: %s", tostring(frame))
 		return
 	end
 
@@ -40,11 +47,14 @@ function M.add(element)
 end
 
 ---Show marks
----@param opts Hs.Vimnav.Marks.ShowOpts
+---@param opts Hs.Vimnav.Marks.ShowOpts Opts for showing marks
 ---@return nil
 function M.show(opts)
+	Log.log.df("[Marks.show] Showing marks")
+
 	local axApp = Elements.getAxApp()
 	if not axApp then
+		Log.log.ef("[Marks.show] No AXApp found")
 		return
 	end
 
@@ -54,6 +64,8 @@ function M.show(opts)
 	M.clear()
 
 	if elementType == "link" then
+		Log.log.df("[Marks.show] Showing links")
+
 		local function _callback(elements)
 			-- Convert to marks
 			for i = 1, math.min(#elements, State.state.maxElements) do
@@ -61,46 +73,61 @@ function M.show(opts)
 			end
 
 			if #State.state.marks > 0 then
+				Log.log.df("[Marks.show] Showing marks for links")
 				M.draw()
 			else
+				Log.log.df("[Marks.show] No links found")
 				hs.alert.show("No links found", nil, nil, 1)
 				Modes.setModeNormal()
 				M.clear()
 			end
 		end
+
 		Elements.findClickableElements(axApp, {
 			withUrls = withUrls,
 			callback = _callback,
 		})
 	elseif elementType == "input" then
+		Log.log.df("[Marks.show] Showing inputs")
+
 		local function _callback(elements)
 			for i = 1, #elements do
 				M.add(elements[i])
 			end
+
 			if #State.state.marks > 0 then
+				Log.log.df("[Marks.show] Showing marks for inputs")
 				M.draw()
 			else
+				Log.log.df("[Marks.show] No inputs found")
 				hs.alert.show("No inputs found", nil, nil, 1)
 				Modes.setModeNormal()
 				M.clear()
 			end
 		end
+
 		Elements.findInputElements(axApp, {
 			callback = _callback,
 		})
 	elseif elementType == "image" then
+		Log.log.df("[Marks.show] Showing images")
+
 		local function _callback(elements)
 			for i = 1, #elements do
 				M.add(elements[i])
 			end
+
 			if #State.state.marks > 0 then
+				Log.log.df("[Marks.show] Showing marks for images")
 				M.draw()
 			else
+				Log.log.df("[Marks.show] No images found")
 				hs.alert.show("No images found", nil, nil, 1)
 				Modes.setModeNormal()
 				M.clear()
 			end
 		end
+
 		Elements.findImageElements(axApp, {
 			callback = _callback,
 		})
@@ -110,9 +137,12 @@ end
 ---Draws the marks
 ---@return nil
 function M.draw()
+	Log.log.df("[Marks.draw] Drawing marks")
+
 	if not State.state.markCanvas then
 		local frame = Elements.getFullArea()
 		if not frame then
+			Log.log.ef("[Marks.draw] No frame found")
 			return
 		end
 		State.state.markCanvas = hs.canvas.new(frame)
@@ -274,9 +304,11 @@ function M.draw()
 end
 
 ---Clicks a mark
----@param combination string
+---@param combination string Combination to click
 ---@return nil
 function M.click(combination)
+	Log.log.df("[Marks.click] Clicking mark: %s", combination)
+
 	for i, c in ipairs(State.state.allCombinations) do
 		if
 			c == combination
@@ -298,7 +330,10 @@ end
 ---Returns the mark template
 ---@return table
 function M.getMarkTemplate()
+	Log.log.df("[Marks.getMarkTemplate] Getting mark template")
+
 	if Cache.cache.canvasTemplate then
+		Log.log.df("[Marks.getMarkTemplate] Using cached template")
 		return Cache.cache.canvasTemplate
 	end
 
