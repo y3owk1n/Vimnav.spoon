@@ -113,7 +113,6 @@ local M = {}
 ---@field lastEscape number Last escape key press time
 ---@field mappingPrefixes Hs.Vimnav.State.MappingPrefixes Mapping prefixes
 ---@field allCombinations string[] All combinations
----@field eventLoop table|nil Event loop
 ---@field markCanvas table|nil Canvas
 ---@field onClickCallback fun(any)|nil On click callback for marks
 ---@field cleanupTimer table|nil Cleanup timer

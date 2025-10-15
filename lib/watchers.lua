@@ -44,7 +44,7 @@ function M.startAppWatcher()
 				Timer.startFocusCheck()
 				Elements.enableEnhancedUIForChrome()
 				Elements.enableAccessibilityForElectron()
-				EventHandler.startEventLoop()
+				EventHandler:start()
 
 				if
 					Utils.tblContains(
@@ -239,17 +239,7 @@ local function handleCaffeineEvent(eventType)
 			Elements.enableEnhancedUIForChrome()
 			Elements.enableAccessibilityForElectron()
 
-			-- Verify event loop is still running
-			if
-				not State.state.eventLoop
-				or not State.state.eventLoop:isEnabled()
-			then
-				Log.log.wf(
-					"[Watchers.handleCaffeineEvent] Event loop not running, restarting..."
-				)
-				EventHandler.stopEventLoop()
-				EventHandler.startEventLoop()
-			end
+			EventHandler:start()
 
 			Log.log.df(
 				"[Watchers.handleCaffeineEvent] Recovery complete after wake"
