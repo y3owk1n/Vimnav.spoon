@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 local Log = require("lib.log")
 local Cache = require("lib.cache")
 local Modes = require("lib.modes")
@@ -22,10 +24,9 @@ function M.handleVimInput(char, opts)
 	local modifiers = opts.modifiers
 
 	Log.log.df(
-		"[EventHandler.handleVimInput] "
-			.. char
-			.. " modifiers: "
-			.. hs.inspect(modifiers)
+		"[EventHandler.handleVimInput] Handling Vim input: char=%s, mods=%s",
+		char,
+		hs.inspect(modifiers)
 	)
 
 	-- Clear element cache on every input
@@ -33,6 +34,8 @@ function M.handleVimInput(char, opts)
 
 	-- handle link capture first
 	if Modes.isMode(Modes.MODES.LINKS) then
+		Log.log.df("[EventHandler.handleVimInput] Links mode")
+
 		State.state.linkCapture = State.state.linkCapture .. char:upper()
 		for i, _ in ipairs(State.state.marks) do
 			if i > #State.state.allCombinations then
@@ -41,6 +44,11 @@ function M.handleVimInput(char, opts)
 
 			local markText = State.state.allCombinations[i]:upper()
 			if markText == State.state.linkCapture then
+				Log.log.df(
+					"[EventHandler.handleVimInput] Clicking mark: %s",
+					markText
+				)
+
 				require("lib.marks").click(markText:lower())
 				Modes.setModeNormal()
 				require("lib.marks").clear()
@@ -53,6 +61,8 @@ function M.handleVimInput(char, opts)
 	-- Check if this is the leader key being pressed
 	local leaderKey = Config.config.leader.key
 	if char == leaderKey and not State.state.leaderPressed then
+		Log.log.df("[EventHandler.handleVimInput] Leader key pressed")
+
 		State.state.leaderPressed = true
 		State.state.leaderCapture = ""
 		State.state.keyCapture = "<leader>"
@@ -64,7 +74,6 @@ function M.handleVimInput(char, opts)
 			State.state.keyCapture
 		)
 		require("lib.overlay").update(State.state.mode, State.state.keyCapture)
-		Log.log.df("[EventHandler.handleVimInput] Leader key pressed")
 		return
 	end
 
@@ -136,6 +145,7 @@ function M.handleVimInput(char, opts)
 				local cmd = Commands[action]
 				if cmd then
 					cmd()
+					Log.log.df("[EventHandler.handleVimInput] Executed command")
 				else
 					Log.log.wf(
 						"[EventHandler.handleVimInput] Unknown command: "
@@ -145,8 +155,10 @@ function M.handleVimInput(char, opts)
 			end
 		elseif type(action) == "table" then
 			Utils.keyStroke(action[1], action[2])
+			Log.log.df("[EventHandler.handleVimInput] Executed keyStroke")
 		elseif type(action) == "function" then
 			action()
+			Log.log.df("[EventHandler.handleVimInput] Executed function")
 		end
 
 		require("lib.cleanup").onCommandComplete()
@@ -158,6 +170,7 @@ function M.handleVimInput(char, opts)
 		-- Continue waiting for more keys
 	else
 		-- No mapping or prefix found, reset
+		Log.log.df("[EventHandler.handleVimInput] No mapping or prefix found")
 		require("lib.cleanup").onCommandComplete()
 	end
 end
@@ -167,22 +180,44 @@ end
 ---@param name string
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.isKey(keyCode, name)
-	return keyCode == hs.keycodes.map[name]
+	local isKey = keyCode == hs.keycodes.map[name]
+
+	Log.log.df(
+		"[EventHandler.isKey] isKey=%s, keyCode=%d, name=%s",
+		tostring(isKey),
+		keyCode,
+		name
+	)
+
+	return isKey
 end
 
 function M.isShiftEspace(event)
 	local flags = event:getFlags()
-	return flags.shift and M.isKey(event:getKeyCode(), "escape")
+	local isShiftEspace = flags.shift and M.isKey(event:getKeyCode(), "escape")
+
+	Log.log.df(
+		"[EventHandler.isShiftEspace] isShiftEspace=%s",
+		tostring(isShiftEspace)
+	)
+
+	return isShiftEspace
 end
 
 function M.isEspace(event)
-	return M.isKey(event:getKeyCode(), "escape")
+	local isEspace = M.isKey(event:getKeyCode(), "escape")
+
+	Log.log.df("[EventHandler.isEspace] isEspace=%s", tostring(isEspace))
+
+	return isEspace
 end
 
 ---Handles disabled mode
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.handleDisabledMode(event)
+	Log.log.df("[EventHandler.handleDisabledMode] Handling disabled mode")
+
 	return false
 end
 
@@ -190,6 +225,8 @@ end
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.handlePassthroughMode(event)
+	Log.log.df("[EventHandler.handlePassthroughMode] Handling passthrough mode")
+
 	if M.isShiftEspace(event) then
 		Modes.setModeNormal()
 		Marks.clear()
@@ -203,6 +240,8 @@ end
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.handleInsertMode(event)
+	Log.log.df("[EventHandler.handleInsertMode] Handling insert mode")
+
 	if M.isShiftEspace(event) then
 		if Elements.isInBrowser() then
 			Actions.forceUnfocus()
@@ -227,6 +266,10 @@ end
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.handleInsertNormalMode(event)
+	Log.log.df(
+		"[EventHandler.handleInsertNormalMode] Handling insert normal mode"
+	)
+
 	if M.isShiftEspace(event) then
 		if Elements.isInBrowser() then
 			Actions.forceUnfocus()
@@ -252,6 +295,10 @@ end
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.handleInsertVisualMode(event)
+	Log.log.df(
+		"[EventHandler.handleInsertVisualMode] Handling insert visual mode"
+	)
+
 	if M.isShiftEspace(event) then
 		if Elements.isInBrowser() then
 			Utils.keyStroke({}, "left")
@@ -285,6 +332,8 @@ end
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.handleLinkMode(event)
+	Log.log.df("[EventHandler.handleLinkMode] Handling link mode")
+
 	if M.isEspace(event) then
 		Modes.setModeNormal()
 		Marks.clear()
@@ -298,6 +347,8 @@ end
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.handleNormalMode(event)
+	Log.log.df("[EventHandler.handleNormalMode] Handling normal mode")
+
 	if M.isEspace(event) then
 		Cleanup.onEscape()
 		Actions.forceDeselectTextHighlights()
@@ -311,6 +362,8 @@ end
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.handleVisualMode(event)
+	Log.log.df("[EventHandler.handleVisualMode] Handling visual mode")
+
 	if M.isEspace(event) then
 		Actions.forceDeselectTextHighlights()
 		Modes.setModeNormal()
@@ -326,11 +379,16 @@ end
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.processVimInput(event)
+	Log.log.df("[EventHandler.processVimInput] Processing Vim input")
+
 	local keyCode = event:getKeyCode()
 	local flags = event:getFlags()
 
 	for key, modifier in pairs(flags) do
 		if modifier and key ~= "shift" and key ~= "ctrl" then
+			Log.log.df(
+				"[EventHandler.processVimInput] Found modifiers, not shift or ctrl"
+			)
 			return false
 		end
 	end
@@ -347,15 +405,24 @@ function M.processVimInput(event)
 
 	-- Basic validation - allow letters, numbers, common symbols, and space
 	if not typedChar or typedChar == "" or #typedChar > 1 then
+		Log.log.df(
+			"[EventHandler.processVimInput] Basic validation failed, aborting..."
+		)
+
 		return false
 	end
 
 	-- Check if this is the leader key being pressed
 	local leaderKey = Config.config.leader.key or " "
 	if typedChar == leaderKey and not State.state.leaderPressed then
+		Log.log.df(
+			"[EventHandler.processVimInput] Leader key detected, handling..."
+		)
+
 		M.handleVimInput(leaderKey, {
 			modifiers = flags,
 		})
+
 		return true
 	end
 
@@ -392,6 +459,9 @@ function M.processVimInput(event)
 			end
 
 			if Utils.tblContains(filteredMappings, char) == false then
+				Log.log.df(
+					"[EventHandler.processVimInput] No mapping found, aborting..."
+				)
 				return false
 			end
 		end
@@ -408,13 +478,17 @@ end
 ---@param event table
 ---@return boolean handled True if should intercept and not pass to the app, false wil propogate to the app
 function M.process(event)
+	Log.log.df("[EventHandler.process] Processing event")
+
 	local eventSourceIgnoreSignature = Utils.eventSourceIgnoreSignature
 	-- Ignore synthetic events from Utils.keyStroke
 	if
 		event:getProperty(hs.eventtap.event.properties.eventSourceUserData)
 		== eventSourceIgnoreSignature
 	then
-		Log.log.df("[M.process] SYNTHETIC EVENT DETECTED – SKIPPING")
+		Log.log.df(
+			"[EventHandler.process] SYNTHETIC EVENT DETECTED – SKIPPING"
+		)
 		return false
 	end
 
@@ -458,7 +532,9 @@ function M.startEventLoop()
 		State.state.eventLoop = hs.eventtap
 			.new({ hs.eventtap.event.types.keyDown }, M.process)
 			:start()
-		Log.log.df("[M.startEventLoop] Started event loop")
+		Log.log.df("[EventHandler.startEventLoop] Started event loop")
+	else
+		Log.log.df("[EventHandler.startEventLoop] Event loop not running")
 	end
 end
 
@@ -466,7 +542,9 @@ function M.stopEventLoop()
 	if State.state.eventLoop then
 		State.state.eventLoop:stop()
 		State.state.eventLoop = nil
-		Log.log.df("[M.stopEventLoop] Stopped event loop")
+		Log.log.df("[EventHandler.stopEventLoop] Stopped event loop")
+	else
+		Log.log.df("[EventHandler.stopEventLoop] Event loop not running")
 	end
 end
 

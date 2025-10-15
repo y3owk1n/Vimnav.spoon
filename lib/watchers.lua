@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 local Timer = require("lib.timer")
 local Elements = require("lib.elements")
 local Modes = require("lib.modes")
@@ -16,6 +18,8 @@ local M = {}
 ---Starts the app watcher
 ---@return nil
 function M.startAppWatcher()
+	Log.log.df("[Watchers.startAppWatcher] Starting app watcher")
+
 	M.stopAppWatcher()
 
 	Timer.startFocusCheck()
@@ -25,13 +29,16 @@ function M.startAppWatcher()
 	State.state.appWatcher = hs.application.watcher.new(
 		function(appName, eventType)
 			Log.log.df(
-				"[M.startAppWatcher] App event: %s - %s",
+				"[Watchers.startAppWatcher] App event: %s - %s",
 				appName,
 				eventType
 			)
 
 			if eventType == hs.application.watcher.activated then
-				Log.log.df("[M.startAppWatcher] App activated: %s", appName)
+				Log.log.df(
+					"[Watchers.startAppWatcher] App activated: %s",
+					appName
+				)
 
 				Cleanup.onAppSwitch()
 				Timer.startFocusCheck()
@@ -48,38 +55,53 @@ function M.startAppWatcher()
 					Modes.setModeDisabled()
 					Marks.clear()
 					Log.log.df(
-						"[M.startAppWatcher] Disabled mode for excluded app: %s",
+						"[Watchers.startAppWatcher] Disabled mode for excluded app: %s",
 						appName
 					)
 				else
 					Modes.setModeNormal()
 					Marks.clear()
+					Log.log.df(
+						"[Watchers.startAppWatcher] Enabled mode for app: %s",
+						appName
+					)
 				end
 			end
 		end
 	)
 
 	State.state.appWatcher:start()
-
-	Log.log.df("[M.startAppWatcher] App watcher started")
 end
 
+---Stops the app watcher
+---@return nil
 function M.stopAppWatcher()
+	Log.log.df("[Watchers.stopAppWatcher] Stopped app watcher")
+
 	if State.state.appWatcher then
 		State.state.appWatcher:stop()
 		State.state.appWatcher = nil
-		Log.log.df("[M.stopAppWatcher] Stopped app watcher")
 	end
 end
 
+---Starts the launcher watcher
+---@return nil
 function M.startLaunchersWatcher()
+	Log.log.df("[Watchers.startLaunchersWatcher] Starting launcher watcher")
+
 	local launchers = Config.config.applicationGroups.launchers
 
 	if not launchers or #launchers == 0 then
+		Log.log.df("[Watchers.startLaunchersWatcher] No launchers found")
 		return
 	end
 
 	for _, launcher in ipairs(launchers) do
+		Log.log.df(
+			"[Watchers.startLaunchersWatcher] Starting watcher for %s",
+			launcher
+		)
+
 		M.stopLauncherWatcher(launcher)
 
 		State.state.launcherWatcher[launcher] = hs.window.filter
@@ -90,7 +112,7 @@ function M.startLaunchersWatcher()
 			hs.window.filter.windowCreated,
 			function()
 				Log.log.df(
-					"[M.startLaunchersWatcher] Launcher opened: %s",
+					"[Watchers.startLaunchersWatcher] Launcher opened: %s",
 					launcher
 				)
 				Modes.setModeDisabled()
@@ -102,7 +124,7 @@ function M.startLaunchersWatcher()
 			hs.window.filter.windowDestroyed,
 			function()
 				Log.log.df(
-					"[M.startLaunchersWatcher] Launcher closed: %s",
+					"[Watchers.startLaunchersWatcher] Launcher closed: %s",
 					launcher
 				)
 				Modes.setModeNormal()
@@ -112,10 +134,22 @@ function M.startLaunchersWatcher()
 	end
 end
 
+---Stops one launcher watcher
+---@param launcher string
+---@return nil
 function M.stopLauncherWatcher(launcher)
+	Log.log.df(
+		"[Watchers.stopLauncherWatcher] Stopping launcher watcher: %s",
+		launcher
+	)
+
 	if
 		State.state.launcherWatcher and State.state.launcherWatcher[launcher]
 	then
+		Log.log.df(
+			"[Watchers.stopLauncherWatcher] Stopping watcher for %s",
+			launcher
+		)
 		State.state.launcherWatcher[launcher]:unsubscribeAll()
 		State.state.launcherWatcher[launcher] = nil
 		Log.log.df(
@@ -125,7 +159,11 @@ function M.stopLauncherWatcher(launcher)
 	end
 end
 
+---Stops all launcher watcher
+---@return nil
 function M.stopLaunchersWatcher()
+	Log.log.df("[Watchers.stopLaunchersWatcher] Stopping all launcher watchers")
+
 	if State.state.launcherWatcher then
 		for _, launcher in pairs(State.state.launcherWatcher) do
 			if launcher then
@@ -134,28 +172,41 @@ function M.stopLaunchersWatcher()
 			end
 		end
 		State.state.launcherWatcher = {}
-		Log.log.df("[M.stopLaunchersWatcher] Stopped launcher watcher")
 	end
 end
 
+---Starts the screen watcher
+---@return nil
 function M.startScreenWatcher()
+	Log.log.df("[Watchers.startScreenWatcher] Starting screen watcher")
+
 	M.stopScreenWatcher()
 	State.state.screenWatcher =
 		hs.screen.watcher.new(Cleanup.onScreenChange):start()
-	Log.log.df("[M.startScreenWatcher] Screen watcher started")
 end
 
+---Stops the screen watcher
+---@return nil
 function M.stopScreenWatcher()
+	Log.log.df("[Watchers.stopScreenWatcher] Stopping screen watcher")
+
 	if State.state.screenWatcher then
 		State.state.screenWatcher:stop()
 		State.state.screenWatcher = nil
-		Log.log.df("[M.stopScreenWatcher] Stopped screen watcher")
 	end
 end
 
+---Handles caffeine events
+---@param eventType number
+---@return nil
 local function handleCaffeineEvent(eventType)
+	Log.log.df(
+		"[Watchers.handleCaffeineEvent] Handling caffeine event: %s",
+		eventType
+	)
+
 	if eventType == hs.caffeinate.watcher.systemDidWake then
-		Log.log.df("[handleCaffeineEvent] System woke from sleep")
+		Log.log.df("[Watchers.handleCaffeineEvent] System woke from sleep")
 
 		-- Give the system time to stabilize
 		hs.timer.doAfter(1.0, function()
@@ -194,41 +245,53 @@ local function handleCaffeineEvent(eventType)
 				or not State.state.eventLoop:isEnabled()
 			then
 				Log.log.wf(
-					"[handleCaffeineEvent] Event loop not running, restarting..."
+					"[Watchers.handleCaffeineEvent] Event loop not running, restarting..."
 				)
 				EventHandler.stopEventLoop()
 				EventHandler.startEventLoop()
 			end
 
-			Log.log.df("[handleCaffeineEvent] Recovery complete after wake")
+			Log.log.df(
+				"[Watchers.handleCaffeineEvent] Recovery complete after wake"
+			)
 		end)
 	elseif eventType == hs.caffeinate.watcher.systemWillSleep then
-		Log.log.df("[handleCaffeineEvent] System going to sleep")
+		Log.log.df("[Watchers.handleCaffeineEvent] System going to sleep")
 
 		Cleanup.onSleep()
 
-		Log.log.df("[handleCaffeineEvent] Cleanup complete before sleep")
+		Log.log.df(
+			"[Watchers.handleCaffeineEvent] Cleanup complete before sleep"
+		)
 	end
 end
 
+---Starts the caffeine watcher
+---@return nil
 function M.startCaffeineWatcher()
+	Log.log.df("[Watchers.startCaffeineWatcher] Starting caffeine watcher")
+
 	M.stopCaffeineWatcher()
 	State.state.caffeineWatcher =
 		hs.caffeinate.watcher.new(handleCaffeineEvent):start()
-	Log.log.df("[M.startCaffeineWatcher] Caffeine watcher started")
 end
 
+---Stops the caffeine watcher
+---@return nil
 function M.stopCaffeineWatcher()
+	Log.log.df("[Watchers.stopCaffeineWatcher] Stopping caffeine watcher")
+
 	if State.state.caffeineWatcher then
 		State.state.caffeineWatcher:stop()
 		State.state.caffeineWatcher = nil
-		Log.log.df("[M.stopCaffeineWatcher] Stopped caffeine watcher")
 	end
 end
 
 ---Clean up timers and watchers
 ---@return nil
 function M.stopAll()
+	Log.log.df("[Watchers.stopAll] Stopping all watchers")
+
 	Timer.stopAll()
 	M.stopAppWatcher()
 	M.stopLaunchersWatcher()

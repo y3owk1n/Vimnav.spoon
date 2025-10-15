@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 local Config = require("lib.config")
 local Log = require("lib.log")
 local State = require("lib.state")
@@ -8,7 +10,10 @@ local M = {}
 ---Creates the overlay indicator
 ---@return nil
 function M.create()
+	Log.log.df("[Overlay.create] Creating overlay")
+
 	if not Config.config.overlay.enabled then
+		Log.log.df("[Overlay.create] Overlay disabled")
 		return
 	end
 
@@ -167,8 +172,17 @@ function M.getModeColor(mode)
 			Config.config.overlay.colors.passthrough or "#f28fad"
 		),
 	}
-	return colors[mode]
+
+	local color = colors[mode]
 		or Utils.hexToRgb(Config.config.overlay.colors.disabled or "#5a5672")
+
+	Log.log.df(
+		"[Overlay.getModeColor] Mode=%s, color=%s",
+		mode,
+		hs.inspect(color)
+	)
+
+	return color
 end
 
 ---Updates the overlay indicator
@@ -176,7 +190,10 @@ end
 ---@param keys? string|nil
 ---@return nil
 function M.update(mode, keys)
+	Log.log.df("[Overlay.update] Updating overlay")
+
 	if not Config.config.overlay.enabled or not State.state.overlayCanvas then
+		Log.log.df("[Overlay.update] Overlay disabled")
 		return
 	end
 
@@ -263,6 +280,7 @@ end
 ---Destroys the overlay indicator
 ---@return nil
 function M.destroy()
+	Log.log.df("[Overlay.destroy] Destroying overlay")
 	State:resetOverlayCanvas()
 end
 

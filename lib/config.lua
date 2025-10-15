@@ -1,4 +1,7 @@
+---@diagnostic disable: undefined-global
+
 local Utils = require("lib.utils")
+local Log = require("lib.log")
 
 local M = {}
 
@@ -521,6 +524,8 @@ M.config = {}
 ---@param userConfig Hs.Vimnav.Config
 ---@param opts? Hs.Vimnav.Config.SetOpts
 function M:new(userConfig, opts)
+	Log.log.df("[Config:new] Creating config")
+
 	opts = opts or {}
 	local extend = opts.extend
 	if extend == nil then
@@ -529,11 +534,13 @@ function M:new(userConfig, opts)
 
 	-- Start with defaults
 	if not self.config or not next(self.config) then
+		Log.log.df("[Config:new] No config found, using defaults")
 		self.config = Utils.deepCopy(DEFAULT_CONFIG)
 	end
 
 	-- Merge user config
 	if userConfig then
+		Log.log.df("[Config:new] Merging user config")
 		self.config = Utils.tblMerge(self.config, userConfig, extend)
 	end
 end

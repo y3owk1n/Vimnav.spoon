@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+
 local State = require("lib.state")
 local Log = require("lib.log")
 local Cache = require("lib.cache")
