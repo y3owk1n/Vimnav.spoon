@@ -23,7 +23,7 @@ function M.medium()
 	M.light()
 
 	-- Clear UI elements
-	require("lib.marks").clear()
+	require("lib.marks"):clear()
 	require("lib.whichkey"):hide()
 
 	-- Reset focus state
@@ -53,13 +53,6 @@ function M.full()
 
 	-- Stop all timers
 	require("lib.timer"):stopAll()
-
-	-- Hide all UI elements
-	if State.state.markCanvas then
-		pcall(function()
-			State.state.markCanvas:hide()
-		end)
-	end
 end
 
 ---Cleanup for app switching - medium + element cache
@@ -100,12 +93,12 @@ function M.onModeChange(fromMode, toMode)
 
 	-- Clear marks when leaving LINKS mode
 	if fromMode == MODES.LINKS then
-		require("lib.marks").clear()
+		require("lib.marks"):clear()
 	end
 
 	-- Clear marks when entering certain modes
 	if toMode == MODES.NORMAL or toMode == MODES.PASSTHROUGH then
-		require("lib.marks").clear()
+		require("lib.marks"):clear()
 	end
 end
 
@@ -156,8 +149,9 @@ function M.onScreenChange()
 	end
 
 	-- Redraw marks if showing
-	if State.state.markCanvas and #State.state.marks > 0 then
-		hs.timer.doAfter(0.2, require("lib.marks").draw)
+	local Marks = require("lib.marks")
+	if Marks.canvas and #Marks.marks > 0 then
+		hs.timer.doAfter(0.2, Marks.draw)
 	end
 end
 
