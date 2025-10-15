@@ -533,25 +533,30 @@ function M.process(event)
 	return false
 end
 
+M.eventLoop = nil
+
+function M:new()
+	self.eventLoop =
+		hs.eventtap.new({ hs.eventtap.event.types.keyDown }, self.process)
+end
+
 ---Starts the event loop
 ---@return nil
-function M.startEventLoop()
-	if not State.state.eventLoop then
-		State.state.eventLoop = hs.eventtap
-			.new({ hs.eventtap.event.types.keyDown }, M.process)
-			:start()
+function M:start()
+	if not self.eventLoop or not self.eventLoop:isEnabled() then
+		self.eventLoop:start()
 		Log.log.df("[EventHandler.startEventLoop] Started event loop")
 	else
-		Log.log.df("[EventHandler.startEventLoop] Event loop not running")
+		Log.log.df("[EventHandler.startEventLoop] Event loop already running")
 	end
 end
 
 ---Stops the event loop
 ---@return nil
-function M.stopEventLoop()
-	if State.state.eventLoop then
-		State.state.eventLoop:stop()
-		State.state.eventLoop = nil
+function M:stop()
+	if self.eventLoop and self.eventLoop:isEnabled() then
+		self.eventLoop:stop()
+		self.eventLoop = nil
 		Log.log.df("[EventHandler.stopEventLoop] Stopped event loop")
 	else
 		Log.log.df("[EventHandler.stopEventLoop] Event loop not running")

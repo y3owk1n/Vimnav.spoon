@@ -14,7 +14,6 @@ local defaultState = {
 	lastEscape = 0,
 	mappingPrefixes = {},
 	allCombinations = {},
-	eventLoop = nil,
 	markCanvas = nil,
 	onClickCallback = nil,
 	cleanupTimer = nil,

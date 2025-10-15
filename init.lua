@@ -113,6 +113,7 @@ function M:start()
 
 	Cache:new()
 	State:new()
+	EventHandler:new()
 
 	Mappings.fetchMappingPrefixes()
 	Mappings.generateCombinations()
@@ -159,7 +160,7 @@ function M:stop()
 	Log.log.i("[stop] Stopping Vimnav")
 
 	Watchers.stopAll()
-	EventHandler.stopEventLoop()
+	EventHandler:stop()
 
 	MenuBar.destroy()
 	Overlay.destroy()
