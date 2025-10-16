@@ -1,13 +1,32 @@
 ---@diagnostic disable: undefined-global
 local M = {}
 
+---Tracks the current element
+---@type string|table|nil
 M.currentElement = nil
+
+---Tracks the selected text range
+---@type Hs.Vimnav.Buffer.SelectedTextRange
 M.selectedTextRange = {}
+
+---Tracks the visible text range
+---@type Hs.Vimnav.Buffer.SelectedTextRange
 M.visibleTextRange = {}
+
+---Tracks the full text
+---@type string
 M.fullText = ""
+
+---Tracks if the buffer is started
+---@type boolean
 M._isStarted = false
+
+---Tracks the visual anchor
+---@type number
 M._visualAnchor = nil
 
+---Creates a new buffer
+---@return nil
 function M:new()
 	if self._isStarted then
 		return
@@ -31,32 +50,62 @@ function M:new()
 	self._isStarted = true
 end
 
+---Clears the buffer
+---@return nil
 function M:clear()
+	self:exitVisualMode()
+
 	self.currentElement = nil
 	self.selectedTextRange = {}
 	self.visibleTextRange = {}
 	self.fullText = ""
 	self._isStarted = false
-
-	self:exitVisualMode()
 end
 
+---Start visual mode
+---@return boolean success
+function M:startVisualMode()
+	self._visualAnchor = self:getCursorPosition()
+	return true
+end
+
+---Exit visual mode
+---@return boolean success
+function M:exitVisualMode()
+	if self._visualAnchor then
+		self:setCursorPosition(self._visualAnchor)
+	end
+	self._visualAnchor = nil
+	return true
+end
+
+---Returns the current element
+---@return string|table|nil
 function M:getCurrentElement()
 	return self.currentElement
 end
 
+---Returns the selected text range
+---@return Hs.Vimnav.Buffer.SelectedTextRange
 function M:getSelectedTextRange()
 	return self.selectedTextRange
 end
 
+---Returns the visible text range
+---@return Hs.Vimnav.Buffer.SelectedTextRange
 function M:getVisibleTextRange()
 	return self.visibleTextRange
 end
 
+---Returns the cursor position
+---@return number
 function M:getCursorPosition()
 	return self.selectedTextRange.location or 0
 end
 
+---Sets the cursor position
+---@param position number Position to set
+---@return boolean success
 function M:setCursorPosition(position)
 	if not self.currentElement then
 		return false
@@ -78,6 +127,10 @@ function M:setCursorPosition(position)
 	return true
 end
 
+---Sets the selection
+---@param startPos number Start position
+---@param length number Length
+---@return boolean success
 function M:setSelection(startPos, length)
 	if not self.currentElement then
 		return false
@@ -100,45 +153,21 @@ function M:setSelection(startPos, length)
 	return true
 end
 
----@param steps number can be negative or positive
----@return boolean success
-function M:moveCursorX(steps)
-	if not self.currentElement then
-		return false
-	end
+--------------------------------------------------------------------------------
+-- Helpers
+--------------------------------------------------------------------------------
 
-	local pos = self:getCursorPosition()
-	local newPos = pos + steps
-
-	-- Don't allow moving cursor past boundaries
-	if newPos < 0 or newPos > #self.fullText then
-		return false
-	end
-
-	return self:setCursorPosition(newPos)
-end
-
--- Helper function to find character in text
-local function findChar(text, startPos, char, forward)
-	if forward then
-		local pos = text:find(char, startPos + 1, true)
-		return pos
-	else
-		for i = startPos - 1, 1, -1 do
-			if text:sub(i, i) == char then
-				return i
-			end
-		end
-		return nil
-	end
-end
-
--- Helper function to check if character is a word character
+---Helper function to check if character is a word character
+---@param char string Character to check
+---@return boolean
 local function isWordChar(char)
 	return char:match("[%w_]") ~= nil
 end
 
--- Helper function to find next word boundary
+---Helper function to find next word boundary
+---@param text string Text to search in
+---@param pos number Start position
+---@return number|nil Position of the next word boundary or nil if not found
 local function findNextWord(text, pos)
 	local len = #text
 	if pos > len then
@@ -179,7 +208,10 @@ local function findNextWord(text, pos)
 	return pos
 end
 
--- Helper function to find previous word boundary
+---Helper function to find previous word boundary
+---@param text string Text to search in
+---@param pos number Start position
+---@return number|nil Position of the previous word boundary or nil if not found
 local function findPrevWord(text, pos)
 	if pos <= 1 then
 		return 1
@@ -200,21 +232,71 @@ local function findPrevWord(text, pos)
 	return pos
 end
 
--- Vim movement: w (next word)
+---Helper function to find matching brackets
+---@param text string Text to search in
+---@param startPos number Start position
+---@param openChar string Opening character
+---@param closeChar string Closing character
+---@return number|nil Position of the matching bracket or nil if not found
+local function findMatchingBracket(text, startPos, openChar, closeChar)
+	local depth = 0
+	local len = #text
+
+	for i = startPos, len do
+		local char = text:sub(i, i)
+		if char == openChar then
+			depth = depth + 1
+		elseif char == closeChar then
+			depth = depth - 1
+			if depth == 0 then
+				return i
+			end
+		end
+	end
+
+	return nil
+end
+
+--------------------------------------------------------------------------------
+-- Normal Movements
+--------------------------------------------------------------------------------
+
+---@param steps number can be negative or positive
+---@return boolean success
+function M:moveCursorX(steps)
+	if not self.currentElement then
+		return false
+	end
+
+	local pos = self:getCursorPosition()
+	local newPos = pos + steps
+
+	-- Don't allow moving cursor past boundaries
+	if newPos < 0 or newPos > #self.fullText then
+		return false
+	end
+
+	return self:setCursorPosition(newPos)
+end
+
+---Move to the next word
+---@return boolean success
 function M:moveWordForward()
 	local pos = self:getCursorPosition()
 	local newPos = findNextWord(self.fullText, pos + 1)
 	return self:setCursorPosition(newPos - 1)
 end
 
--- Vim movement: b (previous word)
+---Move to the previous word
+---@return boolean success
 function M:moveWordBackward()
 	local pos = self:getCursorPosition()
 	local newPos = findPrevWord(self.fullText, pos + 1)
 	return self:setCursorPosition(newPos - 1)
 end
 
--- Vim movement: e (end of word)
+---Move to the end of the word
+---@return boolean success
 function M:moveWordEnd()
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -259,7 +341,8 @@ function M:moveWordEnd()
 	return self:setCursorPosition(pos)
 end
 
--- Vim movement: 0 (start of line)
+---Move to the start of the line
+---@return boolean success
 function M:moveLineStart()
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -276,7 +359,8 @@ function M:moveLineStart()
 	return self:setCursorPosition(lineStart)
 end
 
--- Vim movement: $ (end of line)
+---Move to the end of the line
+---@return boolean success
 function M:moveLineEnd()
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -294,7 +378,8 @@ function M:moveLineEnd()
 	return self:setCursorPosition(lineEnd)
 end
 
--- Vim movement: ^ (first non-blank character)
+---Move to the first non-blank character of the line
+---@return boolean success
 function M:moveLineFirstNonBlank()
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -323,7 +408,8 @@ function M:moveLineFirstNonBlank()
 	return self:setCursorPosition(firstNonBlank)
 end
 
--- Vim movement: j (down)
+---Move down one line
+---@return boolean success
 function M:moveLineDown()
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -362,7 +448,8 @@ function M:moveLineDown()
 	return self:setCursorPosition(newPos)
 end
 
--- Vim movement: k (up)
+---Move up one line
+---@return boolean success
 function M:moveLineUp()
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -396,37 +483,24 @@ function M:moveLineUp()
 	return self:setCursorPosition(newPos)
 end
 
--- Vim movement: f{char} (find character forward)
-function M:findCharForward(char)
-	local pos = self:getCursorPosition()
-	local found = findChar(self.fullText, pos + 1, char, true)
-	if found then
-		return self:setCursorPosition(found - 1)
-	end
-	return false
-end
-
--- Vim movement: F{char} (find character backward)
-function M:findCharBackward(char)
-	local pos = self:getCursorPosition()
-	local found = findChar(self.fullText, pos + 1, char, false)
-	if found then
-		return self:setCursorPosition(found - 1)
-	end
-	return false
-end
-
--- Vim movement: gg (start of document)
+---Move to the start of the document
+---@return boolean success
 function M:moveDocStart()
 	return self:setCursorPosition(0)
 end
 
--- Vim movement: G (end of document)
+---Move to the end of the document
+---@return boolean success
 function M:moveDocEnd()
 	return self:setCursorPosition(#self.fullText)
 end
 
--- Text object: iw (inner word)
+--------------------------------------------------------------------------------
+-- Text Objects
+--------------------------------------------------------------------------------
+
+---Select the inner word (`iw`)
+---@return boolean success
 function M:selectInnerWord()
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -449,7 +523,8 @@ function M:selectInnerWord()
 	return self:setSelection(wordStart, length)
 end
 
--- Text object: aw (a word, including whitespace)
+---Select the word (`aw`)
+---@return boolean success
 function M:selectAroundWord()
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -477,27 +552,8 @@ function M:selectAroundWord()
 	return self:setSelection(wordStart, length)
 end
 
--- Text object helper: find matching brackets
-local function findMatchingBracket(text, startPos, openChar, closeChar)
-	local depth = 0
-	local len = #text
-
-	for i = startPos, len do
-		local char = text:sub(i, i)
-		if char == openChar then
-			depth = depth + 1
-		elseif char == closeChar then
-			depth = depth - 1
-			if depth == 0 then
-				return i
-			end
-		end
-	end
-
-	return nil
-end
-
--- Text object: i( or i) or ib (inner parentheses)
+---Select the inner parentheses (`i(` or `i)`)
+---@return boolean success
 function M:selectInnerParens()
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -524,7 +580,8 @@ function M:selectInnerParens()
 	return self:setSelection(openPos, closePos - openPos - 1)
 end
 
--- Text object: a( or a) or ab (around parentheses)
+---Select the parentheses (`a(` or `a)`)
+---@return boolean success
 function M:selectAroundParens()
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -551,7 +608,8 @@ function M:selectAroundParens()
 	return self:setSelection(openPos - 1, closePos - openPos + 1)
 end
 
--- Text object: i{ or i} or iB (inner braces)
+---Select the braces (`i{` or `i}`)
+---@return boolean success
 function M:selectInnerBraces()
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -576,7 +634,8 @@ function M:selectInnerBraces()
 	return self:setSelection(openPos, closePos - openPos - 1)
 end
 
--- Text object: a{ or a} or aB (around braces)
+---Select the braces (`a{` or `a}`)
+---@return boolean success
 function M:selectAroundBraces()
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -601,7 +660,8 @@ function M:selectAroundBraces()
 	return self:setSelection(openPos - 1, closePos - openPos + 1)
 end
 
--- Text object: i[ or i] (inner brackets)
+---Select the brackets (`i[` or `i]`)
+---@return boolean success
 function M:selectInnerBrackets()
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -626,7 +686,8 @@ function M:selectInnerBrackets()
 	return self:setSelection(openPos, closePos - openPos - 1)
 end
 
--- Text object: a[ or a] (around brackets)
+---Select the brackets (`a[` or `a]`)
+---@return boolean success
 function M:selectAroundBrackets()
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -651,7 +712,9 @@ function M:selectAroundBrackets()
 	return self:setSelection(openPos - 1, closePos - openPos + 1)
 end
 
--- Text object: i" or i' or i` (inner quotes)
+---Select the quotes (`i"` or `i'`)
+---@param quoteChar string Quote character
+---@return boolean success
 function M:selectInnerQuotes(quoteChar)
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -685,7 +748,9 @@ function M:selectInnerQuotes(quoteChar)
 	return self:setSelection(openPos, closePos - openPos - 1)
 end
 
--- Text object: a" or a' or a` (around quotes)
+---Select the quotes (`a"` or `a'`)
+---@param quoteChar string Quote character
+---@return boolean success
 function M:selectAroundQuotes(quoteChar)
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -719,7 +784,13 @@ function M:selectAroundQuotes(quoteChar)
 	return self:setSelection(openPos - 1, closePos - openPos + 1)
 end
 
--- Helper function to get current line boundaries
+--------------------------------------------------------------------------------
+-- Lines
+--------------------------------------------------------------------------------
+
+---Get the current line boundaries
+---@return number startPos
+---@return number endPos
 function M:getCurrentLineBounds()
 	local pos = self:getCursorPosition()
 	local text = self.fullText
@@ -746,6 +817,12 @@ function M:getCurrentLineBounds()
 	return lineStart, lineEnd
 end
 
+--------------------------------------------------------------------------------
+-- Selections
+--------------------------------------------------------------------------------
+
+---Select the current line
+---@return boolean success
 function M:selectLine()
 	if not self.currentElement then
 		return false
@@ -776,19 +853,7 @@ function M:selectLine()
 	return self:setSelection(contentStart, contentEnd - contentStart + 1)
 end
 
-function M:startVisualMode()
-	self._visualAnchor = self:getCursorPosition()
-	return true
-end
-
-function M:exitVisualMode()
-	if self._visualAnchor then
-		self:setCursorPosition(self._visualAnchor)
-	end
-	self._visualAnchor = nil
-	return true
-end
-
+---Extend the selection left or right
 ---@param steps number can be negative or positive
 function M:extendSelection(steps)
 	if not self.currentElement then
@@ -857,15 +922,24 @@ function M:extendSelection(steps)
 	return true
 end
 
--- Visual mode movements (these extend selection instead of moving cursor)
+--------------------------------------------------------------------------------
+-- Visual Movements
+--------------------------------------------------------------------------------
+
+---Extend the selection right
+---@return boolean success
 function M:visualMoveRight()
 	return self:extendSelection(1)
 end
 
+---Extend the selection left
+---@return boolean success
 function M:visualMoveLeft()
 	return self:extendSelection(-1)
 end
 
+---Extend the selection to the next word
+---@return boolean success
 function M:visualMoveWordForward()
 	local cur = self:getSelectedTextRange()
 	local currentPos = cur.location or self:getCursorPosition()
@@ -890,6 +964,8 @@ function M:visualMoveWordForward()
 	return self:extendSelection(steps)
 end
 
+---Extend the selection to the previous word
+---@return boolean success
 function M:visualMoveWordBackward()
 	local cur = self:getSelectedTextRange()
 	local currentPos = cur.location or self:getCursorPosition()
@@ -914,6 +990,8 @@ function M:visualMoveWordBackward()
 	return self:extendSelection(steps)
 end
 
+---Extend the selection down one line
+---@return boolean success
 function M:visualMoveLineDown()
 	local text = self.fullText
 	local cur = self:getSelectedTextRange()
@@ -942,6 +1020,8 @@ function M:visualMoveLineDown()
 	return self:extendSelection(steps)
 end
 
+---Extend the selection up one line
+---@return boolean success
 function M:visualMoveLineUp()
 	local text = self.fullText
 	local cur = self:getSelectedTextRange()
@@ -970,6 +1050,8 @@ function M:visualMoveLineUp()
 	return self:extendSelection(steps)
 end
 
+---Extend the selection to the start of the line
+---@return boolean success
 function M:visualMoveLineStart()
 	local lineStart = self:moveLineStart()
 	if lineStart then
@@ -988,6 +1070,8 @@ function M:visualMoveLineStart()
 	return false
 end
 
+---Extend the selection to the end of the line
+---@return boolean success
 function M:visualMoveLineEnd()
 	local lineEnd = self:moveLineEnd()
 	if lineEnd then
@@ -1006,6 +1090,8 @@ function M:visualMoveLineEnd()
 	return false
 end
 
+---Extend the selection to the first non-blank character of the line
+---@return boolean success
 function M:visualMoveLineFirstNonBlank()
 	local lineStart = self:moveLineFirstNonBlank()
 	if lineStart then
@@ -1020,8 +1106,12 @@ function M:visualMoveLineFirstNonBlank()
 			return self:setSelection(anchor, newPos - anchor)
 		end
 	end
+
+	return false
 end
 
+---Extend the selection to the start of the document
+---@return boolean success
 function M:visualMoveDocStart()
 	local ok = self:moveDocStart()
 	local anchor = self._visualAnchor
@@ -1030,6 +1120,8 @@ function M:visualMoveDocStart()
 	return ok
 end
 
+---Extend the selection to the end of the document
+---@return boolean success
 function M:visualMoveDocEnd()
 	local docEnd = #self.fullText
 	local anchor = self._visualAnchor
