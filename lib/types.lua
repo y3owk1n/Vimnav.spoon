@@ -151,6 +151,14 @@ local M = {}
 ---@class Hs.Vimnav.EventHandler.HandleVimInputOpts
 ---@field modifiers? table
 
+---@class Hs.Vimnav.Buffer.SelectedTextRange
+---@field location number
+---@field length number
+
+---@class Hs.Vimnav.Buffer.VisibleTextRange
+---@field location number
+---@field length number
+
 ---@alias Hs.Vimnav.Element table|string
 
 ---@alias Hs.Vimnav.Modifier "cmd"|"ctrl"|"alt"|"shift"|"fn"

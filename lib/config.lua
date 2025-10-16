@@ -166,74 +166,80 @@ local DEFAULT_MAPPING = {
 		["h"] = {
 			description = "Move left",
 			action = "bufferMoveLeft",
-			-- action = { {}, "left" },
 		},
 		["j"] = {
 			description = "Move down",
-			action = { {}, "down" },
+			action = "bufferMoveDown",
 		},
 		["k"] = {
 			description = "Move up",
-			action = { {}, "up" },
+			action = "bufferMoveUp",
 		},
 		["l"] = {
 			description = "Move right",
 			action = "bufferMoveRight",
-			-- action = { {}, "right" },
 		},
 		["e"] = {
 			description = "Move to end of word",
-			action = { "alt", "right" },
+			action = "bufferMoveWordEnd",
 		},
 		["b"] = {
 			description = "Move to beginning of word",
-			action = { "alt", "left" },
+			action = "bufferMoveWordBackward",
+		},
+		["w"] = {
+			description = "Move to beginning of next word",
+			action = "bufferMoveWordForward",
+		},
+		["^"] = {
+			description = "Move to beginning of line non blank",
+			action = "bufferMoveLineFirstNonBlank",
 		},
 		["0"] = {
 			description = "Move to beginning of line",
-			action = { "cmd", "left" },
+			action = "bufferMoveLineStart",
 		},
 		["$"] = {
 			description = "Move to end of line",
-			action = { "cmd", "right" },
+			action = "bufferMoveLineEnd",
 		},
 		["gg"] = {
 			description = "Move to top of page",
-			action = { "cmd", "up" },
+			action = "bufferMoveDocStart",
 		},
 		["G"] = {
 			description = "Move to bottom of page",
-			action = { "cmd", "down" },
+			action = "bufferMoveDocEnd",
 		},
 		-- edits
 		["diw"] = {
-			description = "Delete word",
-			action = "deleteWord",
+			description = "Delete inner word",
+			action = "bufferDeleteInnerWord",
 		},
 		["ciw"] = {
-			description = "Change word",
-			action = "changeWord",
+			description = "Change inner word",
+			action = "bufferChangeInnerWord",
 		},
 		["yiw"] = {
 			description = "Yank word",
-			action = "yankWord",
+			action = "bufferYankInnerWord",
 		},
 		["dd"] = {
 			description = "Delete line",
-			action = "deleteLine",
+			action = "bufferDeleteLine",
 		},
 		["cc"] = {
 			description = "Change line",
-			action = "changeLine",
+			action = "bufferChangeLine",
 		},
 		["x"] = {
 			description = "Delete character",
-			action = { {}, "delete" },
+			action = "bufferDeleteChar",
 		},
 		-- yank and paste
 		["yy"] = {
 			description = "Yank line",
-			action = "yankLine",
+			action = "bufferYankLine",
 		},
 		["p"] = {
 			description = "Paste",
@@ -286,57 +292,61 @@ local DEFAULT_MAPPING = {
 		-- movements
 		["h"] = {
 			description = "Move left",
-			action = { { "shift" }, "left" },
+			action = "bufferSelectMoveLeft",
 		},
 		["j"] = {
 			description = "Move down",
-			action = { { "shift" }, "down" },
+			action = "bufferSelectMoveDown",
 		},
 		["k"] = {
 			description = "Move up",
-			action = { { "shift" }, "up" },
+			action = "bufferSelectMoveUp",
 		},
 		["l"] = {
 			description = "Move right",
-			action = { { "shift" }, "right" },
+			action = "bufferSelectMoveRight",
 		},
 		["e"] = {
 			description = "Move to end of word",
-			action = { { "shift", "alt" }, "right" },
+			action = "bufferSelectMoveWordForward",
 		},
 		["b"] = {
 			description = "Move to beginning of word",
-			action = { { "shift", "alt" }, "left" },
+			action = "bufferSelectMoveWordBackward",
 		},
 		["0"] = {
 			description = "Move to beginning of line",
-			action = { { "shift", "cmd" }, "left" },
+			action = "bufferSelectMoveLineStart",
 		},
 		["$"] = {
 			description = "Move to end of line",
-			action = { { "shift", "cmd" }, "right" },
+			action = "bufferSelectMoveLineEnd",
+		},
+		["^"] = {
+			description = "Move to beginning of line non blank",
+			action = "bufferSelectMoveLineFirstNonBlank",
 		},
 		["gg"] = {
 			description = "Move to top of page",
-			action = { { "shift", "cmd" }, "up" },
+			action = "bufferSelectMoveDocStart",
 		},
 		["G"] = {
 			description = "Move to bottom of page",
-			action = { { "shift", "cmd" }, "down" },
+			action = "bufferSelectMoveDocEnd",
 		},
 		-- edits
 		["d"] = {
 			description = "Delete highlighted",
-			action = "deleteHighlighted",
+			action = "bufferSelectDelete",
 		},
 		["c"] = {
 			description = "Change highlighted",
-			action = "changeHighlighted",
+			action = "bufferSelectChange",
 		},
 		-- yank
 		["y"] = {
 			description = "Yank highlighted",
-			action = "yankHighlighted",
+			action = "bufferSelectYank",
 		},
 	},
 	visual = {

@@ -168,9 +168,21 @@ function M.enterInsertVisualLineMode()
 		"[Commands.enterInsertVisualLineMode] Entering insert visual line mode"
 	)
 
-	Utils.keyStroke("cmd", "left")
-	Utils.keyStroke({ "shift", "cmd" }, "right")
-	return M.enterInsertVisualMode()
+	-- set cursor to start of line first
+	M.bufferMoveLineStart()
+
+	local ok = M.enterInsertVisualMode()
+
+	if ok then
+		local buffer = require("lib.buffer")
+
+		if not buffer:selectLine() then
+			Utils.keyStroke("cmd", "left")
+			Utils.keyStroke({ "shift", "cmd" }, "right")
+		end
+	end
+
+	return ok
 end
 
 ---Switches to links mode
@@ -550,81 +562,6 @@ function M.moveMouseToCenter()
 	})
 end
 
----Delete word
----@return nil
-function M.deleteWord()
-	Log.log.df("[Commands.deleteWord] Deleting word")
-
-	Utils.keyStroke("alt", "right")
-	Utils.keyStroke("alt", "delete")
-end
-
----Change word
----@return nil
-function M.changeWord()
-	Log.log.df("[Commands.changeWord] Changing word")
-
-	M.deleteWord()
-	require("lib.modes"):setModeInsert()
-end
-
----Yank word
----@return nil
-function M.yankWord()
-	Log.log.df("[Commands.yankWord] Yanking word")
-
-	Utils.keyStroke("alt", "right")
-	Utils.keyStroke({ "shift", "alt" }, "left")
-	Utils.keyStroke("cmd", "c")
-	Utils.keyStroke({}, "right")
-end
-
----Delete line
----@return nil
-function M.deleteLine()
-	Log.log.df("[Commands.deleteLine] Deleting line")
-
-	Utils.keyStroke("cmd", "right")
-	Utils.keyStroke("cmd", "delete")
-end
-
----Change line
----@return nil
-function M.changeLine()
-	Log.log.df("[Commands.changeLine] Changing line")
-
-	M.deleteLine()
-	require("lib.modes"):setModeInsert()
-end
-
----Yank line
----@return nil
-function M.yankLine()
-	Log.log.df("[Commands.yankLine] Yanking line")
-
-	Utils.keyStroke("cmd", "left")
-	Utils.keyStroke({ "shift", "cmd" }, "right")
-	Utils.keyStroke("cmd", "c")
-	Utils.keyStroke({}, "right")
-end
-
----Delete highlighted
----@return nil
-function M.deleteHighlighted()
-	Log.log.df("[Commands.deleteHighlighted] Deleting highlighted")
-
-	Utils.keyStroke({}, "delete")
-end
-
----Change highlighted
----@return nil
-function M.changeHighlighted()
-	Log.log.df("[Commands.changeHighlighted] Changing highlighted")
-
-	M.deleteHighlighted()
-	require("lib.modes"):setModeInsert()
-end
-
 ---Yank highlighted
 ---@return nil
 function M.yankHighlighted()
@@ -633,39 +570,305 @@ function M.yankHighlighted()
 	Utils.keyStroke("cmd", "c")
 	Utils.keyStroke({}, "right")
 end
-
 function M.bufferMoveLeft()
-	local focusedElement = Elements.getAxFocusedElement(true, true)
+	local ok = require("lib.buffer"):moveCursorX(-1)
 
-	if focusedElement then
-		local selectedRange =
-			focusedElement:attributeValue("AXSelectedTextRange")
-		if not selectedRange or selectedRange.location == 0 then
-			return
-		end
-		selectedRange.location = selectedRange.location - 1
-		focusedElement:setAttributeValue("AXSelectedTextRange", selectedRange)
+	if not ok then
+		Utils.keyStroke({}, "left")
 	end
 end
 
 function M.bufferMoveRight()
-	local focusedElement = Elements.getAxFocusedElement(true, true)
+	local ok = require("lib.buffer"):moveCursorX(1)
 
-	if focusedElement then
-		local selectedRange =
-			focusedElement:attributeValue("AXSelectedTextRange")
-		local visibleRange =
-			focusedElement:attributeValue("AXVisibleCharacterRange")
-		if
-			not selectedRange
-			or not visibleRange
-			or selectedRange.location == visibleRange.length
-		then
-			return
-		end
-		selectedRange.location = selectedRange.location + 1
-		focusedElement:setAttributeValue("AXSelectedTextRange", selectedRange)
+	if not ok then
+		Utils.keyStroke({}, "right")
 	end
+end
+
+function M.bufferMoveUp()
+	local ok = require("lib.buffer"):moveLineUp()
+	if not ok then
+		Utils.keyStroke({}, "up")
+	end
+end
+
+function M.bufferMoveDown()
+	local ok = require("lib.buffer"):moveLineDown()
+	if not ok then
+		Utils.keyStroke({}, "down")
+	end
+end
+
+function M.bufferMoveWordForward()
+	local ok = require("lib.buffer"):moveWordForward()
+	if not ok then
+		Utils.keyStroke({ "alt" }, "right")
+	end
+end
+
+function M.bufferMoveWordBackward()
+	local ok = require("lib.buffer"):moveWordBackward()
+	if not ok then
+		Utils.keyStroke({ "alt" }, "left")
+	end
+end
+
+function M.bufferMoveWordEnd()
+	local ok = require("lib.buffer"):moveWordEnd()
+	if not ok then
+		Utils.keyStroke({ "alt" }, "right")
+	end
+end
+
+function M.bufferMoveLineStart()
+	local ok = require("lib.buffer"):moveLineStart()
+	if not ok then
+		Utils.keyStroke({ "cmd" }, "left")
+	end
+end
+
+function M.bufferMoveLineEnd()
+	local ok = require("lib.buffer"):moveLineEnd()
+	if not ok then
+		Utils.keyStroke({ "cmd" }, "right")
+	end
+end
+
+function M.bufferMoveLineFirstNonBlank()
+	local ok = require("lib.buffer"):moveLineFirstNonBlank()
+	if not ok then
+		Utils.keyStroke({ "cmd" }, "left")
+	end
+end
+
+function M.bufferMoveDocStart()
+	local ok = require("lib.buffer"):moveDocStart()
+	if not ok then
+		Utils.keyStroke({ "cmd" }, "up")
+	end
+end
+
+function M.bufferMoveDocEnd()
+	local ok = require("lib.buffer"):moveDocEnd()
+	if not ok then
+		Utils.keyStroke({ "cmd" }, "down")
+	end
+end
+
+function M.bufferDeleteInnerWord()
+	local buffer = require("lib.buffer")
+	if buffer:selectInnerWord() then
+		Utils.keyStroke({}, "delete")
+	else
+		Utils.keyStroke("alt", "right")
+		Utils.keyStroke("alt", "delete")
+	end
+end
+
+function M.bufferChangeInnerWord()
+	local buffer = require("lib.buffer")
+	if buffer:selectInnerWord() then
+		Utils.keyStroke({}, "delete")
+	else
+		Utils.keyStroke("alt", "right")
+		Utils.keyStroke("alt", "delete")
+	end
+
+	require("lib.modes"):setModeInsert()
+end
+
+function M.bufferYankInnerWord()
+	local buffer = require("lib.buffer")
+	local _pos = buffer:getCursorPosition()
+
+	if buffer:selectInnerWord() then
+		Utils.keyStroke({ "cmd" }, "c")
+		hs.timer.doAfter(0.05, function()
+			buffer:setCursorPosition(_pos)
+		end)
+	else
+		Utils.keyStroke("alt", "right")
+		Utils.keyStroke({ "shift", "alt" }, "left")
+		Utils.keyStroke("cmd", "c")
+		Utils.keyStroke({}, "right")
+	end
+end
+
+function M.bufferDeleteLine()
+	local buffer = require("lib.buffer")
+
+	if buffer:selectLine() then
+		Utils.keyStroke({}, "delete")
+	else
+		Utils.keyStroke("cmd", "right")
+		Utils.keyStroke("cmd", "delete")
+	end
+end
+
+function M.bufferChangeLine()
+	local buffer = require("lib.buffer")
+
+	if buffer:selectLine() then
+		Utils.keyStroke({}, "delete")
+	else
+		-- Fallback: go to most right and delete
+		Utils.keyStroke("cmd", "right")
+		Utils.keyStroke("cmd", "delete")
+	end
+	require("lib.modes"):setModeInsert()
+end
+
+function M.bufferYankLine()
+	local buffer = require("lib.buffer")
+	local _pos = buffer:getCursorPosition()
+
+	if buffer:selectLine() then
+		Utils.keyStroke({ "cmd" }, "c")
+		hs.timer.doAfter(0.05, function()
+			buffer:setCursorPosition(_pos)
+		end)
+	else
+		-- Fallback: go to most right and copy
+		Utils.keyStroke("cmd", "left")
+		Utils.keyStroke({ "shift", "cmd" }, "right")
+		Utils.keyStroke("cmd", "c")
+		Utils.keyStroke({}, "right")
+	end
+end
+
+function M.bufferDeleteChar()
+	Utils.keyStroke({}, "delete")
+end
+
+function M.bufferSelectMoveLeft()
+	local buffer = require("lib.buffer")
+
+	local ok = buffer:visualMoveLeft()
+
+	if not ok then
+		Utils.keyStroke({ "shift" }, "left")
+	end
+end
+
+function M.bufferSelectMoveRight()
+	local buffer = require("lib.buffer")
+
+	local ok = buffer:visualMoveRight()
+
+	if not ok then
+		Utils.keyStroke({ "shift" }, "right")
+	end
+end
+
+function M.bufferSelectMoveUp()
+	local buffer = require("lib.buffer")
+
+	local ok = buffer:visualMoveLineUp()
+
+	if not ok then
+		Utils.keyStroke({ "shift" }, "up")
+	end
+end
+
+function M.bufferSelectMoveDown()
+	local buffer = require("lib.buffer")
+
+	local ok = buffer:visualMoveLineDown()
+
+	if not ok then
+		Utils.keyStroke({ "shift" }, "down")
+	end
+end
+
+function M.bufferSelectMoveWordForward()
+	local buffer = require("lib.buffer")
+
+	local ok = buffer:visualMoveWordForward()
+
+	if not ok then
+		Utils.keyStroke({ "shift", "alt" }, "right")
+	end
+end
+
+function M.bufferSelectMoveWordBackward()
+	local buffer = require("lib.buffer")
+
+	local ok = buffer:visualMoveWordBackward()
+
+	if not ok then
+		Utils.keyStroke({ "shift", "alt" }, "left")
+	end
+end
+
+function M.bufferSelectMoveLineStart()
+	local buffer = require("lib.buffer")
+
+	local ok = buffer:visualMoveLineStart()
+
+	if not ok then
+		Utils.keyStroke({ "shift", "cmd" }, "left")
+	end
+end
+
+function M.bufferSelectMoveLineEnd()
+	local buffer = require("lib.buffer")
+
+	local ok = buffer:visualMoveLineEnd()
+
+	if not ok then
+		Utils.keyStroke({ "shift", "cmd" }, "right")
+	end
+end
+
+function M.bufferSelectMoveLineFirstNonBlank()
+	local buffer = require("lib.buffer")
+
+	local ok = buffer:visualMoveLineFirstNonBlank()
+
+	if not ok then
+		Utils.keyStroke({ "shift", "cmd" }, "left")
+	end
+end
+
+function M.bufferSelectMoveDocStart()
+	local buffer = require("lib.buffer")
+
+	local ok = buffer:visualMoveDocStart()
+
+	if not ok then
+		Utils.keyStroke({ "shift", "cmd" }, "up")
+	end
+end
+
+function M.bufferSelectMoveDocEnd()
+	local buffer = require("lib.buffer")
+
+	local ok = buffer:visualMoveDocEnd()
+
+	if not ok then
+		Utils.keyStroke({ "shift", "cmd" }, "down")
+	end
+end
+
+function M.bufferSelectDelete()
+	Utils.keyStroke({}, "delete")
+end
+
+function M.bufferSelectChange()
+	Utils.keyStroke({}, "delete")
+
+	require("lib.modes"):setModeInsert()
+end
+
+function M.bufferSelectYank()
+	Utils.keyStroke("cmd", "c")
+
+	local buffer = require("lib.buffer")
+
+	hs.timer.doAfter(0.05, function()
+		buffer:setCursorPosition(buffer._visualAnchor)
+	end)
 end
 
 return M

@@ -104,6 +104,7 @@ function M:setModeLink()
 	end
 
 	require("lib.marks"):clear()
+	require("lib.buffer"):clear()
 
 	return true
 end
@@ -120,6 +121,7 @@ function M:setModeInsert()
 	end
 
 	require("lib.marks"):clear()
+	require("lib.buffer"):clear()
 
 	return true
 end
@@ -137,6 +139,10 @@ function M:setModeInsertNormal()
 
 	require("lib.marks"):clear()
 
+	local buffer = require("lib.buffer")
+	buffer:new()
+	buffer:exitVisualMode()
+
 	return true
 end
 
@@ -152,6 +158,9 @@ function M:setModeInsertVisual()
 	end
 
 	require("lib.marks"):clear()
+	local buffer = require("lib.buffer")
+	buffer:new()
+	buffer:startVisualMode()
 
 	return true
 end
@@ -168,6 +177,7 @@ function M:setModeVisual()
 	end
 
 	require("lib.marks"):clear()
+	require("lib.buffer"):clear()
 
 	return true
 end
@@ -184,6 +194,7 @@ function M:setModeNormal()
 	end
 
 	require("lib.marks"):clear()
+	require("lib.buffer"):clear()
 
 	return true
 end

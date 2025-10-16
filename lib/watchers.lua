@@ -90,6 +90,9 @@ end
 
 M.launcherWatcher = {}
 
+-- Tracks the last mode
+M._mode = nil
+
 ---Starts the launcher watcher
 ---@return nil
 function M:startLaunchersWatcher()
@@ -121,6 +124,10 @@ function M:startLaunchersWatcher()
 					"[Watchers.startLaunchersWatcher] Launcher opened: %s",
 					launcher
 				)
+
+				-- Tracks the last mode
+				self._mode = Modes.mode
+
 				Modes:setModeDisabled()
 				Marks:clear()
 			end
@@ -133,7 +140,10 @@ function M:startLaunchersWatcher()
 					"[Watchers.startLaunchersWatcher] Launcher closed: %s",
 					launcher
 				)
-				Modes:setModeNormal()
+
+				Modes:setMode(self._mode)
+				self._mode = nil
+
 				Marks:clear()
 			end
 		)
