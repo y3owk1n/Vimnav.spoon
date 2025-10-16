@@ -238,10 +238,10 @@ function M.forceDeselectTextHighlights()
 			startMarkerOfSelection,
 			startMarkerOfSelection
 		)
-		if not emptyRangeErr then
+		if not emptyRange then
 			Log.log.ef(
 				"[Actions.forceDeselectTextHighlights] Error creating empty range: %s",
-				rangeErr
+				emptyRangeErr
 			)
 			return
 		end
