@@ -169,4 +169,12 @@ function M.doubleClickAtPoint(point)
 	click2_up:post()
 end
 
+function M.getCmd(path, commandObj)
+	local current = commandObj
+	for part in path:gmatch("[^.]+") do
+		current = current and current[part]
+	end
+	return current
+end
+
 return M

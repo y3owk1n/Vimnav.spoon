@@ -176,7 +176,7 @@ function M:handleVimInput(char, opts)
 			if action == "noop" then
 				Log.log.df("[EventHandler.handleVimInput] No mapping")
 			else
-				local cmd = Commands[action]
+				local cmd = Utils.getCmd(action, Commands)
 				if cmd then
 					cmd()
 					Log.log.df("[EventHandler.handleVimInput] Executed command")

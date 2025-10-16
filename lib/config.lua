@@ -9,49 +9,49 @@ local DEFAULT_MAPPING = {
 	normal = {
 		["?"] = {
 			description = "Show help",
-			action = "showHelp",
+			action = "whichkey.show",
 		},
 		-- modes
 		["i"] = {
 			description = "Enter passthrough mode",
-			action = "enterPassthroughMode",
+			action = "mode.passthrough",
 		},
 		["v"] = {
 			description = "Enter visual mode",
-			action = "enterVisualMode",
+			action = "mode.visual",
 		},
 		-- scrolls
 		["h"] = {
 			description = "Scroll left",
-			action = "scrollLeft",
+			action = "scroll.left",
 		},
 		["j"] = {
 			description = "Scroll down",
-			action = "scrollDown",
+			action = "scroll.down",
 		},
 		["k"] = {
 			description = "Scroll up",
-			action = "scrollUp",
+			action = "scroll.up",
 		},
 		["l"] = {
 			description = "Scroll right",
-			action = "scrollRight",
+			action = "scroll.right",
 		},
 		["C-d"] = {
 			description = "Scroll half page down",
-			action = "scrollHalfPageDown",
+			action = "scroll.HalfPageDown",
 		},
 		["C-u"] = {
 			description = "Scroll half page up",
-			action = "scrollHalfPageUp",
+			action = "scroll.halfPageUp",
 		},
 		["G"] = {
 			description = "Scroll to bottom",
-			action = "scrollToBottom",
+			action = "scroll.bottom",
 		},
 		["gg"] = {
 			description = "Scroll to top",
-			action = "scrollToTop",
+			action = "scroll.top",
 		},
 		-- navigation (arrows)
 		["H"] = {
@@ -90,54 +90,54 @@ local DEFAULT_MAPPING = {
 		-- hints click
 		["f"] = {
 			description = "Go to link",
-			action = "gotoLink",
+			action = "hints.click",
 		},
 		["F"] = {
 			description = "Double left click",
-			action = "doubleLeftClick",
+			action = "hints.doubleClick",
 		},
 		["r"] = {
 			description = "Right click",
-			action = "rightClick",
+			action = "hints.rightClick",
 		},
 		["gi"] = {
 			description = "Go to input",
-			action = "gotoInput",
+			action = "hints.input",
 		},
 		["gf"] = {
 			description = "Move mouse to link",
-			action = "moveMouseToLink",
+			action = "hints.moveMouse",
 		},
 		["<leader>f"] = {
 			description = "Go to link in new tab",
-			action = "gotoLinkNewTab",
+			action = "hints.newTab",
 		}, -- browser only
 		["<leader>di"] = {
 			description = "Download image",
-			action = "downloadImage",
+			action = "hints.downloadImage",
 		}, -- browser only
 		["<leader>yf"] = {
 			description = "Copy link URL to clipboard",
-			action = "copyLinkUrlToClipboard",
+			action = "hints.copyLink",
 		}, -- browser only
 		-- move mouse
 		["zz"] = {
 			description = "Move mouse to center",
-			action = "moveMouseToCenter",
+			action = "misc.moveMouseToCenter",
 		},
 		-- copy page url
 		["<leader>yy"] = {
 			description = "Copy page URL to clipboard",
-			action = "copyPageUrlToClipboard",
+			action = "browser.copyPageUrl",
 		}, -- browser only
 		-- next/prev page
 		["<leader>]"] = {
 			description = "Go to next page",
-			action = "gotoNextPage",
+			action = "browser.nextPage",
 		}, -- browser only
 		["<leader>["] = {
 			description = "Go to previous page",
-			action = "gotoPrevPage",
+			action = "browser.prevPage",
 		}, -- browser only
 		["<leader> "] = {
 			description = "Bypass spacebar",
@@ -160,69 +160,77 @@ local DEFAULT_MAPPING = {
 	insertNormal = {
 		["?"] = {
 			description = "Show help",
-			action = "showHelp",
+			action = "whichkey.show",
 		},
 		-- movements
 		["h"] = {
 			description = "Move left",
-			action = { {}, "left" },
+			action = "insertNormal.moveLeft",
 		},
 		["j"] = {
 			description = "Move down",
-			action = { {}, "down" },
+			action = "insertNormal.moveDown",
 		},
 		["k"] = {
 			description = "Move up",
-			action = { {}, "up" },
+			action = "insertNormal.moveUp",
 		},
 		["l"] = {
 			description = "Move right",
-			action = { {}, "right" },
+			action = "insertNormal.moveRight",
 		},
 		["e"] = {
 			description = "Move to end of word",
-			action = { "alt", "right" },
+			action = "insertNormal.moveWordEnd",
 		},
 		["b"] = {
 			description = "Move to beginning of word",
-			action = { "alt", "left" },
+			action = "insertNormal.moveWordBackward",
+		},
+		["w"] = {
+			description = "Move to beginning of next word",
+			action = "insertNormal.moveWordForward",
+		},
+		["^"] = {
+			description = "Move to beginning of line non blank",
+			action = "insertNormal.moveLineStartNonBlank",
 		},
 		["0"] = {
 			description = "Move to beginning of line",
-			action = { "cmd", "left" },
+			action = "insertNormal.moveLineStart",
 		},
 		["$"] = {
 			description = "Move to end of line",
-			action = { "cmd", "right" },
+			action = "insertNormal.moveLineEnd",
 		},
 		["gg"] = {
 			description = "Move to top of page",
-			action = { "cmd", "up" },
+			action = "insertNormal.moveDocStart",
 		},
 		["G"] = {
 			description = "Move to bottom of page",
-			action = { "cmd", "down" },
+			action = "insertNormal.moveDocEnd",
 		},
 		-- edits
 		["diw"] = {
-			description = "Delete word",
-			action = "deleteWord",
+			description = "Delete inner word",
+			action = "insertNormal.deleteInnerWord",
 		},
 		["ciw"] = {
-			description = "Change word",
-			action = "changeWord",
+			description = "Change inner word",
+			action = "insertNormal.changeInnerWord",
 		},
 		["yiw"] = {
 			description = "Yank word",
-			action = "yankWord",
+			action = "insertNormal.yankInnerWord",
 		},
 		["dd"] = {
 			description = "Delete line",
-			action = "deleteLine",
+			action = "insertNormal.deleteLine",
 		},
 		["cc"] = {
 			description = "Change line",
-			action = "changeLine",
+			action = "insertNormal.changeLine",
 		},
 		["x"] = {
 			description = "Delete character",
@@ -231,7 +239,7 @@ local DEFAULT_MAPPING = {
 		-- yank and paste
 		["yy"] = {
 			description = "Yank line",
-			action = "yankLine",
+			action = "insertNormal.yankLine",
 		},
 		["p"] = {
 			description = "Paste",
@@ -249,98 +257,102 @@ local DEFAULT_MAPPING = {
 		-- modes
 		["i"] = {
 			description = "Enter insert mode",
-			action = "enterInsertMode",
+			action = "mode.insert",
 		},
 		["o"] = {
 			description = "Enter insert mode new line below",
-			action = "enterInsertModeNewLineBelow",
+			action = "mode.insertWithNewLineBelow",
 		},
 		["O"] = {
 			description = "Enter insert mode new line above",
-			action = "enterInsertModeNewLineAbove",
+			action = "mode.insertWithNewLineAbove",
 		},
 		["A"] = {
 			description = "Enter insert mode end of line",
-			action = "enterInsertModeEndOfLine",
+			action = "mode.insertWithEndOfLine",
 		},
 		["I"] = {
 			description = "Enter insert mode start of line",
-			action = "enterInsertModeStartLine",
+			action = "mode.insertWithStartLine",
 		},
 		["v"] = {
 			description = "Enter insert visual mode",
-			action = "enterInsertVisualMode",
+			action = "mode.insertVisual",
 		},
 		["V"] = {
 			description = "Enter insert visual line mode",
-			action = "enterInsertVisualLineMode",
+			action = "mode.insertVisualLine",
 		},
 	},
 	insertVisual = {
 		["?"] = {
 			description = "Show help",
-			action = "showHelp",
+			action = "whichkey.show",
 		},
 		-- movements
 		["h"] = {
 			description = "Move left",
-			action = { { "shift" }, "left" },
+			action = "insertVisual.moveLeft",
 		},
 		["j"] = {
 			description = "Move down",
-			action = { { "shift" }, "down" },
+			action = "insertVisual.moveDown",
 		},
 		["k"] = {
 			description = "Move up",
-			action = { { "shift" }, "up" },
+			action = "insertVisual.moveUp",
 		},
 		["l"] = {
 			description = "Move right",
-			action = { { "shift" }, "right" },
+			action = "insertVisual.moveRight",
 		},
 		["e"] = {
 			description = "Move to end of word",
-			action = { { "shift", "alt" }, "right" },
+			action = "insertVisual.moveWordForward",
 		},
 		["b"] = {
 			description = "Move to beginning of word",
-			action = { { "shift", "alt" }, "left" },
+			action = "insertVisual.moveWordBackward",
 		},
 		["0"] = {
 			description = "Move to beginning of line",
-			action = { { "shift", "cmd" }, "left" },
+			action = "insertVisual.moveLineStart",
 		},
 		["$"] = {
 			description = "Move to end of line",
-			action = { { "shift", "cmd" }, "right" },
+			action = "insertVisual.moveLineEnd",
+		},
+		["^"] = {
+			description = "Move to beginning of line non blank",
+			action = "insertVisual.moveLineFirstNonBlank",
 		},
 		["gg"] = {
 			description = "Move to top of page",
-			action = { { "shift", "cmd" }, "up" },
+			action = "insertVisual.moveDocStart",
 		},
 		["G"] = {
 			description = "Move to bottom of page",
-			action = { { "shift", "cmd" }, "down" },
+			action = "insertVisual.moveDocEnd",
 		},
 		-- edits
 		["d"] = {
 			description = "Delete highlighted",
-			action = "deleteHighlighted",
+			action = { {}, "delete" },
 		},
 		["c"] = {
 			description = "Change highlighted",
-			action = "changeHighlighted",
+			action = "insertVisual.change",
 		},
 		-- yank
 		["y"] = {
 			description = "Yank highlighted",
-			action = "yankHighlighted",
+			action = "insertVisual.yank",
 		},
 	},
 	visual = {
 		["?"] = {
 			description = "Show help",
-			action = "showHelp",
+			action = "whichkey.show",
 		},
 		-- movements
 		["h"] = {
@@ -378,7 +390,7 @@ local DEFAULT_MAPPING = {
 		-- yank
 		["y"] = {
 			description = "Yank highlighted",
-			action = "yankHighlighted",
+			action = "visual.yank",
 		},
 	},
 }

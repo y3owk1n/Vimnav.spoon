@@ -17,9 +17,9 @@ Navigate Safari, Mail, Finder, or any macOS app with the same Vim keybindings yo
 **Key Features:**
 
 - Works across all native macOS apps
-- Visua mode for apps that support `cmd+f` to select text
+- Visual mode for apps that support `cmd+f` to select text
 - Visual link hints for mouse-free clicking
-- Vim-style modal editing in text fields
+- Vim-style modal editing in text fields (simple accessibility buffer with fallback)
 - Smart mode switching (auto-enters insert mode in inputs)
 - Performance optimized with async processing
 - Highly customizable keybindings and behavior
@@ -276,7 +276,7 @@ spoon.Vimnav:configure({
    -- Map to built-in commands
    ["j"] = {
     description = "Scroll down",
-    action = "scrollDown",
+    action = "scroll.left",
    },
 
    -- Map to native os keystrokes
@@ -629,7 +629,7 @@ spoon.Vimnav:getDefaultConfig()
 - **Modal dialogs** - Some system dialogs block accessibility
 - **Complex editing** - Vim macros and registers not supported
 - **Visual selection** - Needs to start a selection either with mouse or `cmd+f`
-- **Textobjects** - Not supported (Don't feel to implement complex accessibility buffer yet)
+- **Textobjects** - Only simple text objects are supported (Don't feel to implement complex accessibility buffer yet)
 
 ## Performance
 
