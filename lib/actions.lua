@@ -190,64 +190,73 @@ end
 ---@return nil
 function M.forceDeselectTextHighlights()
 	local focused = require("lib.elements").getAxFocusedElement()
-
 	if not focused then
 		Log.log.ef(
 			"[Actions.forceDeselectTextHighlights] No focusable element found"
 		)
 		return
 	end
-
 	local attrs = focused:attributeNames() or {}
 	local supportsMarkers =
 		hs.fnutils.contains(attrs, "AXSelectedTextMarkerRange")
-
 	if supportsMarkers then
-		local startMarker = focused:attributeValue("AXStartTextMarker")
-		if not startMarker then
-			Log.log.ef(
-				"[Actions.forceDeselectTextHighlights] No AXStartTextMarker found; cannot clear"
+		local textMarkerRange =
+			focused:attributeValue("AXSelectedTextMarkerRange")
+		if not textMarkerRange then
+			Log.log.df(
+				"[Actions.forceDeselectTextHighlights] No text marker range found; nothing to clear"
 			)
 			return
 		end
-
-		local emptyRange, err =
-			hs.axuielement.axtextmarker.newRange(startMarker, startMarker)
-		if not emptyRange then
+		local range, rangeErr = focused:parameterizedAttributeValue(
+			"AXLengthForTextMarkerRange",
+			textMarkerRange
+		)
+		if rangeErr then
+			Log.log.ef(
+				"[Actions.forceDeselectTextHighlights] Error getting range: %s",
+				rangeErr
+			)
+			return
+		end
+		if not range or range <= 0 then
+			Log.log.df(
+				"[Actions.forceDeselectTextHighlights] No range found; nothing to clear"
+			)
+			return
+		end
+		-- Extract the start marker from the text marker range
+		local startMarkerOfSelection = textMarkerRange:startMarker()
+		if not startMarkerOfSelection then
+			Log.log.ef(
+				"[Actions.forceDeselectTextHighlights] Could not extract start marker from range"
+			)
+			return
+		end
+		-- Create an empty range at the current selection start position
+		local emptyRange, emptyRangeErr = hs.axuielement.axtextmarker.newRange(
+			startMarkerOfSelection,
+			startMarkerOfSelection
+		)
+		if not emptyRangeErr then
 			Log.log.ef(
 				"[Actions.forceDeselectTextHighlights] Error creating empty range: %s",
-				err
+				rangeErr
 			)
 			return
 		end
-
 		local ok, setErr =
 			focused:setAttributeValue("AXSelectedTextMarkerRange", emptyRange)
 		if ok then
 			Log.log.df(
 				"[Actions.forceDeselectTextHighlights] Text deselected via AX markers."
 			)
-			return
 		else
 			Log.log.ef(
 				"[Actions.forceDeselectTextHighlights] Could not set AXSelectedTextMarkerRange: %s",
 				setErr
 			)
 		end
-	end
-
-	-- Fallack with click
-	local frame = focused:attributeValue("AXFrame")
-	if frame then
-		local center = { x = frame.x + frame.w / 2, y = frame.y + frame.h / 2 }
-		hs.eventtap.leftClick(center)
-		Log.log.df(
-			"[Actions.forceDeselectTextHighlights] Text deselected via simulated click."
-		)
-	else
-		Log.log.ef(
-			"[Actions.forceDeselectTextHighlights] No frame available for click fallback."
-		)
 	end
 end
 
