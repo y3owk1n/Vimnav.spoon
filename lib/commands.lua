@@ -634,4 +634,38 @@ function M.yankHighlighted()
 	Utils.keyStroke({}, "right")
 end
 
+function M.bufferMoveLeft()
+	local focusedElement = Elements.getAxFocusedElement(true, true)
+
+	if focusedElement then
+		local selectedRange =
+			focusedElement:attributeValue("AXSelectedTextRange")
+		if not selectedRange or selectedRange.location == 0 then
+			return
+		end
+		selectedRange.location = selectedRange.location - 1
+		focusedElement:setAttributeValue("AXSelectedTextRange", selectedRange)
+	end
+end
+
+function M.bufferMoveRight()
+	local focusedElement = Elements.getAxFocusedElement(true, true)
+
+	if focusedElement then
+		local selectedRange =
+			focusedElement:attributeValue("AXSelectedTextRange")
+		local visibleRange =
+			focusedElement:attributeValue("AXVisibleCharacterRange")
+		if
+			not selectedRange
+			or not visibleRange
+			or selectedRange.location == visibleRange.length
+		then
+			return
+		end
+		selectedRange.location = selectedRange.location + 1
+		focusedElement:setAttributeValue("AXSelectedTextRange", selectedRange)
+	end
+end
+
 return M

@@ -165,7 +165,8 @@ local DEFAULT_MAPPING = {
 		-- movements
 		["h"] = {
 			description = "Move left",
-			action = { {}, "left" },
+			action = "bufferMoveLeft",
+			-- action = { {}, "left" },
 		},
 		["j"] = {
 			description = "Move down",
@@ -177,7 +178,8 @@ local DEFAULT_MAPPING = {
 		},
 		["l"] = {
 			description = "Move right",
-			action = { {}, "right" },
+			action = "bufferMoveRight",
+			-- action = { {}, "right" },
 		},
 		["e"] = {
 			description = "Move to end of word",
