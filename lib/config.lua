@@ -476,6 +476,7 @@ local DEFAULT_CONFIG = {
 			"Microsoft Edge",
 			"Brave Browser",
 			"Zen",
+			"Helium",
 		},
 		launchers = { "Spotlight", "Raycast", "Alfred" },
 	},
@@ -516,7 +517,12 @@ local DEFAULT_CONFIG = {
 	},
 	enhancedAccessibility = {
 		enableForChromium = false,
-		chromiumApps = { "Google Chrome", "Brave Browser", "Microsoft Edge" },
+		chromiumApps = {
+			"Google Chrome",
+			"Brave Browser",
+			"Microsoft Edge",
+			"Helium",
+		},
 		enableForElectron = false,
 		electronApps = {
 			"Code",
