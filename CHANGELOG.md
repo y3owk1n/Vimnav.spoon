@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.3.0](https://github.com/y3owk1n/Vimnav.spoon/compare/v1.2.1...v1.3.0) (2025-10-20)
+
+
+### Features
+
+* implementation of accessibility buffer ([#82](https://github.com/y3owk1n/Vimnav.spoon/issues/82)) ([6359fe2](https://github.com/y3owk1n/Vimnav.spoon/commit/6359fe23a7048172747d3e406e3b1e296c703d20))
+
+
+### Bug Fixes
+
+* add `helium` browser ([#86](https://github.com/y3owk1n/Vimnav.spoon/issues/86)) ([6565011](https://github.com/y3owk1n/Vimnav.spoon/commit/6565011d1fd988fe6c7b4f3bd565f5c9603d7cf4))
+* better deselect without jumping page ([#84](https://github.com/y3owk1n/Vimnav.spoon/issues/84)) ([4da29b1](https://github.com/y3owk1n/Vimnav.spoon/commit/4da29b1fde2d44a9e1e471ec3ad1a3ad0f43a432))
+* typo on `emptyRangeErr` check ([#85](https://github.com/y3owk1n/Vimnav.spoon/issues/85)) ([c370207](https://github.com/y3owk1n/Vimnav.spoon/commit/c37020704abca0fc0b0f7b0cb7e1150a7252b689))
+
 ## [1.2.1](https://github.com/y3owk1n/Vimnav.spoon/compare/v1.2.0...v1.2.1) (2025-10-15)
 
 
